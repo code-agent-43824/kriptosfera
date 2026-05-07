@@ -1,0 +1,16 @@
+{
+  "appId": "ru.kriptosfera.demo",
+  "productName": "Криптосфера Demo",
+  "version": "0.1.0",
+  "startUrl": "https://www.cryptopro.ru/sites/default/files/products/cades/demopage/cades_bes_sample.html",
+  "allowedOrigins": [
+    "https://www.cryptopro.ru"
+  ],
+  "profileName": "demo",
+  "diagnosticsEnabled": true,
+  "chromiumArgs": [
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--enable-logging"
+  ]
+}
