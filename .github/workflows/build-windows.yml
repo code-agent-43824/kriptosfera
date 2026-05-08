@@ -2,6 +2,7 @@ name: build-windows
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  GOTOOLCHAIN: local
 
 on:
   workflow_dispatch:
@@ -19,12 +20,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false
+          cache: true
+          cache-dependency-path: go.mod
 
       - name: Build demo executable
         shell: pwsh
