@@ -3,7 +3,10 @@ package bootstrap
 import (
     "archive/zip"
     "bytes"
+    "crypto/sha256"
     "embed"
+    "encoding/hex"
+    "encoding/json"
     "errors"
     "fmt"
     "io"
@@ -11,7 +14,9 @@ import (
     "os/exec"
     "path/filepath"
     "runtime"
+    "sort"
     "strings"
+    "time"
 
     "github.com/code-agent-43824/kriptosfera/internal/config"
     "github.com/code-agent-43824/kriptosfera/internal/logging"
@@ -23,9 +28,32 @@ var embeddedPayload []byte
 //go:embed app-version.txt
 var versionFile embed.FS
 
+const (
+    payloadStateFile = ".payload-state.json"
+    payloadReadyFile = ".payload-ready"
+    payloadLockFile  = ".bootstrap.lock"
+    payloadManifest  = "manifest.json"
+    lockTTL          = 10 * time.Minute
+)
+
 type RuntimeConfig struct {
     ProductName string
     Version     string
+}
+
+type PayloadManifest struct {
+    Version string             `json:"version"`
+    Files   []PayloadManifestFile `json:"files"`
+}
+
+type PayloadManifestFile struct {
+    Path   string `json:"path"`
+    SHA256 string `json:"sha256"`
+}
+
+type PayloadState struct {
+    Version       string `json:"version"`
+    PayloadSHA256 string `json:"payloadSha256"`
 }
 
 func DefaultConfig() (RuntimeConfig, error) {
@@ -50,29 +78,31 @@ func Run(cfg RuntimeConfig) error {
     logger.Info("launcher start version=%s os=%s", cfg.Version, runtime.GOOS)
 
     appDir := filepath.Join(root, "apps", "demo", cfg.Version)
-    if err := ensurePayload(appDir, logger); err != nil {
+    reused, err := ensurePayload(appDir, cfg, logger)
+    if err != nil {
         return err
     }
+
     appCfg, err := config.Load(filepath.Join(appDir, "config", "app-config.json"))
     if err != nil {
         return err
     }
-    logger.Info("payload ready start_url=%s", appCfg.StartURL)
-
-    if runtime.GOOS != "windows" {
-        logger.Info("non-windows environment detected; dry-run only")
-        fmt.Printf("Payload prepared at %s\nStart URL: %s\n", appDir, appCfg.StartURL)
-        return nil
-    }
-
-    chromePath := filepath.Join(appDir, "chromium", "chrome.exe")
-    if _, err := os.Stat(chromePath); err != nil {
-        return fmt.Errorf("chromium runtime not found at %s", chromePath)
-    }
+    logger.Info("payload ready reused=%t start_url=%s", reused, appCfg.StartURL)
 
     profileDir := filepath.Join(root, "profiles", appCfg.ProfileName)
     if err := os.MkdirAll(profileDir, 0o755); err != nil {
         return err
+    }
+
+    chromePath := filepath.Join(appDir, "chromium", "chrome.exe")
+    if runtime.GOOS != "windows" {
+        logger.Info("non-windows environment detected; stub launch only")
+        return writeDryRun(appDir, profileDir, appCfg, logger)
+    }
+
+    if _, err := os.Stat(chromePath); err != nil {
+        logger.Info("chromium runtime missing; stub launch only path=%s", chromePath)
+        return writeDryRun(appDir, profileDir, appCfg, logger)
     }
 
     args := []string{
@@ -88,17 +118,181 @@ func Run(cfg RuntimeConfig) error {
     return cmd.Start()
 }
 
-func ensurePayload(appDir string, logger *logging.Logger) error {
-    marker := filepath.Join(appDir, ".payload-ready")
-    if _, err := os.Stat(marker); err == nil {
-        logger.Info("payload already prepared path=%s", appDir)
-        return nil
+func ensurePayload(appDir string, cfg RuntimeConfig, logger *logging.Logger) (bool, error) {
+    payloadSHA := checksumBytes(embeddedPayload)
+    parentDir := filepath.Dir(appDir)
+    if err := os.MkdirAll(parentDir, 0o755); err != nil {
+        return false, err
     }
+
+    unlock, err := acquireLock(appDir)
+    if err != nil {
+        return false, err
+    }
+    defer unlock()
+
+    if prepared, err := isPreparedPayload(appDir, cfg.Version, payloadSHA); err != nil {
+        return false, err
+    } else if prepared {
+        logger.Info("payload already prepared path=%s", appDir)
+        return true, nil
+    }
+
     logger.Info("extract payload path=%s", appDir)
-    if err := unzip(embeddedPayload, appDir); err != nil {
+
+    tempDir, err := os.MkdirTemp(parentDir, filepath.Base(appDir)+"-staging-")
+    if err != nil {
+        return false, err
+    }
+    defer os.RemoveAll(tempDir)
+
+    if err := unzip(embeddedPayload, tempDir); err != nil {
+        return false, err
+    }
+    if err := verifyExtractedPayload(tempDir); err != nil {
+        return false, err
+    }
+    if err := writePayloadState(tempDir, PayloadState{Version: cfg.Version, PayloadSHA256: payloadSHA}); err != nil {
+        return false, err
+    }
+    if err := os.WriteFile(filepath.Join(tempDir, payloadReadyFile), []byte("ok\n"), 0o644); err != nil {
+        return false, err
+    }
+
+    if err := os.RemoveAll(appDir); err != nil {
+        return false, err
+    }
+    if err := os.Rename(tempDir, appDir); err != nil {
+        return false, err
+    }
+    return false, nil
+}
+
+func isPreparedPayload(appDir, version, payloadSHA string) (bool, error) {
+    if _, err := os.Stat(filepath.Join(appDir, payloadReadyFile)); err != nil {
+        if errors.Is(err, os.ErrNotExist) {
+            return false, nil
+        }
+        return false, err
+    }
+
+    state, err := loadPayloadState(appDir)
+    if err != nil {
+        if errors.Is(err, os.ErrNotExist) {
+            return false, nil
+        }
+        return false, err
+    }
+    if state.Version != version || state.PayloadSHA256 != payloadSHA {
+        return false, nil
+    }
+
+    if err := verifyExtractedPayload(appDir); err != nil {
+        return false, nil
+    }
+    return true, nil
+}
+
+func verifyExtractedPayload(root string) error {
+    manifest, err := loadManifest(filepath.Join(root, payloadManifest))
+    if err != nil {
         return err
     }
-    return os.WriteFile(marker, []byte("ok\n"), 0o644)
+    if manifest.Version == "" {
+        return errors.New("payload manifest version is empty")
+    }
+    for _, item := range manifest.Files {
+        if item.Path == "" {
+            return errors.New("payload manifest contains empty path")
+        }
+        if item.SHA256 == "" {
+            return fmt.Errorf("payload manifest missing checksum for %s", item.Path)
+        }
+        target := filepath.Join(root, filepath.FromSlash(item.Path))
+        if checksum, err := checksumFile(target); err != nil {
+            return err
+        } else if checksum != item.SHA256 {
+            return fmt.Errorf("payload file checksum mismatch: %s", item.Path)
+        }
+    }
+    return nil
+}
+
+func loadManifest(path string) (PayloadManifest, error) {
+    var manifest PayloadManifest
+    data, err := os.ReadFile(path)
+    if err != nil {
+        return manifest, err
+    }
+    if err := json.Unmarshal(data, &manifest); err != nil {
+        return manifest, err
+    }
+    sort.Slice(manifest.Files, func(i, j int) bool {
+        return manifest.Files[i].Path < manifest.Files[j].Path
+    })
+    return manifest, nil
+}
+
+func loadPayloadState(root string) (PayloadState, error) {
+    var state PayloadState
+    data, err := os.ReadFile(filepath.Join(root, payloadStateFile))
+    if err != nil {
+        return state, err
+    }
+    if err := json.Unmarshal(data, &state); err != nil {
+        return state, err
+    }
+    return state, nil
+}
+
+func writePayloadState(root string, state PayloadState) error {
+    data, err := json.MarshalIndent(state, "", "  ")
+    if err != nil {
+        return err
+    }
+    return os.WriteFile(filepath.Join(root, payloadStateFile), append(data, '\n'), 0o644)
+}
+
+func writeDryRun(appDir, profileDir string, appCfg config.AppConfig, logger *logging.Logger) error {
+    diagnosticsPath := filepath.Join(appDir, "diagnostics", "diagnostics.html")
+    dryRunPath := filepath.Join(appDir, "diagnostics", "runtime-dry-run.txt")
+    content := strings.Join([]string{
+        "Kriptosfera runtime dry-run",
+        "startUrl=" + appCfg.StartURL,
+        "profileDir=" + profileDir,
+        "diagnosticsPath=" + diagnosticsPath,
+        "timestamp=" + time.Now().UTC().Format(time.RFC3339),
+        "",
+    }, "\n")
+    if err := os.WriteFile(dryRunPath, []byte(content), 0o644); err != nil {
+        return err
+    }
+    logger.Info("dry-run prepared file=%s diagnostics=%s", dryRunPath, diagnosticsPath)
+    fmt.Printf("Payload prepared at %s\nDry-run file: %s\nDiagnostics: %s\nStart URL: %s\n", appDir, dryRunPath, diagnosticsPath, appCfg.StartURL)
+    return nil
+}
+
+func acquireLock(appDir string) (func(), error) {
+    lockPath := filepath.Join(filepath.Dir(appDir), filepath.Base(appDir)+payloadLockFile)
+    if info, err := os.Stat(lockPath); err == nil {
+        if time.Since(info.ModTime()) > lockTTL {
+            _ = os.Remove(lockPath)
+        }
+    }
+
+    file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+    if err != nil {
+        if errors.Is(err, os.ErrExist) {
+            return nil, fmt.Errorf("bootstrap already in progress: %s", lockPath)
+        }
+        return nil, err
+    }
+    _, _ = file.WriteString(time.Now().UTC().Format(time.RFC3339) + "\n")
+
+    return func() {
+        _ = file.Close()
+        _ = os.Remove(lockPath)
+    }, nil
 }
 
 func unzip(data []byte, dest string) error {
@@ -106,9 +300,10 @@ func unzip(data []byte, dest string) error {
     if err != nil {
         return err
     }
+    cleanDest := filepath.Clean(dest)
     for _, f := range r.File {
-        target := filepath.Join(dest, filepath.Clean(f.Name))
-        if !strings.HasPrefix(target, filepath.Clean(dest)+string(os.PathSeparator)) && filepath.Clean(target) != filepath.Clean(dest) {
+        target := filepath.Join(cleanDest, filepath.Clean(f.Name))
+        if !strings.HasPrefix(target, cleanDest+string(os.PathSeparator)) && filepath.Clean(target) != cleanDest {
             return errors.New("zip path traversal detected")
         }
         if f.FileInfo().IsDir() {
@@ -143,6 +338,25 @@ func unzip(data []byte, dest string) error {
         }
     }
     return nil
+}
+
+func checksumBytes(data []byte) string {
+    sum := sha256.Sum256(data)
+    return hex.EncodeToString(sum[:])
+}
+
+func checksumFile(path string) (string, error) {
+    file, err := os.Open(path)
+    if err != nil {
+        return "", err
+    }
+    defer file.Close()
+
+    hash := sha256.New()
+    if _, err := io.Copy(hash, file); err != nil {
+        return "", err
+    }
+    return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func appRoot() (string, error) {
