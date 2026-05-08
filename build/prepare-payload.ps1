@@ -11,10 +11,12 @@ if (Test-Path $OutputDir) {
 
 New-Item -ItemType Directory -Path $OutputDir | Out-Null
 Copy-Item -Recurse -Force (Join-Path $PayloadTemplate "*") $OutputDir
+pwsh ./build/prepare-chromium.ps1 -OutputDir (Join-Path $OutputDir "chromium")
 
 $required = @(
   "config/app-config.json",
-  "diagnostics/diagnostics.html"
+  "diagnostics/diagnostics.html",
+  "chromium/chrome.exe"
 )
 
 foreach ($item in $required) {

@@ -24,11 +24,16 @@
 - модель публикации артефактов без дополнительного ручного zip на release-тегах.
 
 Сейчас ещё нет:
-- реального Chromium runtime в payload;
 - CryptoPro extension;
 - native messaging host;
 - CSP Lite / библиотек CryptoPro;
 - рабочего сценария подписи.
+
+Сейчас уже есть:
+- foundation launcher первого этапа;
+- managed Chromium runtime второго этапа, который подготавливается в payload из pinned Chrome for Testing build;
+- отдельный `user-data-dir` для запуска встроенного браузера;
+- cache-friendly подготовка Chromium runtime в CI.
 
 ## Репозиторий
 
@@ -49,11 +54,12 @@ Workflow: `.github/workflows/build-windows.yml`
 Что делает pipeline:
 1. checkout
 2. setup Go
-3. подготовка payload
-4. упаковка payload в `internal/bootstrap/payload.zip`
-5. `go test ./...`
-6. сборка `dist/KriptosferaDemo.exe`
-7. публикация артефактов
+3. восстановление cache Chromium runtime
+4. подготовка payload (включая Chromium runtime)
+5. упаковка payload в `internal/bootstrap/payload.zip`
+6. `go test ./...`
+7. сборка `dist/KriptosferaDemo.exe`
+8. публикация артефактов
 
 ### Важный момент про «без лишнего зазиповывания»
 

@@ -94,28 +94,51 @@ func Run(cfg RuntimeConfig) error {
         return err
     }
 
-    chromePath := filepath.Join(appDir, "chromium", "chrome.exe")
+    chromeDir := filepath.Join(appDir, "chromium")
     if runtime.GOOS != "windows" {
         logger.Info("non-windows environment detected; stub launch only")
         return writeDryRun(appDir, profileDir, appCfg, logger)
     }
 
-    if _, err := os.Stat(chromePath); err != nil {
-        logger.Info("chromium runtime missing; stub launch only path=%s", chromePath)
+    chromePath, err := resolveChromiumExecutable(chromeDir)
+    if err != nil {
+        logger.Info("chromium runtime missing; stub launch only path=%s", filepath.Join(chromeDir, "chrome.exe"))
         return writeDryRun(appDir, profileDir, appCfg, logger)
     }
 
-    args := []string{
-        "--user-data-dir=" + profileDir,
-        "--app=" + appCfg.StartURL,
-    }
-    args = append(args, appCfg.ChromiumArgs...)
+    args := buildChromiumArgs(profileDir, appCfg)
     logger.Info("launch chromium path=%s args=%s", chromePath, strings.Join(args, " "))
 
     cmd := exec.Command(chromePath, args...)
     cmd.Stdout = os.Stdout
     cmd.Stderr = os.Stderr
     return cmd.Start()
+}
+
+func resolveChromiumExecutable(chromeDir string) (string, error) {
+    candidates := []string{"chrome.exe", "chromium.exe"}
+    for _, name := range candidates {
+        path := filepath.Join(chromeDir, name)
+        if _, err := os.Stat(path); err == nil {
+            return path, nil
+        }
+    }
+    return "", fmt.Errorf("chromium runtime not found in %s", chromeDir)
+}
+
+func buildChromiumArgs(profileDir string, appCfg config.AppConfig) []string {
+    args := []string{
+        "--user-data-dir=" + profileDir,
+    }
+
+    if appCfg.WindowMode == "app" {
+        args = append(args, "--app="+appCfg.StartURL)
+    } else {
+        args = append(args, appCfg.StartURL)
+    }
+
+    args = append(args, appCfg.ChromiumArgs...)
+    return args
 }
 
 func ensurePayload(appDir string, cfg RuntimeConfig, logger *logging.Logger) (bool, error) {

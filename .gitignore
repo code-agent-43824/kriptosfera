@@ -4,3 +4,4 @@ dist/
 *.exe
 *.zip
 payload/
+.build-cache/

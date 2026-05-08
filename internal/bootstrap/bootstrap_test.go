@@ -145,6 +145,43 @@ func TestWriteDryRunCreatesStubFile(t *testing.T) {
     }
 }
 
+func TestResolveChromiumExecutableFindsChrome(t *testing.T) {
+    dir := t.TempDir()
+    chromePath := filepath.Join(dir, "chrome.exe")
+    if err := os.WriteFile(chromePath, []byte("stub"), 0o644); err != nil {
+        t.Fatal(err)
+    }
+
+    resolved, err := resolveChromiumExecutable(dir)
+    if err != nil {
+        t.Fatal(err)
+    }
+    if resolved != chromePath {
+        t.Fatalf("expected %s, got %s", chromePath, resolved)
+    }
+}
+
+func TestBuildChromiumArgsAppMode(t *testing.T) {
+    args := buildChromiumArgs(`C:\Profiles\demo`, testAppConfig())
+    joined := strings.Join(args, " ")
+    if !strings.Contains(joined, "--user-data-dir=C:\\Profiles\\demo") {
+        t.Fatal("missing user-data-dir arg")
+    }
+    if !strings.Contains(joined, "--app=https://example.test") {
+        t.Fatal("missing app mode arg")
+    }
+}
+
+func TestBuildChromiumArgsWindowModeBrowser(t *testing.T) {
+    cfg := testAppConfig()
+    cfg.WindowMode = "browser"
+    args := buildChromiumArgs(`C:\Profiles\demo`, cfg)
+    lastArg := args[len(args)-len(cfg.ChromiumArgs)-1]
+    if lastArg != "https://example.test" {
+        t.Fatalf("expected plain URL arg, got %s", lastArg)
+    }
+}
+
 func TestUnzipRejectsTraversal(t *testing.T) {
     var buf bytes.Buffer
     zw := zip.NewWriter(&buf)
@@ -231,10 +268,12 @@ func testAppConfigWithVersion(version string) config.AppConfig {
     return config.AppConfig{
         AppID:              "ru.kriptosfera.demo",
         ProductName:        "Kriptosfera Demo",
+        CustomerName:       "Demo Customer",
         Version:            version,
         StartURL:           "https://example.test",
         AllowedOrigins:     []string{"https://example.test"},
         ProfileName:        "demo",
+        WindowMode:         "app",
         DiagnosticsEnabled: true,
         ChromiumArgs:       []string{"--no-first-run"},
     }
