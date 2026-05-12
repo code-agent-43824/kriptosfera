@@ -1,0 +1,8 @@
+{
+  "productName": "Kriptosfera Demo",
+  "version": "0.1.0",
+  "payload": {
+    "mode": "embedded",
+    "version": "0.1.0"
+  }
+}

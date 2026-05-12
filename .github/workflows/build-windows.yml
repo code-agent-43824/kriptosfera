@@ -37,7 +37,9 @@ jobs:
 
       - name: Build demo executable
         shell: pwsh
-        run: ./build/build-windows.ps1
+        run: |
+          ./build/build-windows.ps1 -PayloadMode embedded
+          ./build/build-windows.ps1 -PayloadMode remote
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v6
@@ -45,6 +47,10 @@ jobs:
           name: kriptosfera-windows-build
           path: |
             dist/KriptosferaDemo.exe
+            dist/KriptosferaDemo-remote.exe
+            dist/payload.zip
+            dist/payload.json
+            dist/published/**
             dist/README.txt
           if-no-files-found: error
 
@@ -59,4 +65,4 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag --title $tag --notes "Automated build for $tag"
           }
-          gh release upload $tag dist/KriptosferaDemo.exe dist/README.txt --clobber
+          gh release upload $tag dist/KriptosferaDemo.exe dist/KriptosferaDemo-remote.exe dist/payload.zip dist/payload.json dist/README.txt --clobber

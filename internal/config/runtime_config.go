@@ -1,7 +1,10 @@
 package config
 
 import (
+	"encoding/json"
 	"embed"
+	"errors"
+	"io/fs"
 	"strings"
 )
 
@@ -24,11 +27,35 @@ type RuntimeConfig struct {
 	Payload     RuntimePayloadConfig `json:"payload"`
 }
 
-//go:embed app-version.txt
-var versionFile embed.FS
+//go:embed app-version.txt runtime-config.json
+var configFiles embed.FS
 
 func DefaultRuntimeConfig() (RuntimeConfig, error) {
-	raw, err := versionFile.ReadFile("app-version.txt")
+	rawConfig, err := configFiles.ReadFile("runtime-config.json")
+	if err == nil {
+		var cfg RuntimeConfig
+		if err := json.Unmarshal(rawConfig, &cfg); err != nil {
+			return RuntimeConfig{}, err
+		}
+		if cfg.ProductName == "" {
+			cfg.ProductName = "Kriptosfera Demo"
+		}
+		if cfg.Version == "" {
+			cfg.Version = cfg.Payload.Version
+		}
+		if cfg.Payload.Version == "" {
+			cfg.Payload.Version = cfg.Version
+		}
+		if cfg.Payload.Mode == "" {
+			cfg.Payload.Mode = PayloadModeEmbedded
+		}
+		return cfg, nil
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		return RuntimeConfig{}, err
+	}
+
+	raw, err := configFiles.ReadFile("app-version.txt")
 	if err != nil {
 		return RuntimeConfig{}, err
 	}

@@ -5,7 +5,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
-	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -22,9 +21,6 @@ import (
 	"github.com/code-agent-43824/kriptosfera/internal/config"
 	"github.com/code-agent-43824/kriptosfera/internal/logging"
 )
-
-//go:embed payload.zip
-var embeddedPayload []byte
 
 const (
     payloadStateFile = ".payload-state.json"
