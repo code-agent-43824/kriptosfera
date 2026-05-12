@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
