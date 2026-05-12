@@ -1,0 +1,829 @@
+Криптосфера
+
+    
+    Изменение архитектуры поставки: тонкий бинарник и удалённый payload
+
+    
+    1. Статус документа
+
+    Этот документ фиксирует изменение технической траектории проекта «Криптосфера» после первых успешных проверок MVP.
+
+    Изначальный план предполагал, что итоговый .exe содержит внутри весь payload: Chromium runtime, конфигурацию, диагностические файлы, а в дальнейшем также CryptoPro extension, native host и криптографические компоненты.
+
+    После проверки первых сборок стало понятно, что такой подход технически работает, но приводит к слишком большому размеру бинарника. Только Chromium/Chrome runtime раздувает итоговый файл примерно до 180 МБ. Для MVP это допустимо, но для будущего продукта такой размер неудобен.
+
+    Поэтому принимается архитектурное изменение: сохранить текущую модель развертывания payload в пользовательский каталог, но добавить второй режим поставки — тонкий launcher с удалённо скачиваемым payload.
+
+    
+
+    
+    
+    
+    
+    Часть 1. Почему меняется первоначальный план
+
+    
+    1.1. Что уже доказано текущей реализацией
+
+    Текущая реализация уже доказала две важные гипотезы:
+
+    Можно собрать один запускаемый Windows-файл.
+
+    Этот файл может развернуть payload в пользовательский каталог и запустить Chromium runtime из этого payload.
+
+    Текущая схема работает так:
+
+    KriptosferaDemo.exe
+  contains embedded payload.zip
+  extracts payload to AppData
+  prepares browser profile
+  launches Chromium runtime from AppData
+  opens configured startUrl
+
+    Это соответствует исходному MVP-плану и является правильным первым инженерным шагом.
+
+    
+    
+    1.2. Почему embedded payload не должен быть единственным режимом
+
+    Проблема не в логике launcher и не в AppData-развертывании. Проблема в размере итогового файла.
+
+    Полноценный Chromium/Chrome runtime занимает слишком много места. Если хранить его внутри .exe, каждый релиз приложения становится большим, даже если в конкретной сборке изменился только launcher, конфигурация или небольшой набор файлов.
+
+    Для коммерческого продукта это неудобно по нескольким причинам:
+
+    Пользователь вынужден скачивать крупный .exe.
+
+    Заказчику неудобнее распространять такой файл.
+
+    Каждая брендированная сборка содержит собственную копию runtime.
+
+    Невозможно переиспользовать один runtime между приложениями разных заказчиков.
+
+    Каждое обновление требует заново распространять большой бинарник.
+
+    Большой самораспаковывающийся .exe может вызывать больше вопросов у антивирусов и систем защиты.
+
+    Поэтому embedded payload остается полезным режимом, но не должен быть единственным.
+
+    
+    
+    1.3. Почему не использовать установленный пользовательский Chrome
+
+    Обсуждалась идея не поставлять Chromium runtime вообще, а использовать установленный у пользователя Google Chrome.
+
+    От этой идеи отказались как от основной продуктовой архитектуры.
+
+    Причина: для работы с CryptoPro требуется браузерное расширение и native messaging. Если запускать пользовательский Chrome и подгружать расширение из локальной папки через --load-extension, Chrome воспринимает такое расширение как unpacked/developer extension. Это может привести к предупреждениям, странному UX и зависимости от политик пользовательского Chrome.
+
+    Такой подход нарушает ключевое обещание продукта: пользователь скачивает приложение и получает готовую контролируемую рабочую среду без ручной настройки браузера и без предупреждений о режиме разработки.
+
+    Итоговое решение:
+
+    Не использовать системный пользовательский Chrome как основной runtime.
+Использовать управляемый runtime, поставляемый проектом Криптосфера.
+
+    Системный Chrome может быть оставлен только как экспериментальный или enterprise-вариант для отдельных случаев, но не как базовая архитектура продукта.
+
+    
+    
+    1.4. Почему не оставаться только на Chrome for Testing
+
+    Chrome for Testing удобен для MVP: его можно скачать как готовый zip, зафиксировать версию, положить в payload и использовать в CI без сборки Chromium из исходников.
+
+    Но для продукта Chrome for Testing не является целевым runtime, потому что показывает предупреждение, что это тестовая версия Chrome. Это портит пользовательский UX и визуально разрушает ощущение самостоятельного рабочего приложения.
+
+    Для MVP Chrome for Testing допустим. Для продукта нужно будет заменить его на управляемый Chromium runtime без тестового баннера или иной подходящий Chromium-based runtime.
+
+    
+
+    
+    
+    
+    Часть 2. Новая целевая модель поставки
+
+    
+    2.1. Два режима поставки
+
+    Проект должен поддерживать два режима payload:
+
+    
+    2.1.1. Embedded mode
+
+    Режим, уже реализованный сейчас.
+
+    KriptosferaDemo.exe
+  contains payload.zip
+  extracts payload from itself
+  verifies extracted payload
+  launches runtime
+
+    Назначение:
+
+    Локальная отладка.
+
+    Офлайн-демонстрации.
+
+    Проверка первого MVP без внешнего сервера.
+
+    Специальные сборки для закрытых контуров.
+
+    Недостаток: большой размер итогового .exe.
+
+    
+    
+    2.1.2. Remote mode
+
+    Новый основной режим для коммерческого направления.
+
+    KriptosferaDemo.exe
+  contains payloadUrl
+  contains expected payloadSha256
+  downloads payload.zip from server
+  verifies downloaded archive
+  extracts payload to AppData
+  verifies extracted payload manifest
+  launches runtime
+
+    Назначение:
+
+    Тонкий пользовательский бинарник.
+
+    Уменьшение размера скачиваемого .exe.
+
+    Переиспользование runtime между версиями и заказчиками.
+
+    Более удобная модель распространения для будущего продукта.
+
+    Оба режима должны сосуществовать. Remote mode не должен уничтожать embedded mode.
+
+    
+    
+    
+    2.2. Что остается неизменным
+
+    Несмотря на переход к удаленному payload, основная логика приложения не меняется.
+
+    Остаются прежними:
+
+    Развертывание payload в пользовательский каталог.
+
+    Использование отдельного browser profile.
+
+    Запуск управляемого Chromium runtime из каталога приложения.
+
+    Проверка manifest внутри payload.
+
+    Staging-распаковка перед атомарной публикацией в рабочий каталог.
+
+    Логирование действий launcher.
+
+    Версионирование payload.
+
+    Отсутствие wizard-установщика.
+
+    Отсутствие выбора каталога пользователем.
+
+    Запуск приложения двойным кликом.
+
+    Меняется только источник payload:
+
+    было: payload берется из embedded payload.zip
+стало: payload может быть embedded или downloaded
+
+    
+
+    
+    
+    
+    Часть 3. Схема через сервер, на котором хостится агент
+
+    
+    3.1. Роль сервера агента
+
+    На этапе MVP допускается использовать сервер, на котором находится ИИ-агент, как простой сервер публикации payload.
+
+    Сервер должен выполнять роль статического хранилища файлов:
+
+    https://<agent-server>/<path>/payload.zip
+https://<agent-server>/<path>/payload.json
+
+    Для MVP файлы должны раздаваться по HTTPS через Caddy, уже установленный на сервере ИИ-агента. Использовать nginx или другой web-сервер для этого сценария не требуется.
+
+    На этапе продукта сервер агента может быть заменен на CDN, object storage, сервер заказчика или другую инфраструктуру доставки.
+
+    
+    
+    3.2. Что публикуется на сервере
+
+    Минимально на сервере должны публиковаться:
+
+    payload.zip
+payload.json
+
+    payload.zip — архив с runtime и компонентами приложения.
+
+    payload.json — metadata-файл, описывающий payload.
+
+    Пример metadata:
+
+    {
+  &quot;appId&quot;: &quot;ru.kriptosfera.demo&quot;,
+  &quot;platform&quot;: &quot;win64&quot;,
+  &quot;payloadVersion&quot;: &quot;0.1.0&quot;,
+  &quot;archive&quot;: &quot;payload.zip&quot;,
+  &quot;sha256&quot;: &quot;<sha256-of-payload-zip>&quot;,
+  &quot;size&quot;: 188000000,
+  &quot;createdAt&quot;: &quot;2026-05-08T12:00:00Z&quot;
+}
+
+    Важно: для MVP launcher может не доверять payload.json, а использовать hash, встроенный в сам .exe. Metadata нужна для публикации, диагностики и удобства человека.
+
+    
+    
+    3.3. Immutable payload
+
+    Payload должен быть неизменяемым после публикации.
+
+    Нельзя использовать модель:
+
+    /payload/latest/payload.zip
+
+    и каждый раз перезаписывать этот файл новым содержимым.
+
+    Правильная модель:
+
+    /payloads/win64/demo/0.1.0/payload-<sha256>.zip
+/payloads/win64/demo/0.1.0/payload-<sha256>.json
+
+    Или:
+
+    /payloads/win64/demo/0.1.0/<sha256>/payload.zip
+/payloads/win64/demo/0.1.0/<sha256>/payload.json
+
+    Преимущество immutable-пути: конкретный launcher всегда скачивает именно тот payload, под который он был собран.
+
+    Если payload изменился — меняется hash и фактически появляется новый payload.
+
+    
+    
+    3.4. Почему нельзя доверять только payload.json на сервере
+
+    Плохая схема:
+
+    launcher downloads payload.json
+payload.json says expected hash
+launcher downloads payload.zip
+launcher checks payload.zip against hash from payload.json
+
+    Если сервер или канал доставки скомпрометирован, злоумышленник может заменить и payload.zip, и payload.json.
+
+    Для MVP правильная схема такая:
+
+    launcher already contains expected payloadSha256
+launcher downloads payload.zip
+launcher computes SHA-256
+launcher compares computed SHA-256 with embedded expected hash
+launcher runs payload only if hash matches
+
+    На этапе продукта можно добавить подпись metadata, но для MVP достаточно hash, встроенного в launcher при сборке.
+
+    
+
+    
+    
+    
+    Часть 4. Требования к remote launcher
+
+    
+    4.1. Конфигурация remote payload
+
+    В сборочный конфиг launcher должны быть добавлены поля:
+
+    {
+  &quot;payloadMode&quot;: &quot;remote&quot;,
+  &quot;payloadVersion&quot;: &quot;0.1.0&quot;,
+  &quot;payloadUrl&quot;: &quot;https://<agent-server>/payloads/win64/demo/0.1.0/payload-<sha256>.zip&quot;,
+  &quot;payloadSha256&quot;: &quot;<sha256>&quot;,
+  &quot;payloadSize&quot;: 188000000
+}
+
+    Для embedded mode:
+
+    {
+  &quot;payloadMode&quot;: &quot;embedded&quot;
+}
+
+    
+    
+    4.2. Алгоритм запуска в remote mode
+
+    Launcher должен выполнять следующий алгоритм:
+
+    1. Start launcher.
+2. Read embedded runtime config.
+3. Determine app root in user profile.
+4. Determine expected payload version and SHA-256.
+5. Check local payload state.
+6. If local payload exists and matches expected version/hash:
+     use local payload;
+     do not download.
+7. If local payload is absent or invalid:
+     download payload.zip to temporary file.
+8. Verify downloaded file SHA-256.
+9. If SHA-256 mismatch:
+     fail and do not extract.
+10. Extract archive to staging directory.
+11. Verify manifest.json inside extracted payload.
+12. Write .payload-state.json.
+13. Write .payload-ready.
+14. Atomically move staging directory to target appDir.
+15. Launch Chromium runtime from appDir.
+
+    
+    
+    4.3. Кэширование payload
+
+    Если payload нужной версии и hash уже развернут в пользовательском каталоге, launcher не должен скачивать payload повторно.
+
+    Это важно для сценариев:
+
+    Повторный запуск того же приложения.
+
+    Перезапуск после сбоя.
+
+    Несколько брендированных приложений, использующих общий runtime.
+
+    Будущие сборки, где payload не изменился.
+
+    
+    
+    4.4. Поведение при ошибке скачивания
+
+    Если payload не удалось скачать, launcher должен:
+
+    Не удалять уже работающий payload, если он есть.
+
+    Не запускать непроверенный или частично скачанный payload.
+
+    Показать понятную ошибку пользователю.
+
+    Записать техническую причину в лог.
+
+    Пример пользовательского сообщения:
+
+    Не удалось загрузить компоненты приложения.
+Проверьте подключение к интернету или обратитесь в поддержку.
+Код ошибки: PAYLOAD_DOWNLOAD_FAILED
+
+    Примеры технических кодов:
+
+    PAYLOAD_DOWNLOAD_FAILED
+PAYLOAD_HASH_MISMATCH
+PAYLOAD_EXTRACT_FAILED
+PAYLOAD_MANIFEST_INVALID
+PAYLOAD_NOT_FOUND
+
+    
+    
+    4.5. Progress UI
+
+    При первом запуске remote launcher может скачивать крупный архив. Нельзя оставлять пользователя без обратной связи.
+
+    Нужен простой стартовый экран:
+
+    Криптосфера
+Подготовка рабочей среды...
+Загрузка компонентов: 42%
+
+    Это не должен быть установщик. Не должно быть шагов «Далее», выбора каталога, EULA-окна или wizard-поведения.
+
+    Для первого technical MVP можно временно обойтись логом и message box при ошибке, но для демонстрации продукта progress UI нужен.
+
+    
+
+    
+    
+    
+    Часть 5. Требования к сборке и публикации
+
+    
+    5.1. Новый порядок сборки thin launcher
+
+    Для remote mode порядок сборки должен быть таким:
+
+    1. Prepare payload directory.
+2. Build or download Chromium/runtime components.
+3. Add config, diagnostics and other payload files.
+4. Create manifest.json inside payload.
+5. Pack payload.zip.
+6. Compute SHA-256 of payload.zip.
+7. Generate remote payload config with payloadUrl and payloadSha256.
+8. Build thin KriptosferaDemo.exe with remote config.
+9. Publish payload.zip to agent server if this hash is not already published.
+10. Publish thin KriptosferaDemo.exe as build artifact or release asset.
+
+    Критически важно: payloadSha256 должен быть известен до сборки thin launcher.
+
+    Если после сборки launcher payload изменился, такую сборку нельзя считать корректной.
+
+    
+    
+    5.2. Логика публикации payload агентом
+
+    Агент может выполнять роль deployer.
+
+    Алгоритм агента:
+
+    1. Receive or build payload.zip.
+2. Compute SHA-256.
+3. Check if payload with same SHA-256 already exists on server.
+4. If exists:
+     do not upload again.
+5. If not exists:
+     upload payload.zip to immutable path.
+     upload payload.json to matching immutable path.
+6. Verify file is accessible by HTTP(S).
+7. Optionally download it back and verify SHA-256.
+
+    
+    
+    5.3. Не перезаписывать старые payload
+
+    Старые payload нельзя удалять сразу после выпуска новой версии.
+
+    Причина: у пользователя может быть старый launcher, который ожидает старый URL и старый hash. Если старый payload удален, такой launcher не сможет запуститься на новой машине.
+
+    Для MVP можно хранить все опубликованные payload.
+
+    Для продукта можно ввести retention policy, но она должна учитывать жизненный цикл выпущенных приложений.
+
+    
+    
+    5.4. Варианты публикации
+
+    Для MVP допустимо:
+
+    agent server + Caddy + static files
+
+    Для продукта можно рассмотреть:
+
+    object storage
+CDN
+сервер заказчика
+зеркала загрузки
+
+    На текущем этапе усложнять инфраструктуру не нужно.
+
+    
+
+    
+    
+    
+    Часть 6. Изменения в коде
+
+    
+    6.1. Добавить абстракцию источника payload
+
+    Текущий код завязан на embedded payload. Нужно добавить абстракцию источника payload.
+
+    Концептуально:
+
+    type PayloadSource interface {
+    Mode() string
+    Version() string
+    ExpectedSHA256() string
+    Open(ctx context.Context) (io.ReadCloser, error)
+}
+
+    Реализации:
+
+    EmbeddedPayloadSource
+RemotePayloadSource
+
+    EmbeddedPayloadSource использует текущий go:embed payload.zip.
+
+    RemotePayloadSource скачивает payload во временный файл, проверяет hash и отдает поток для распаковки.
+
+    
+    
+    6.2. Не дублировать логику распаковки
+
+    Логика распаковки, manifest verification, .payload-state.json, .payload-ready и staging directory должна быть общей для embedded и remote mode.
+
+    Правильное разделение:
+
+    PayloadSource отвечает только за получение archive bytes/file.
+PayloadManager отвечает за проверку, распаковку, state и ready marker.
+Launcher отвечает за запуск Chromium.
+
+    
+    
+    6.3. Remote payload должен скачиваться во временный файл
+
+    Не нужно держать большой payload целиком в памяти.
+
+    Правильная схема:
+
+    download to temp file
+stream hash calculation while downloading
+compare SHA-256
+open temp file for unzip
+remove temp file after successful extraction or error
+
+    
+    
+    6.4. Логирование remote mode
+
+    В remote mode лог должен содержать:
+
+    launcher start version=0.1.0 mode=remote
+payload check version=0.1.0 sha256=<sha256>
+payload cache miss path=<appDir>
+download start url=<url> expected_size=<size>
+download complete bytes=<bytes> sha256=<sha256>
+payload archive verified sha256=<sha256>
+extract payload path=<appDir>
+payload ready reused=false start_url=<url>
+launch chromium path=<path> args=<args>
+
+    При cache hit:
+
+    payload cache hit version=0.1.0 sha256=<sha256>
+payload ready reused=true start_url=<url>
+
+    
+
+    
+    
+    
+    Часть 7. Изменения в MVP-плане
+
+    
+    7.1. Что добавляется в MVP
+
+    В MVP добавляется отдельный этап:
+
+    Remote payload mode
+
+    Он должен быть реализован после подтверждения текущей embedded-схемы и запуска Chromium, но до полноценной интеграции CryptoPro extension/native messaging можно сделать его уже сейчас.
+
+    
+    
+    7.2. Новый порядок этапов MVP
+
+    Обновленный порядок этапов:
+
+    1. Embedded single-file bootstrapper. Done.
+2. Embedded Chromium runtime launch. Done.
+3. Remote payload mode with thin launcher.
+4. CryptoPro extension loading.
+5. Native messaging.
+6. CryptoPro components and Rutoken signing.
+7. Minimal diagnostics.
+8. macOS PoC.
+
+    Remote mode можно делать до CryptoPro, потому что он относится к механике доставки payload, а не к криптографической интеграции.
+
+    
+    
+    7.3. Критерии готовности remote payload MVP
+
+    Remote payload mode считается готовым, если:
+
+    Итоговый thin .exe существенно меньше full-bundle сборки.
+
+    Payload не встроен в .exe.
+
+    Payload опубликован на сервере агента по HTTPS URL.
+
+    Launcher содержит payload URL и expected SHA-256.
+
+    При первом запуске launcher скачивает payload.
+
+    Launcher проверяет SHA-256 скачанного payload.
+
+    Launcher распаковывает payload в staging directory.
+
+    Launcher проверяет manifest.json внутри payload.
+
+    Launcher переносит payload в AppData.
+
+    Launcher запускает Chromium runtime из скачанного payload.
+
+    При повторном запуске payload не скачивается повторно.
+
+    При повреждении локального payload выполняется повторная загрузка или корректная ошибка.
+
+    При несовпадении hash launcher не запускает payload.
+
+    Лог clearly показывает download/cache hit/cache miss/verification/extraction/launch.
+
+    
+
+    
+    
+    
+    Часть 8. Изменения для продукта целиком
+
+    
+    8.1. Remote mode как основной продуктовый режим
+
+    Для будущего коммерческого продукта remote mode становится основным режимом поставки.
+
+    Пользовательский сценарий:
+
+    1. Пользователь скачивает небольшой .exe.
+2. Пользователь запускает его двойным кликом.
+3. Приложение показывает экран подготовки рабочей среды.
+4. Приложение скачивает проверенный payload.
+5. Приложение разворачивает payload в пользовательский каталог.
+6. Приложение запускает рабочее окно с сайтом заказчика.
+7. При последующих запусках скачивание не повторяется.
+
+    
+    
+    8.2. Embedded mode как специальный режим
+
+    Embedded/full-bundle mode остается для:
+
+    Офлайн-сборок.
+
+    Закрытых контуров.
+
+    Демонстраций без доступа к серверу.
+
+    Отладки проблем с remote delivery.
+
+    Специальных заказчиков, которым нужен один полностью автономный файл.
+
+    
+    
+    8.3. Shared runtime cache
+
+    В будущем нужно рассмотреть общий кэш runtime между брендированными приложениями.
+
+    Пример:
+
+    AppData/Kriptosfera/runtimes/win64/chromium/<runtimeVersion>/<runtimeHash>/
+AppData/Kriptosfera/apps/<customer>/<appVersion>/
+AppData/Kriptosfera/profiles/<customer>/
+
+    Это позволит разным приложениям использовать один и тот же runtime и не скачивать Chromium повторно для каждого заказчика.
+
+    Для MVP это можно не реализовывать сразу. Достаточно remote payload на уровне одной demo-сборки.
+
+    
+    
+    8.4. Подпись metadata в будущем
+
+    Для MVP достаточно SHA-256, встроенного в launcher.
+
+    Для продукта желательно добавить подпись metadata:
+
+    payload.json
+payload.json.sig
+public verification key embedded in launcher
+
+    Это позволит публиковать metadata на сервере и безопасно проверять ее подлинность.
+
+    Но это не должно блокировать remote payload MVP.
+
+    
+
+    
+    
+    
+    Часть 9. Что агент должен сделать следующим шагом
+
+    
+    9.1. Не ломать текущую embedded-сборку
+
+    Текущий режим с embedded payload должен продолжить работать.
+
+    Нельзя заменить его полностью на remote mode. Нужно добавить remote mode рядом.
+
+    
+    
+    9.2. Добавить build mode
+
+    В сборке должны появиться режимы:
+
+    embedded
+remote
+
+    Пример:
+
+    ./build/build-windows.ps1 -PayloadMode embedded
+./build/build-windows.ps1 -PayloadMode remote -PayloadBaseUrl https://<agent-server>/payloads
+
+    
+    
+    9.3. Добавить публикацию payload
+
+    Добавить отдельный скрипт:
+
+    build/publish-payload.ps1
+
+    Он должен:
+
+    Получить путь к payload.zip.
+
+    Посчитать SHA-256.
+
+    Сформировать immutable remote path.
+
+    Проверить, опубликован ли уже payload с таким hash.
+
+    Если нет — опубликовать на сервер.
+
+    Сформировать payload.json.
+
+    Проверить доступность URL.
+
+    Конкретный способ публикации для MVP может быть простым: scp/rsync/SSH на сервер агента.
+
+    
+    
+    9.4. Добавить remote config generation
+
+    После упаковки payload и расчета hash сборка должна генерировать конфиг launcher:
+
+    {
+  &quot;payloadMode&quot;: &quot;remote&quot;,
+  &quot;payloadVersion&quot;: &quot;0.1.0&quot;,
+  &quot;payloadUrl&quot;: &quot;https://<agent-server>/payloads/win64/demo/0.1.0/payload-<sha256>.zip&quot;,
+  &quot;payloadSha256&quot;: &quot;<sha256>&quot;,
+  &quot;payloadSize&quot;: 188000000
+}
+
+    Этот конфиг должен попасть в thin .exe.
+
+    
+    
+    9.5. Добавить remote download в launcher
+
+    Launcher должен уметь:
+
+    Скачать payload по URL.
+
+    Писать progress в лог.
+
+    Проверить SHA-256.
+
+    Не запускать payload при hash mismatch.
+
+    Использовать уже существующий локальный payload при cache hit.
+
+    Корректно завершаться при ошибке сети.
+
+    
+    
+    9.6. Добавить smoke tests
+
+    Нужны тесты на:
+
+    Remote config parsing.
+
+    Hash verification.
+
+    Hash mismatch rejection.
+
+    Cache hit without download.
+
+    Cache miss with download.
+
+    Download failure.
+
+    Reuse existing extraction pipeline.
+
+    Для unit-тестов не нужен реальный сервер: можно использовать локальный HTTP test server.
+
+    
+
+    
+    
+    
+    Часть 10. Короткое резюме для разработки
+
+    Мы отклоняемся от первоначального плана не потому, что embedded payload оказался неправильным. Наоборот, он доказал жизнеспособность архитектуры.
+
+    Отклонение нужно из-за размера итогового .exe и будущей продуктовой модели.
+
+    Новая стратегия:
+
+    Embedded full-bundle mode stays.
+Remote thin-launcher mode is added.
+Remote mode becomes the preferred product path.
+The launcher must download only a pinned, hash-verified, immutable payload.
+The agent server can host payload files for MVP.
+No latest.zip without verification.
+No system user Chrome as the main runtime.
+No auto-update semantics at this stage.
+A new payload means a new hash and a new build/config.
+
+    Главный принцип:
+
+    Small exe is acceptable only if the downloaded payload is as deterministic and verifiable as the embedded payload.
+
+    Иначе мы просто заменим проблему большого файла на проблему недоверенной загрузки исполняемых компонентов.
