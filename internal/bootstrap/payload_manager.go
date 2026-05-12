@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -45,22 +44,17 @@ func (m PayloadManager) Prepare(ctx context.Context, source PayloadSource, root 
 	}
 	defer archive.Close()
 
-	payloadBytes, err := io.ReadAll(archive.Reader)
-	if err != nil {
-		return PrepareResult{}, err
-	}
-
 	tempDir, err := os.MkdirTemp(parentDir, filepath.Base(appDir)+"-staging-")
 	if err != nil {
 		return PrepareResult{}, err
 	}
 	defer os.RemoveAll(tempDir)
 
-	if err := unzip(payloadBytes, tempDir); err != nil {
-		return PrepareResult{}, err
+	if err := unzipReaderAt(archive.ReaderAt, archive.Size, tempDir); err != nil {
+		return PrepareResult{}, wrapLauncherError(ErrPayloadExtractFailed, "не удалось распаковать payload", err)
 	}
 	if err := verifyExtractedPayload(tempDir); err != nil {
-		return PrepareResult{}, err
+		return PrepareResult{}, wrapLauncherError(ErrPayloadManifestInvalid, "не удалось проверить manifest payload", err)
 	}
 	if err := writePayloadState(tempDir, PayloadState{
 		Version:       source.Version(),

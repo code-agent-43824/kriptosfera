@@ -67,7 +67,7 @@ func Run(cfg config.RuntimeConfig) error {
     defer logger.Close()
     logger.Info("launcher start version=%s os=%s mode=%s", cfg.Version, runtime.GOOS, cfg.Payload.Mode)
 
-	source, err := newPayloadSource(cfg)
+	source, err := newPayloadSource(cfg, logger)
 	if err != nil {
 		return err
 	}
@@ -116,10 +116,12 @@ func Run(cfg config.RuntimeConfig) error {
 	return cmd.Start()
 }
 
-func newPayloadSource(cfg config.RuntimeConfig) (PayloadSource, error) {
+func newPayloadSource(cfg config.RuntimeConfig, logger *logging.Logger) (PayloadSource, error) {
 	switch cfg.Payload.Mode {
 	case "", config.PayloadModeEmbedded:
 		return NewEmbeddedPayloadSource(cfg, embeddedPayload), nil
+	case config.PayloadModeRemote:
+		return NewRemotePayloadSource(cfg, logger)
 	default:
 		return nil, fmt.Errorf("unsupported payload mode: %s", cfg.Payload.Mode)
 	}
@@ -273,10 +275,14 @@ func acquireLock(appDir string) (func(), error) {
 }
 
 func unzip(data []byte, dest string) error {
-    r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-    if err != nil {
-        return err
-    }
+	return unzipReaderAt(bytes.NewReader(data), int64(len(data)), dest)
+}
+
+func unzipReaderAt(readerAt io.ReaderAt, size int64, dest string) error {
+	r, err := zip.NewReader(readerAt, size)
+	if err != nil {
+		return err
+	}
     cleanDest := filepath.Clean(dest)
     for _, f := range r.File {
         target := filepath.Join(cleanDest, filepath.Clean(f.Name))

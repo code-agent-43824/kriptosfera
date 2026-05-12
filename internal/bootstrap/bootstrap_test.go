@@ -5,9 +5,13 @@ import (
     "bytes"
     "context"
     "encoding/json"
+    "errors"
     "io"
+    "net/http"
+    "net/http/httptest"
     "os"
     "path/filepath"
+    "sync/atomic"
     "strings"
     "testing"
 
@@ -147,12 +151,124 @@ func TestEmbeddedPayloadSourceExposesExpectedMetadata(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer archive.Close()
-	data, err := io.ReadAll(archive.Reader)
+	data, err := io.ReadAll(io.NewSectionReader(archive.ReaderAt, 0, archive.Size))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if checksumBytes(data) != source.ExpectedSHA256() {
 		t.Fatal("embedded payload sha256 mismatch")
+	}
+}
+
+func TestRemotePayloadSourceDownloadsArchive(t *testing.T) {
+	payload := testPayloadZip(t, "0.1.0")
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	cfg := testRemoteRuntimeConfig("0.1.0", server.URL+"/payload.zip", checksumBytes(payload), int64(len(payload)))
+	source, err := NewRemotePayloadSource(cfg, testLogger(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source.client = server.Client()
+
+	archive, err := source.Open(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer archive.Close()
+	data, err := io.ReadAll(io.NewSectionReader(archive.ReaderAt, 0, archive.Size))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(data, payload) {
+		t.Fatal("downloaded payload does not match source")
+	}
+}
+
+func TestRemotePayloadSourceRejectsNonHTTPS(t *testing.T) {
+	cfg := testRemoteRuntimeConfig("0.1.0", "http://example.test/payload.zip", "abc", 10)
+	source, err := NewRemotePayloadSource(cfg, testLogger(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = source.Open(context.Background())
+	if err == nil {
+		t.Fatal("expected non-https payload URL error")
+	}
+	launcherErr := &LauncherError{}
+	if !errors.As(err, &launcherErr) || launcherErr.Code != ErrPayloadDownloadFailed {
+		t.Fatalf("expected %s, got %v", ErrPayloadDownloadFailed, err)
+	}
+}
+
+func TestRemotePayloadSourceRejectsHashMismatch(t *testing.T) {
+	payload := testPayloadZip(t, "0.1.0")
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	cfg := testRemoteRuntimeConfig("0.1.0", server.URL+"/payload.zip", checksumBytes([]byte("wrong")), int64(len(payload)))
+	source, err := NewRemotePayloadSource(cfg, testLogger(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source.client = server.Client()
+
+	_, err = source.Open(context.Background())
+	if err == nil {
+		t.Fatal("expected hash mismatch error")
+	}
+	launcherErr := &LauncherError{}
+	if !errors.As(err, &launcherErr) || launcherErr.Code != ErrPayloadHashMismatch {
+		t.Fatalf("expected %s, got %v", ErrPayloadHashMismatch, err)
+	}
+}
+
+func TestPayloadManagerRemoteReusesCachedPayload(t *testing.T) {
+	rootDir := t.TempDir()
+	logger := testLogger(t)
+	payload := testPayloadZip(t, "0.1.0")
+	var hits atomic.Int32
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	cfg := testRemoteRuntimeConfig("0.1.0", server.URL+"/payload.zip", checksumBytes(payload), int64(len(payload)))
+	source, err := NewRemotePayloadSource(cfg, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source.client = server.Client()
+	manager := PayloadManager{}
+
+	result, err := manager.Prepare(context.Background(), source, rootDir, cfg, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Reused {
+		t.Fatal("first remote prepare must not be reused")
+	}
+
+	source2, err := NewRemotePayloadSource(cfg, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source2.client = server.Client()
+	result, err = manager.Prepare(context.Background(), source2, rootDir, cfg, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Reused {
+		t.Fatal("second remote prepare must reuse cached payload")
+	}
+	if hits.Load() != 1 {
+		t.Fatalf("expected one HTTP hit, got %d", hits.Load())
 	}
 }
 
@@ -265,6 +381,20 @@ func testRuntimeConfig(version string) config.RuntimeConfig {
 		Payload: config.RuntimePayloadConfig{
 			Mode:    config.PayloadModeEmbedded,
 			Version: version,
+		},
+	}
+}
+
+func testRemoteRuntimeConfig(version, url, sha256 string, size int64) config.RuntimeConfig {
+	return config.RuntimeConfig{
+		ProductName: "Kriptosfera Demo",
+		Version:     version,
+		Payload: config.RuntimePayloadConfig{
+			Mode:    config.PayloadModeRemote,
+			Version: version,
+			URL:     url,
+			SHA256:  sha256,
+			Size:    size,
 		},
 	}
 }

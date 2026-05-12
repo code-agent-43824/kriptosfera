@@ -6,7 +6,7 @@ import (
 )
 
 type PayloadArchive struct {
-	Reader io.ReadCloser
+	ReaderAt io.ReaderAt
 	Size   int64
 	Close  func() error
 }

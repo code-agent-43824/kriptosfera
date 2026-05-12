@@ -3,7 +3,6 @@ package bootstrap
 import (
 	"bytes"
 	"context"
-	"io"
 
 	"github.com/code-agent-43824/kriptosfera/internal/config"
 )
@@ -29,10 +28,10 @@ func (s *EmbeddedPayloadSource) Version() string { return s.version }
 func (s *EmbeddedPayloadSource) ExpectedSHA256() string { return s.sha256 }
 
 func (s *EmbeddedPayloadSource) Open(context.Context) (PayloadArchive, error) {
-	reader := io.NopCloser(bytes.NewReader(s.payload))
+	reader := bytes.NewReader(s.payload)
 	return PayloadArchive{
-		Reader: reader,
+		ReaderAt: reader,
 		Size:   int64(len(s.payload)),
-		Close:  reader.Close,
+		Close:  func() error { return nil },
 	}, nil
 }

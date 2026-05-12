@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 
@@ -14,12 +15,16 @@ func ReportFatal(summary string, err error) {
 	}
 
 	dialogText := summary
+	var launcherErr *LauncherError
+	if errors.As(err, &launcherErr) && launcherErr.Code != "" {
+		dialogText = fmt.Sprintf("%s\n\nКод ошибки: %s", summary, launcherErr.Code)
+	}
 	if root, rootErr := appRoot(); rootErr == nil {
 		logPath := filepath.Join(root, "logs", "launcher.log")
 		if logger, logErr := logging.New(logPath); logErr == nil {
 			logger.Info("fatal error: %s", message)
 			_ = logger.Close()
-			dialogText = fmt.Sprintf("%s\n\nПодробности: %s", summary, logPath)
+			dialogText = fmt.Sprintf("%s\n\nПодробности: %s", dialogText, logPath)
 		}
 	}
 
