@@ -419,12 +419,15 @@ func Run(cfg RuntimeConfig) error {
 - добавлен `PayloadSource` interface;
 - текущий embedded flow вынесен в `EmbeddedPayloadSource`;
 - добавлен общий `PayloadManager`;
-- launcher переведён на новый каркас без изменения внешнего поведения embedded mode.
+- launcher переведён на новый каркас без изменения внешнего поведения embedded mode;
+- добавлены `RemotePayloadSource`, `DownloadFile`, `LauncherError` и remote runtime core;
+- launcher теперь умеет выбирать `remote` mode на уровне source selection;
+- добавлены тесты на https-download, hash mismatch, non-https reject и cache reuse.
 
 ### Next coding step
-1. довести рефакторинг до чистого состояния и убедиться тестами/CI, что embedded mode не регрессировал;
-2. добавить `RemotePayloadSource`;
-3. реализовать temp-download + SHA-256 verify;
-4. подключить remote mode selection в launcher config.
+1. довести remote runtime core до зелёного CI и зафиксировать статус;
+2. добавить build/runtime-config generation для реального remote launcher;
+3. подготовить immutable publish flow для `payload.zip` / `payload.json`;
+4. затем уже добавить progress UX поверх существующего download callback.
 
-Иными словами: каркас уже выделен, дальше — сеть и remote lifecycle.
+Иными словами: core-сеть уже в коде, дальше — сборка, публикация и user-facing polish.
