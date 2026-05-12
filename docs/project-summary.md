@@ -27,6 +27,7 @@ Current implementation status:
 - remote runtime core is already in code;
 - CI now builds both embedded and remote launcher variants;
 - payload artifacts are produced in immutable version/sha-based layout for delivery.
+- remote first-run now has minimal visible progress UX on Windows.
 
 ## Explicit non-goals for first MVP
 

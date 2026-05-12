@@ -95,19 +95,22 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 
 ## Текущий следующий шаг
 
-**Этап 3: добить оставшийся UX-хвост remote payload mode.**
+**Этап 4: переход к CryptoPro extension / native messaging.**
 
-Что уже сделано внутри этапа 3:
+Что закрыто внутри этапа 3:
 - выделен runtime/payload abstraction layer;
 - добавлен remote runtime core (`RemotePayloadSource`, temp download, SHA-256 verify, cache reuse);
 - добавлены build/runtime-config generation и immutable payload artifact layout;
-- workflow уже собирает и embedded launcher, и thin launcher.
+- workflow уже собирает и embedded launcher, и thin launcher;
+- для remote first-run добавлен minimal progress UX с маленьким progress window на Windows.
 
-Что осталось:
-- minimal progress UX для первой загрузки remote payload.
+Что дальше:
+- загрузка CryptoPro extension;
+- native messaging host;
+- затем интеграция crypto stack.
 
 ## Ближайшие инженерные задачи
 
-- добавить minimal progress UX для remote first-run;
-- после этого считать этап 3 закрытым и переходить к загрузке CryptoPro extension;
-- затем идти в native messaging и crypto stack.
+- подготовить следующий этап MVP: CryptoPro extension;
+- затем идти в native messaging и crypto stack;
+- при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.

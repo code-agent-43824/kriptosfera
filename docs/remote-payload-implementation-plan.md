@@ -423,11 +423,13 @@ func Run(cfg RuntimeConfig) error {
 - добавлены `RemotePayloadSource`, `DownloadFile`, `LauncherError` и remote runtime core;
 - launcher теперь умеет выбирать `remote` mode на уровне source selection;
 - добавлены тесты на https-download, hash mismatch, non-https reject и cache reuse.
+- добавлены build/runtime-config generation и split сборки embedded/remote launcher;
+- добавлен immutable payload artifact layout для `payload.zip` / `payload.json`;
+- добавлен minimal progress UX для remote first-run: маленькое progress window на Windows с фазами подготовки / загрузки / распаковки / проверки.
 
 ### Next coding step
-1. довести remote runtime core до зелёного CI и зафиксировать статус;
-2. добавить build/runtime-config generation для реального remote launcher;
-3. подготовить immutable publish flow для `payload.zip` / `payload.json`;
-4. затем уже добавить progress UX поверх существующего download callback.
+1. считать этап `remote payload mode / thin launcher` закрытым по MVP;
+2. перейти к следующему продуктово значимому слою: CryptoPro extension / native messaging / crypto stack;
+3. отдельно позже можно улучшать polish: более красивый progress UI, richer diagnostics, update semantics.
 
-Иными словами: core-сеть уже в коде, дальше — сборка, публикация и user-facing polish.
+Иными словами: этап 3 теперь закрывает и core, и build/publish, и минимальный user-facing UX.
