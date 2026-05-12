@@ -1,25 +1,25 @@
 package bootstrap
 
 import (
-    "archive/zip"
-    "bytes"
-    "crypto/sha256"
-    "embed"
-    "encoding/hex"
-    "encoding/json"
-    "errors"
-    "fmt"
-    "io"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "runtime"
-    "sort"
-    "strings"
-    "time"
+	"archive/zip"
+	"bytes"
+	"crypto/sha256"
+	"embed"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"sort"
+	"strings"
+	"time"
 
-    "github.com/code-agent-43824/kriptosfera/internal/config"
-    "github.com/code-agent-43824/kriptosfera/internal/logging"
+	"github.com/code-agent-43824/kriptosfera/internal/config"
+	"github.com/code-agent-43824/kriptosfera/internal/logging"
 )
 
 //go:embed payload.zip
@@ -106,13 +106,39 @@ func Run(cfg RuntimeConfig) error {
         return writeDryRun(appDir, profileDir, appCfg, logger)
     }
 
-    args := buildChromiumArgs(profileDir, appCfg)
-    logger.Info("launch chromium path=%s args=%s", chromePath, strings.Join(args, " "))
+	args := buildChromiumArgs(profileDir, appCfg)
+	logger.Info("launch chromium path=%s args=%s", chromePath, strings.Join(args, " "))
 
-    cmd := exec.Command(chromePath, args...)
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
-    return cmd.Start()
+	cmd := exec.Command(chromePath, args...)
+	stdoutLog, stderrLog, err := openChromiumLogFiles(root)
+	if err != nil {
+		return err
+	}
+	defer stdoutLog.Close()
+	defer stderrLog.Close()
+	cmd.Stdout = stdoutLog
+	cmd.Stderr = stderrLog
+	return cmd.Start()
+}
+
+func openChromiumLogFiles(root string) (*os.File, *os.File, error) {
+	logsDir := filepath.Join(root, "logs")
+	if err := os.MkdirAll(logsDir, 0o755); err != nil {
+		return nil, nil, err
+	}
+
+	stdoutLog, err := os.OpenFile(filepath.Join(logsDir, "chromium.stdout.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	stderrLog, err := os.OpenFile(filepath.Join(logsDir, "chromium.stderr.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		_ = stdoutLog.Close()
+		return nil, nil, err
+	}
+
+	return stdoutLog, stderrLog, nil
 }
 
 func resolveChromiumExecutable(chromeDir string) (string, error) {
@@ -287,12 +313,11 @@ func writeDryRun(appDir, profileDir string, appCfg config.AppConfig, logger *log
         "timestamp=" + time.Now().UTC().Format(time.RFC3339),
         "",
     }, "\n")
-    if err := os.WriteFile(dryRunPath, []byte(content), 0o644); err != nil {
-        return err
-    }
-    logger.Info("dry-run prepared file=%s diagnostics=%s", dryRunPath, diagnosticsPath)
-    fmt.Printf("Payload prepared at %s\nDry-run file: %s\nDiagnostics: %s\nStart URL: %s\n", appDir, dryRunPath, diagnosticsPath, appCfg.StartURL)
-    return nil
+	if err := os.WriteFile(dryRunPath, []byte(content), 0o644); err != nil {
+		return err
+	}
+	logger.Info("dry-run prepared file=%s diagnostics=%s", dryRunPath, diagnosticsPath)
+	return nil
 }
 
 func acquireLock(appDir string) (func(), error) {

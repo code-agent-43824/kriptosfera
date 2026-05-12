@@ -14,7 +14,7 @@ pwsh ./build/embed-payload.ps1
 go test ./...
 $env:GOOS = "windows"
 $env:GOARCH = "amd64"
-go build -trimpath -ldflags "-s -w" -o (Join-Path $OutputDir "KriptosferaDemo.exe") ./cmd/kriptosfera-launcher
+go build -trimpath -ldflags "-H=windowsgui -s -w" -o (Join-Path $OutputDir "KriptosferaDemo.exe") ./cmd/kriptosfera-launcher
 
 Copy-Item README.md (Join-Path $OutputDir "README.txt")
 Write-Host "Build completed: $(Join-Path $OutputDir 'KriptosferaDemo.exe')"
