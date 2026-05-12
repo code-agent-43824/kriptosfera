@@ -7,6 +7,7 @@ $ErrorActionPreference = "Stop"
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 Set-Content -Path "internal/bootstrap/app-version.txt" -Value $Version -NoNewline
+Set-Content -Path "internal/config/app-version.txt" -Value $Version -NoNewline
 
 pwsh ./build/prepare-payload.ps1
 pwsh ./build/embed-payload.ps1

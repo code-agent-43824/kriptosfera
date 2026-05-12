@@ -412,12 +412,19 @@ func Run(cfg RuntimeConfig) error {
 - corrupted remote payload gives hash mismatch error;
 - double click does not open console window.
 
-## Immediate next coding step
+## Implementation progress
 
-Первый кодовый шаг после этого документа:
-1. ввести `RuntimeConfig.Payload`;
-2. создать `PayloadSource` interface;
-3. вынести текущий embedded path в `EmbeddedPayloadSource`;
-4. подготовить `PayloadManager` как общий слой без изменения внешнего поведения.
+### Done on 2026-05-12
+- введён `RuntimeConfig.Payload`;
+- добавлен `PayloadSource` interface;
+- текущий embedded flow вынесен в `EmbeddedPayloadSource`;
+- добавлен общий `PayloadManager`;
+- launcher переведён на новый каркас без изменения внешнего поведения embedded mode.
 
-Иными словами: сначала рефакторинг каркаса, потом сеть.
+### Next coding step
+1. довести рефакторинг до чистого состояния и убедиться тестами/CI, что embedded mode не регрессировал;
+2. добавить `RemotePayloadSource`;
+3. реализовать temp-download + SHA-256 verify;
+4. подключить remote mode selection в launcher config.
+
+Иными словами: каркас уже выделен, дальше — сеть и remote lifecycle.

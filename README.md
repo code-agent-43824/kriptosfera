@@ -7,9 +7,11 @@
 Из входных документов проекта следует такой базовый замысел:
 - первый приоритет — Windows MVP;
 - поставка пользователю как один `.exe` без wizard-установщика и без admin rights;
-- внутри — launcher на Go, встроенный payload, Chromium runtime, отдельный профиль браузера, CryptoPro extension, native host и криптографические библиотеки;
+- внутри — launcher на Go, управляемый payload, Chromium runtime, отдельный профиль браузера, CryptoPro extension, native host и криптографические библиотеки;
 - первый референсный сценарий — тестовая страница CryptoPro CAdES Browser Plug-in;
 - критерий успеха MVP — успешная тестовая подпись с Рутокеном без системной установки CryptoPro CSP.
+
+После первых запусков MVP-план уточнён: embedded payload mode сохраняется, но основной продуктовый вектор теперь — **thin launcher + remote payload mode**.
 
 ## MVP scope
 
@@ -34,6 +36,10 @@
 - managed Chromium runtime второго этапа, который подготавливается в payload из pinned Chrome for Testing build;
 - отдельный `user-data-dir` для запуска встроенного браузера;
 - cache-friendly подготовка Chromium runtime в CI.
+
+Сейчас в работе:
+- первый рефакторинговый шаг под `remote payload mode`;
+- выделение `RuntimeConfig.Payload`, `PayloadSource` и общего `PayloadManager`.
 
 ## Репозиторий
 
@@ -73,35 +79,34 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 
 ## Документно подтверждённые этапы MVP
 
-1. Single-file bootstrapper без Chromium.
-2. Запуск встроенного Chromium runtime.
-3. Загрузка CryptoPro extension.
-4. Native messaging.
-5. CryptoPro components + Рутокен.
-6. Минимальная диагностика.
-7. macOS PoC.
+1. Embedded single-file bootstrapper.
+2. Embedded Chromium runtime launch.
+3. Remote payload mode / thin launcher.
+4. CryptoPro extension.
+5. Native messaging.
+6. CryptoPro components + Рутокен.
+7. Минимальная диагностика.
+8. macOS PoC.
 
-## Первый разумный шаг реализации MVP
+## Текущий следующий шаг
 
-**Этап 1: доказать single-file bootstrapper без Chromium.**
+**Этап 3: подготовить каркас remote payload mode / thin launcher.**
 
-Почему именно он:
-- это первый формальный этап из ТЗ;
-- он отрезает сразу большой класс рисков по распаковке, versioning и layout каталогов;
-- его можно сделать и стабилизировать без зависимости от лицензирования/доставки CryptoPro-компонентов;
-- он даст основу, поверх которой уже удобно вешать Chromium, extension и native host.
+Что делается сейчас:
+- отделяется launcher runtime config от payload app config;
+- вводится `PayloadSource` abstraction;
+- общий extraction/state pipeline выносится в `PayloadManager`;
+- текущий embedded flow переводится на новый каркас без изменения внешнего поведения.
 
-Конкретный критерий готовности первого шага:
-- один `KriptosferaDemo.exe`;
-- при первом запуске тихо раскладывает payload в пользовательский каталог;
-- при повторном запуске не распаковывает заново;
-- пишет `launcher.log`;
-- открывает тестовый внутренний ресурс или делает dry-run запуска runtime.
+Зачем это сейчас:
+- это готовит правильное основание для thin launcher;
+- не даёт размножить payload-логику перед добавлением сети;
+- позволяет потом добавить remote downloader и publish flow отдельными маленькими коммитами.
 
 ## Ближайшие инженерные задачи
 
-- заменить заглушечный payload на versioned payload manifest;
-- добавить checksum payload;
-- зафиксировать layout `LOCALAPPDATA/Kriptosfera/...`;
-- оформить smoke-test для first run / second run;
-- затем подключать runtime Chromium.
+- довести первый рефакторинг `RuntimeConfig.Payload` / `PayloadSource` / `PayloadManager`;
+- добавить `RemotePayloadSource` и remote download flow с SHA-256 verification;
+- подготовить build split для embedded launcher и thin launcher;
+- добавить immutable publish flow для `payload.zip` / `payload.json`;
+- затем переходить к загрузке CryptoPro extension.

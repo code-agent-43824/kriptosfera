@@ -12,12 +12,16 @@ One downloadable executable, no manual browser/plugin/CSP setup, isolated runtim
 
 Windows executable with:
 - Go launcher
-- embedded payload
+- embedded or remote payload
 - bundled Chromium runtime
 - CryptoPro extension
 - native messaging host
 - CryptoPro crypto libraries / CSP Lite hypothesis
 - Rutoken-based signing test against CryptoPro demo page
+
+Current delivery direction after early MVP validation:
+- keep embedded mode for offline/demo/support cases;
+- make thin launcher + remote immutable payload the main product path.
 
 ## Explicit non-goals for first MVP
 

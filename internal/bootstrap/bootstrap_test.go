@@ -3,7 +3,9 @@ package bootstrap
 import (
     "archive/zip"
     "bytes"
+    "context"
     "encoding/json"
+    "io"
     "os"
     "path/filepath"
     "strings"
@@ -21,6 +23,9 @@ func TestDefaultConfig(t *testing.T) {
     if cfg.Version == "" {
         t.Fatal("version must not be empty")
     }
+    if cfg.Payload.Mode != config.PayloadModeEmbedded {
+        t.Fatalf("expected embedded mode, got %s", cfg.Payload.Mode)
+    }
 }
 
 func TestAppRootNonEmpty(t *testing.T) {
@@ -34,12 +39,13 @@ func TestAppRootNonEmpty(t *testing.T) {
 }
 
 func TestEnsurePayloadExtractsAndReusesCurrentState(t *testing.T) {
-    appDir := t.TempDir()
+    rootDir := t.TempDir()
     logger := testLogger(t)
-    cfg := RuntimeConfig{Version: "0.1.0"}
+    cfg := testRuntimeConfig("0.1.0")
     payload := testPayloadZip(t, "0.1.0")
+    appDir := testAppDir(rootDir, cfg.Version)
 
-    reused, err := ensurePayloadFromBytes(appDir, cfg, logger, payload)
+    reused, err := preparePayloadFromBytes(rootDir, cfg, logger, payload)
     if err != nil {
         t.Fatal(err)
     }
@@ -52,7 +58,7 @@ func TestEnsurePayloadExtractsAndReusesCurrentState(t *testing.T) {
         t.Fatal(err)
     }
 
-    reused, err = ensurePayloadFromBytes(appDir, cfg, logger, payload)
+    reused, err = preparePayloadFromBytes(rootDir, cfg, logger, payload)
     if err != nil {
         t.Fatal(err)
     }
@@ -70,12 +76,13 @@ func TestEnsurePayloadExtractsAndReusesCurrentState(t *testing.T) {
 }
 
 func TestEnsurePayloadRecoversMissingFile(t *testing.T) {
-    appDir := t.TempDir()
+    rootDir := t.TempDir()
     logger := testLogger(t)
-    cfg := RuntimeConfig{Version: "0.1.0"}
+    cfg := testRuntimeConfig("0.1.0")
     payload := testPayloadZip(t, "0.1.0")
+    appDir := testAppDir(rootDir, cfg.Version)
 
-    if _, err := ensurePayloadFromBytes(appDir, cfg, logger, payload); err != nil {
+    if _, err := preparePayloadFromBytes(rootDir, cfg, logger, payload); err != nil {
         t.Fatal(err)
     }
     brokenFile := filepath.Join(appDir, "diagnostics", "diagnostics.html")
@@ -83,7 +90,7 @@ func TestEnsurePayloadRecoversMissingFile(t *testing.T) {
         t.Fatal(err)
     }
 
-    reused, err := ensurePayloadFromBytes(appDir, cfg, logger, payload)
+    reused, err := preparePayloadFromBytes(rootDir, cfg, logger, payload)
     if err != nil {
         t.Fatal(err)
     }
@@ -96,15 +103,16 @@ func TestEnsurePayloadRecoversMissingFile(t *testing.T) {
 }
 
 func TestEnsurePayloadReextractsOnVersionChange(t *testing.T) {
-    appDir := t.TempDir()
+    rootDir := t.TempDir()
     logger := testLogger(t)
 
-    if _, err := ensurePayloadFromBytes(appDir, RuntimeConfig{Version: "0.1.0"}, logger, testPayloadZip(t, "0.1.0")); err != nil {
+    if _, err := preparePayloadFromBytes(rootDir, testRuntimeConfig("0.1.0"), logger, testPayloadZip(t, "0.1.0")); err != nil {
         t.Fatal(err)
     }
-    if _, err := ensurePayloadFromBytes(appDir, RuntimeConfig{Version: "0.2.0"}, logger, testPayloadZip(t, "0.2.0")); err != nil {
+    if _, err := preparePayloadFromBytes(rootDir, testRuntimeConfig("0.2.0"), logger, testPayloadZip(t, "0.2.0")); err != nil {
         t.Fatal(err)
     }
+	appDir := testAppDir(rootDir, "0.2.0")
 
     state, err := loadPayloadState(appDir)
     if err != nil {
@@ -121,6 +129,31 @@ func TestEnsurePayloadReextractsOnVersionChange(t *testing.T) {
     if manifest.Version != "0.2.0" {
         t.Fatalf("expected manifest version 0.2.0, got %s", manifest.Version)
     }
+}
+
+func TestEmbeddedPayloadSourceExposesExpectedMetadata(t *testing.T) {
+	cfg := testRuntimeConfig("0.1.0")
+	payload := testPayloadZip(t, "0.1.0")
+	source := NewEmbeddedPayloadSource(cfg, payload)
+
+	if source.Mode() != config.PayloadModeEmbedded {
+		t.Fatalf("expected embedded mode, got %s", source.Mode())
+	}
+	if source.Version() != "0.1.0" {
+		t.Fatalf("expected version 0.1.0, got %s", source.Version())
+	}
+	archive, err := source.Open(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer archive.Close()
+	data, err := io.ReadAll(archive.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if checksumBytes(data) != source.ExpectedSHA256() {
+		t.Fatal("embedded payload sha256 mismatch")
+	}
 }
 
 func TestWriteDryRunCreatesStubFile(t *testing.T) {
@@ -211,11 +244,29 @@ func testLogger(t *testing.T) *logging.Logger {
     return logger
 }
 
-func ensurePayloadFromBytes(appDir string, cfg RuntimeConfig, logger *logging.Logger, payload []byte) (bool, error) {
-    original := embeddedPayload
-    embeddedPayload = payload
-    defer func() { embeddedPayload = original }()
-    return ensurePayload(appDir, cfg, logger)
+func preparePayloadFromBytes(rootDir string, cfg config.RuntimeConfig, logger *logging.Logger, payload []byte) (bool, error) {
+	source := NewEmbeddedPayloadSource(cfg, payload)
+	manager := PayloadManager{}
+	result, err := manager.Prepare(context.Background(), source, rootDir, cfg, logger)
+	if err != nil {
+		return false, err
+	}
+	return result.Reused, nil
+}
+
+func testAppDir(rootDir, version string) string {
+	return filepath.Join(rootDir, "apps", "demo", version)
+}
+
+func testRuntimeConfig(version string) config.RuntimeConfig {
+	return config.RuntimeConfig{
+		ProductName: "Kriptosfera Demo",
+		Version:     version,
+		Payload: config.RuntimePayloadConfig{
+			Mode:    config.PayloadModeEmbedded,
+			Version: version,
+		},
+	}
 }
 
 func testPayloadZip(t *testing.T, version string) []byte {

@@ -1,10 +1,10 @@
 package bootstrap
 
 import (
+	"context"
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
-	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -25,9 +25,6 @@ import (
 //go:embed payload.zip
 var embeddedPayload []byte
 
-//go:embed app-version.txt
-var versionFile embed.FS
-
 const (
     payloadStateFile = ".payload-state.json"
     payloadReadyFile = ".payload-ready"
@@ -35,11 +32,6 @@ const (
     payloadManifest  = "manifest.json"
     lockTTL          = 10 * time.Minute
 )
-
-type RuntimeConfig struct {
-    ProductName string
-    Version     string
-}
 
 type PayloadManifest struct {
     Version string             `json:"version"`
@@ -53,18 +45,15 @@ type PayloadManifestFile struct {
 
 type PayloadState struct {
     Version       string `json:"version"`
+    PayloadMode   string `json:"payloadMode"`
     PayloadSHA256 string `json:"payloadSha256"`
 }
 
-func DefaultConfig() (RuntimeConfig, error) {
-    raw, err := versionFile.ReadFile("app-version.txt")
-    if err != nil {
-        return RuntimeConfig{}, err
-    }
-    return RuntimeConfig{ProductName: "Kriptosfera Demo", Version: strings.TrimSpace(string(raw))}, nil
+func DefaultConfig() (config.RuntimeConfig, error) {
+	return config.DefaultRuntimeConfig()
 }
 
-func Run(cfg RuntimeConfig) error {
+func Run(cfg config.RuntimeConfig) error {
     root, err := appRoot()
     if err != nil {
         return err
@@ -75,19 +64,24 @@ func Run(cfg RuntimeConfig) error {
         return err
     }
     defer logger.Close()
-    logger.Info("launcher start version=%s os=%s", cfg.Version, runtime.GOOS)
+    logger.Info("launcher start version=%s os=%s mode=%s", cfg.Version, runtime.GOOS, cfg.Payload.Mode)
 
-    appDir := filepath.Join(root, "apps", "demo", cfg.Version)
-    reused, err := ensurePayload(appDir, cfg, logger)
+	source, err := newPayloadSource(cfg)
+	if err != nil {
+		return err
+	}
+	manager := PayloadManager{}
+	prepareResult, err := manager.Prepare(context.Background(), source, root, cfg, logger)
     if err != nil {
         return err
     }
+    appDir := prepareResult.AppDir
 
     appCfg, err := config.Load(filepath.Join(appDir, "config", "app-config.json"))
     if err != nil {
         return err
     }
-    logger.Info("payload ready reused=%t start_url=%s", reused, appCfg.StartURL)
+    logger.Info("payload ready reused=%t start_url=%s", prepareResult.Reused, appCfg.StartURL)
 
     profileDir := filepath.Join(root, "profiles", appCfg.ProfileName)
     if err := os.MkdirAll(profileDir, 0o755); err != nil {
@@ -119,6 +113,15 @@ func Run(cfg RuntimeConfig) error {
 	cmd.Stdout = stdoutLog
 	cmd.Stderr = stderrLog
 	return cmd.Start()
+}
+
+func newPayloadSource(cfg config.RuntimeConfig) (PayloadSource, error) {
+	switch cfg.Payload.Mode {
+	case "", config.PayloadModeEmbedded:
+		return NewEmbeddedPayloadSource(cfg, embeddedPayload), nil
+	default:
+		return nil, fmt.Errorf("unsupported payload mode: %s", cfg.Payload.Mode)
+	}
 }
 
 func openChromiumLogFiles(root string) (*os.File, *os.File, error) {
@@ -165,81 +168,6 @@ func buildChromiumArgs(profileDir string, appCfg config.AppConfig) []string {
 
     args = append(args, appCfg.ChromiumArgs...)
     return args
-}
-
-func ensurePayload(appDir string, cfg RuntimeConfig, logger *logging.Logger) (bool, error) {
-    payloadSHA := checksumBytes(embeddedPayload)
-    parentDir := filepath.Dir(appDir)
-    if err := os.MkdirAll(parentDir, 0o755); err != nil {
-        return false, err
-    }
-
-    unlock, err := acquireLock(appDir)
-    if err != nil {
-        return false, err
-    }
-    defer unlock()
-
-    if prepared, err := isPreparedPayload(appDir, cfg.Version, payloadSHA); err != nil {
-        return false, err
-    } else if prepared {
-        logger.Info("payload already prepared path=%s", appDir)
-        return true, nil
-    }
-
-    logger.Info("extract payload path=%s", appDir)
-
-    tempDir, err := os.MkdirTemp(parentDir, filepath.Base(appDir)+"-staging-")
-    if err != nil {
-        return false, err
-    }
-    defer os.RemoveAll(tempDir)
-
-    if err := unzip(embeddedPayload, tempDir); err != nil {
-        return false, err
-    }
-    if err := verifyExtractedPayload(tempDir); err != nil {
-        return false, err
-    }
-    if err := writePayloadState(tempDir, PayloadState{Version: cfg.Version, PayloadSHA256: payloadSHA}); err != nil {
-        return false, err
-    }
-    if err := os.WriteFile(filepath.Join(tempDir, payloadReadyFile), []byte("ok\n"), 0o644); err != nil {
-        return false, err
-    }
-
-    if err := os.RemoveAll(appDir); err != nil {
-        return false, err
-    }
-    if err := os.Rename(tempDir, appDir); err != nil {
-        return false, err
-    }
-    return false, nil
-}
-
-func isPreparedPayload(appDir, version, payloadSHA string) (bool, error) {
-    if _, err := os.Stat(filepath.Join(appDir, payloadReadyFile)); err != nil {
-        if errors.Is(err, os.ErrNotExist) {
-            return false, nil
-        }
-        return false, err
-    }
-
-    state, err := loadPayloadState(appDir)
-    if err != nil {
-        if errors.Is(err, os.ErrNotExist) {
-            return false, nil
-        }
-        return false, err
-    }
-    if state.Version != version || state.PayloadSHA256 != payloadSHA {
-        return false, nil
-    }
-
-    if err := verifyExtractedPayload(appDir); err != nil {
-        return false, nil
-    }
-    return true, nil
 }
 
 func verifyExtractedPayload(root string) error {
