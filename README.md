@@ -38,8 +38,9 @@
 - cache-friendly подготовка Chromium runtime в CI.
 
 Сейчас в работе:
-- первый рефакторинговый шаг под `remote payload mode`;
-- выделение `RuntimeConfig.Payload`, `PayloadSource` и общего `PayloadManager`.
+- thin launcher build/runtime-config generation;
+- immutable payload artifact layout для remote delivery;
+- следующий оставшийся хвост этапа — minimal progress UX.
 
 ## Репозиторий
 
@@ -62,10 +63,14 @@ Workflow: `.github/workflows/build-windows.yml`
 2. setup Go
 3. восстановление cache Chromium runtime
 4. подготовка payload (включая Chromium runtime)
-5. упаковка payload в `internal/bootstrap/payload.zip`
-6. `go test ./...`
-7. сборка `dist/KriptosferaDemo.exe`
-8. публикация артефактов
+5. упаковка `dist/payload.zip` и генерация `dist/payload.json`
+6. публикация immutable layout в `dist/published/payloads/win64/demo/<version>/<sha256>/...`
+7. генерация runtime config для embedded launcher
+8. `go test ./...` для embedded path
+9. сборка `dist/KriptosferaDemo.exe`
+10. генерация runtime config для remote launcher
+11. сборка `dist/KriptosferaDemo-remote.exe` с build tag `remote`
+12. публикация артефактов
 
 ### Важный момент про «без лишнего зазиповывания»
 
@@ -73,9 +78,9 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 
 Поэтому добавлен практичный обходной путь:
 - обычный CI-run публикует workflow artifact;
-- tag build (`v*`) дополнительно прикрепляет **сырой `KriptosferaDemo.exe`** и `README.txt` как **GitHub Release assets**.
+- tag build (`v*`) дополнительно прикрепляет **сырой `KriptosferaDemo.exe`**, **`KriptosferaDemo-remote.exe`**, `payload.zip`, `payload.json` и `README.txt` как **GitHub Release assets**.
 
-То есть для реального скачивания итогового бинарника без дополнительной упаковки нужно брать **release asset**, а не workflow artifact.
+То есть для реального скачивания итоговых бинарников и payload без дополнительной упаковки нужно брать **release assets**, а не workflow artifact.
 
 ## Документно подтверждённые этапы MVP
 
@@ -90,23 +95,19 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 
 ## Текущий следующий шаг
 
-**Этап 3: подготовить каркас remote payload mode / thin launcher.**
+**Этап 3: добить оставшийся UX-хвост remote payload mode.**
 
-Что делается сейчас:
-- отделяется launcher runtime config от payload app config;
-- вводится `PayloadSource` abstraction;
-- общий extraction/state pipeline выносится в `PayloadManager`;
-- текущий embedded flow переводится на новый каркас без изменения внешнего поведения.
+Что уже сделано внутри этапа 3:
+- выделен runtime/payload abstraction layer;
+- добавлен remote runtime core (`RemotePayloadSource`, temp download, SHA-256 verify, cache reuse);
+- добавлены build/runtime-config generation и immutable payload artifact layout;
+- workflow уже собирает и embedded launcher, и thin launcher.
 
-Зачем это сейчас:
-- это готовит правильное основание для thin launcher;
-- не даёт размножить payload-логику перед добавлением сети;
-- позволяет потом добавить remote downloader и publish flow отдельными маленькими коммитами.
+Что осталось:
+- minimal progress UX для первой загрузки remote payload.
 
 ## Ближайшие инженерные задачи
 
-- довести первый рефакторинг `RuntimeConfig.Payload` / `PayloadSource` / `PayloadManager`;
-- добавить `RemotePayloadSource` и remote download flow с SHA-256 verification;
-- подготовить build split для embedded launcher и thin launcher;
-- добавить immutable publish flow для `payload.zip` / `payload.json`;
-- затем переходить к загрузке CryptoPro extension.
+- добавить minimal progress UX для remote first-run;
+- после этого считать этап 3 закрытым и переходить к загрузке CryptoPro extension;
+- затем идти в native messaging и crypto stack.

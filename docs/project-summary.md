@@ -23,6 +23,11 @@ Current delivery direction after early MVP validation:
 - keep embedded mode for offline/demo/support cases;
 - make thin launcher + remote immutable payload the main product path.
 
+Current implementation status:
+- remote runtime core is already in code;
+- CI now builds both embedded and remote launcher variants;
+- payload artifacts are produced in immutable version/sha-based layout for delivery.
+
 ## Explicit non-goals for first MVP
 
 - GOST TLS
