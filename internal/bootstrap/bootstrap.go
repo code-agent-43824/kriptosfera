@@ -60,15 +60,17 @@ func Run(cfg config.RuntimeConfig) error {
     if err != nil {
         return err
     }
-    defer logger.Close()
-    logger.Info("launcher start version=%s os=%s mode=%s", cfg.Version, runtime.GOOS, cfg.Payload.Mode)
+	defer logger.Close()
+	logger.Info("launcher start version=%s os=%s mode=%s", cfg.Version, runtime.GOOS, cfg.Payload.Mode)
+	progress := newProgressReporter(cfg, logger)
+	defer progress.Close()
 
-	source, err := newPayloadSource(cfg, logger)
+	source, err := newPayloadSource(cfg, logger, progress)
 	if err != nil {
 		return err
 	}
 	manager := PayloadManager{}
-	prepareResult, err := manager.Prepare(context.Background(), source, root, cfg, logger)
+	prepareResult, err := manager.Prepare(context.Background(), source, root, cfg, logger, progress)
     if err != nil {
         return err
     }
@@ -112,12 +114,18 @@ func Run(cfg config.RuntimeConfig) error {
 	return cmd.Start()
 }
 
-func newPayloadSource(cfg config.RuntimeConfig, logger *logging.Logger) (PayloadSource, error) {
+func newPayloadSource(cfg config.RuntimeConfig, logger *logging.Logger, progress ProgressReporter) (PayloadSource, error) {
 	switch cfg.Payload.Mode {
 	case "", config.PayloadModeEmbedded:
 		return NewEmbeddedPayloadSource(cfg, embeddedPayload), nil
 	case config.PayloadModeRemote:
-		return NewRemotePayloadSource(cfg, logger)
+		source, err := NewRemotePayloadSource(cfg, logger)
+		if err != nil {
+			return nil, err
+		}
+		source.progressReporter = progress
+		source.progress = progress.SetDownloadProgress
+		return source, nil
 	default:
 		return nil, fmt.Errorf("unsupported payload mode: %s", cfg.Payload.Mode)
 	}

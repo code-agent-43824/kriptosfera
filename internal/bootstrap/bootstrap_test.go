@@ -247,7 +247,7 @@ func TestPayloadManagerRemoteReusesCachedPayload(t *testing.T) {
 	source.client = server.Client()
 	manager := PayloadManager{}
 
-	result, err := manager.Prepare(context.Background(), source, rootDir, cfg, logger)
+	result, err := manager.Prepare(context.Background(), source, rootDir, cfg, logger, noopProgressReporter{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestPayloadManagerRemoteReusesCachedPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	source2.client = server.Client()
-	result, err = manager.Prepare(context.Background(), source2, rootDir, cfg, logger)
+	result, err = manager.Prepare(context.Background(), source2, rootDir, cfg, logger, noopProgressReporter{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -352,7 +352,7 @@ func TestUnzipRejectsTraversal(t *testing.T) {
 
 func testLogger(t *testing.T) *logging.Logger {
     t.Helper()
-    logger, err := logging.New(filepath.Join(t.TempDir(), "launcher.log"))
+	logger, err := logging.New(filepath.Join(t.TempDir(), "launcher.log"))
     if err != nil {
         t.Fatal(err)
     }
@@ -363,11 +363,23 @@ func testLogger(t *testing.T) *logging.Logger {
 func preparePayloadFromBytes(rootDir string, cfg config.RuntimeConfig, logger *logging.Logger, payload []byte) (bool, error) {
 	source := NewEmbeddedPayloadSource(cfg, payload)
 	manager := PayloadManager{}
-	result, err := manager.Prepare(context.Background(), source, rootDir, cfg, logger)
+	result, err := manager.Prepare(context.Background(), source, rootDir, cfg, logger, noopProgressReporter{})
 	if err != nil {
 		return false, err
 	}
 	return result.Reused, nil
+}
+
+func TestFormatDownloadProgress(t *testing.T) {
+	text := formatDownloadProgress(50, 100)
+	if text != "Загрузка компонентов: 50% (50 B из 100 B)" {
+		t.Fatalf("unexpected progress text: %s", text)
+	}
+
+	text = formatDownloadProgress(1536, 0)
+	if text != "Загрузка компонентов: 1.5 KB" {
+		t.Fatalf("unexpected progress text without total: %s", text)
+	}
 }
 
 func testAppDir(rootDir, version string) string {

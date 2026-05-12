@@ -17,6 +17,7 @@ type RemotePayloadSource struct {
 	size    int64
 	client  *http.Client
 	logger  *logging.Logger
+	progressReporter ProgressReporter
 	progress func(done, total int64)
 }
 
@@ -43,6 +44,9 @@ func (s *RemotePayloadSource) Version() string { return s.version }
 func (s *RemotePayloadSource) ExpectedSHA256() string { return s.sha256 }
 
 func (s *RemotePayloadSource) Open(ctx context.Context) (PayloadArchive, error) {
+	if s.progressReporter != nil {
+		s.progressReporter.SetStatus("Подготовка загрузки компонентов...")
+	}
 	result, err := DownloadFile(ctx, s.client, s.url, s.size, s.logger, s.progress)
 	if err != nil {
 		return PayloadArchive{}, err
@@ -53,6 +57,9 @@ func (s *RemotePayloadSource) Open(ctx context.Context) (PayloadArchive, error) 
 	}
 	if s.logger != nil {
 		s.logger.Info("payload archive verified sha256=%s", result.SHA256)
+	}
+	if s.progressReporter != nil {
+		s.progressReporter.SetStatus("Проверка и распаковка компонентов...")
 	}
 	file, err := os.Open(result.TempPath)
 	if err != nil {

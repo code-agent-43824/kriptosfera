@@ -17,7 +17,7 @@ type PrepareResult struct {
 
 type PayloadManager struct{}
 
-func (m PayloadManager) Prepare(ctx context.Context, source PayloadSource, root string, cfg config.RuntimeConfig, logger *logging.Logger) (PrepareResult, error) {
+func (m PayloadManager) Prepare(ctx context.Context, source PayloadSource, root string, cfg config.RuntimeConfig, logger *logging.Logger, progress ProgressReporter) (PrepareResult, error) {
 	appDir := filepath.Join(root, "apps", "demo", cfg.Version)
 	parentDir := filepath.Dir(appDir)
 	if err := os.MkdirAll(parentDir, 0o755); err != nil {
@@ -37,6 +37,9 @@ func (m PayloadManager) Prepare(ctx context.Context, source PayloadSource, root 
 		return PrepareResult{AppDir: appDir, Reused: true}, nil
 	}
 
+	if progress != nil {
+		progress.SetStatus("Подготовка рабочей среды...")
+	}
 	logger.Info("extract payload path=%s mode=%s", appDir, source.Mode())
 	archive, err := source.Open(ctx)
 	if err != nil {
@@ -50,8 +53,14 @@ func (m PayloadManager) Prepare(ctx context.Context, source PayloadSource, root 
 	}
 	defer os.RemoveAll(tempDir)
 
+	if progress != nil {
+		progress.SetStatus("Распаковка компонентов...")
+	}
 	if err := unzipReaderAt(archive.ReaderAt, archive.Size, tempDir); err != nil {
 		return PrepareResult{}, wrapLauncherError(ErrPayloadExtractFailed, "не удалось распаковать payload", err)
+	}
+	if progress != nil {
+		progress.SetStatus("Проверка компонентов...")
 	}
 	if err := verifyExtractedPayload(tempDir); err != nil {
 		return PrepareResult{}, wrapLauncherError(ErrPayloadManifestInvalid, "не удалось проверить manifest payload", err)
@@ -72,6 +81,9 @@ func (m PayloadManager) Prepare(ctx context.Context, source PayloadSource, root 
 	}
 	if err := os.Rename(tempDir, appDir); err != nil {
 		return PrepareResult{}, err
+	}
+	if progress != nil {
+		progress.SetStatus("Запуск приложения...")
 	}
 
 	return PrepareResult{AppDir: appDir, Reused: false}, nil
