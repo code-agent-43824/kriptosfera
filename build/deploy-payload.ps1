@@ -28,6 +28,13 @@ $keyFile = Join-Path $env:RUNNER_TEMP "kriptosfera-payload-deploy.key"
 $normalizedKey = $SshPrivateKey -replace "`r", ""
 Set-Content -Path $keyFile -Value $normalizedKey -Encoding ascii -NoNewline
 
+if ($IsWindows) {
+  icacls $keyFile /inheritance:r | Out-Null
+  icacls $keyFile /grant:r "$env:USERNAME:(R)" | Out-Null
+} else {
+  chmod 600 $keyFile
+}
+
 try {
   ssh -i $keyFile -o StrictHostKeyChecking=accept-new "$RemoteUser@$RemoteHost" "mkdir -p '$remoteDir'"
   if ($LASTEXITCODE -ne 0) {
