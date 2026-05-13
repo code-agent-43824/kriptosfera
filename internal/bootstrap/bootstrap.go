@@ -82,6 +82,25 @@ func Run(cfg config.RuntimeConfig) error {
     }
     logger.Info("payload ready reused=%t start_url=%s", prepareResult.Reused, appCfg.StartURL)
 
+    extensions, err := detectExtensions(appDir)
+    if err != nil {
+        return err
+    }
+    if len(extensions) == 0 {
+        logger.Info("extensions detect root=%s count=0", filepath.Join(appDir, "extensions"))
+    } else {
+        logger.Info("extensions detect root=%s count=%d", filepath.Join(appDir, "extensions"), len(extensions))
+        for _, ext := range extensions {
+            if _, statErr := os.Stat(ext.ManifestPath); statErr == nil {
+                logger.Info("extension found name=%s path=%s manifest=present", ext.Name, ext.Path)
+            } else if os.IsNotExist(statErr) {
+                logger.Info("extension found name=%s path=%s manifest=missing", ext.Name, ext.Path)
+            } else {
+                logger.Info("extension found name=%s path=%s manifest=error:%v", ext.Name, ext.Path, statErr)
+            }
+        }
+    }
+
     profileDir := filepath.Join(root, "profiles", appCfg.ProfileName)
     if err := os.MkdirAll(profileDir, 0o755); err != nil {
         return err

@@ -382,6 +382,44 @@ func TestFormatDownloadProgress(t *testing.T) {
 	}
 }
 
+func TestDetectExtensionsReturnsSortedDirectories(t *testing.T) {
+	appDir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(appDir, "extensions", "zeta"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(appDir, "extensions", "alpha"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(appDir, "extensions", "README.txt"), []byte("skip"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	exts, err := detectExtensions(appDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(exts) != 2 {
+		t.Fatalf("expected 2 extensions, got %d", len(exts))
+	}
+	if exts[0].Name != "alpha" || exts[1].Name != "zeta" {
+		t.Fatalf("unexpected extension order: %#v", exts)
+	}
+	if got := exts[0].ManifestPath; got != filepath.Join(appDir, "extensions", "alpha", "manifest.json") {
+		t.Fatalf("unexpected manifest path: %s", got)
+	}
+}
+
+func TestDetectExtensionsMissingRootReturnsEmpty(t *testing.T) {
+	appDir := t.TempDir()
+	exts, err := detectExtensions(appDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(exts) != 0 {
+		t.Fatalf("expected no extensions, got %d", len(exts))
+	}
+}
+
 func testAppDir(rootDir, version string) string {
 	return filepath.Join(rootDir, "apps", "demo", version)
 }
