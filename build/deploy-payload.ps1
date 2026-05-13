@@ -29,7 +29,7 @@ $normalizedKey = $SshPrivateKey -replace "`r", ""
 Set-Content -Path $keyFile -Value $normalizedKey -Encoding ascii -NoNewline
 
 if ($IsWindows) {
-  cmd /c "icacls \"$keyFile\" /inheritance:r /grant:r %USERNAME%:F" | Out-Null
+  & icacls.exe $keyFile '/inheritance:r' '/remove:g' 'BUILTIN\Users' '/grant:r' "$($env:USERNAME):F" | Out-Null
 } else {
   chmod 600 $keyFile
 }
@@ -53,6 +53,10 @@ try {
   Write-Host "Payload deployed to ${RemoteHost}:$remoteDir"
 } finally {
   if (Test-Path $keyFile) {
-    Remove-Item -Force $keyFile
+    try {
+      Remove-Item -Force $keyFile -ErrorAction Stop
+    } catch {
+      Write-Warning "Failed to remove temporary key file: $keyFile"
+    }
   }
 }
