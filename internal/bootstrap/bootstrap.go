@@ -111,6 +111,10 @@ func Run(cfg config.RuntimeConfig) error {
 	defer stderrLog.Close()
 	cmd.Stdout = stdoutLog
 	cmd.Stderr = stderrLog
+
+	if err := progress.Close(); err != nil {
+		logger.Info("progress close failed: %v", err)
+	}
 	return cmd.Start()
 }
 
