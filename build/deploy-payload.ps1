@@ -44,7 +44,7 @@ try {
     throw "Failed to upload payload.json"
   }
 
-  Write-Host "Payload deployed to $RemoteHost:$remoteDir"
+  Write-Host "Payload deployed to ${RemoteHost}:$remoteDir"
 } finally {
   if (Test-Path $keyFile) {
     Remove-Item -Force $keyFile
