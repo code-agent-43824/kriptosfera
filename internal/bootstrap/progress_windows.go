@@ -30,11 +30,13 @@ const (
 	cwUseDefaultCoord  = -2147483648
 	fwNormal           = 400
 	fwSemiBold         = 600
+	logPixelsY         = 90
 	defaultCharset     = 1
 	outDefaultPrecis   = 0
 	clipDefaultPrecis  = 0
 	clearTypeQuality   = 5
 	defaultPitchFamily = 0
+	dpiAwarenessContextPerMonitorAwareV2 = ^uintptr(3)
 	colorWindowFrame   = 6
 	colorSurface       = 0x00f7f8fa
 	colorDivider       = 0x00e2e6ea
@@ -70,6 +72,8 @@ var (
 	procRegisterClassExW    = user32.NewProc("RegisterClassExW")
 	procReleaseDC           = user32.NewProc("ReleaseDC")
 	procSendMessageW        = user32.NewProc("SendMessageW")
+	procSetProcessDPIAware  = user32.NewProc("SetProcessDPIAware")
+	procSetProcessDpiAwarenessContext = user32.NewProc("SetProcessDpiAwarenessContext")
 	procSetBkMode           = gdi32.NewProc("SetBkMode")
 	procSetTextColor        = gdi32.NewProc("SetTextColor")
 	procSetWindowTextW      = user32.NewProc("SetWindowTextW")
@@ -77,6 +81,7 @@ var (
 	procCreateSolidBrush    = gdi32.NewProc("CreateSolidBrush")
 	procDeleteObject        = gdi32.NewProc("DeleteObject")
 	procCreateFontW         = gdi32.NewProc("CreateFontW")
+	procGetDeviceCaps       = gdi32.NewProc("GetDeviceCaps")
 	procTranslateMessage    = user32.NewProc("TranslateMessage")
 	procUpdateWindow        = user32.NewProc("UpdateWindow")
 	progressWindowClassOnce sync.Once
@@ -234,14 +239,16 @@ func (r *windowsProgressReporter) run(initialText string) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	defer close(r.closed)
+	enableDPIAwareness()
 
 	registerProgressWindowClass()
 	instance, _, _ := procGetModuleHandleW.Call(0)
 	className := syscall.StringToUTF16Ptr(windowClassName)
 	title := syscall.StringToUTF16Ptr(windowTitle)
+	dpi := currentScreenDPI()
 
-	width := int32(560)
-	height := int32(176)
+	width := scaleInt32(560, dpi)
+	height := scaleInt32(176, dpi)
 	x := centerWindowCoordinate(width, 0)
 	y := centerWindowCoordinate(height, 1)
 
@@ -269,17 +276,17 @@ func (r *windowsProgressReporter) run(initialText string) {
 	detailText := syscall.StringToUTF16Ptr("Это нужно только для первой загрузки или после обновления payload")
 	staticClass := syscall.StringToUTF16Ptr("STATIC")
 	titleFont := createSegoeUIFont(hwnd, 20, fwSemiBold)
-	bodyFont := createSegoeUIFont(hwnd, 16, fwNormal)
+	bodyFont := createSegoeUIFont(hwnd, 12, fwNormal)
 
 	titleLabel, _, _ := procCreateWindowExW.Call(
 		0,
 		uintptr(unsafe.Pointer(staticClass)),
 		uintptr(unsafe.Pointer(titleText)),
 		uintptr(wsChild|wsVisible|ssLeft),
-		28,
-		20,
-		420,
-		28,
+		uintptr(scaleInt32(28, dpi)),
+		uintptr(scaleInt32(20, dpi)),
+		uintptr(scaleInt32(420, dpi)),
+		uintptr(scaleInt32(26, dpi)),
 		hwnd,
 		0,
 		instance,
@@ -290,10 +297,10 @@ func (r *windowsProgressReporter) run(initialText string) {
 		uintptr(unsafe.Pointer(staticClass)),
 		uintptr(unsafe.Pointer(statusText)),
 		uintptr(wsChild|wsVisible|ssLeft),
-		28,
-		62,
-		500,
-		24,
+		uintptr(scaleInt32(28, dpi)),
+		uintptr(scaleInt32(58, dpi)),
+		uintptr(scaleInt32(500, dpi)),
+		uintptr(scaleInt32(22, dpi)),
 		hwnd,
 		0,
 		instance,
@@ -304,10 +311,10 @@ func (r *windowsProgressReporter) run(initialText string) {
 		uintptr(unsafe.Pointer(staticClass)),
 		uintptr(unsafe.Pointer(detailText)),
 		uintptr(wsChild|wsVisible|ssLeft|ssLeftNowordwrap),
-		28,
-		125,
-		500,
-		20,
+		uintptr(scaleInt32(28, dpi)),
+		uintptr(scaleInt32(118, dpi)),
+		uintptr(scaleInt32(500, dpi)),
+		uintptr(scaleInt32(20, dpi)),
 		hwnd,
 		0,
 		instance,
@@ -370,6 +377,40 @@ func (r *windowsProgressReporter) snapshot() (int64, int64) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.done, r.total
+}
+
+func enableDPIAwareness() {
+	if procSetProcessDpiAwarenessContext.Find() == nil {
+		procSetProcessDpiAwarenessContext.Call(dpiAwarenessContextPerMonitorAwareV2)
+		return
+	}
+	if procSetProcessDPIAware.Find() == nil {
+		procSetProcessDPIAware.Call()
+	}
+}
+
+func currentScreenDPI() int32 {
+	hdc, _, _ := procGetDC.Call(0)
+	if hdc == 0 {
+		return 96
+	}
+	defer procReleaseDC.Call(0, hdc)
+	dpi, _, _ := procGetDeviceCaps.Call(hdc, logPixelsY)
+	if dpi == 0 {
+		return 96
+	}
+	return int32(dpi)
+}
+
+func scaleInt32(value int32, dpi int32) int32 {
+	if dpi <= 0 || dpi == 96 {
+		return value
+	}
+	scaled, _, _ := procMulDiv.Call(uintptr(value), uintptr(dpi), 96)
+	if scaled == 0 {
+		return value
+	}
+	return int32(scaled)
 }
 
 func centerWindowCoordinate(size int32, axis int) int32 {
@@ -465,9 +506,17 @@ func drawProgressWindow(hwnd uintptr) {
 		return
 	}
 	defer procEndPaint.Call(hwnd, uintptr(unsafe.Pointer(&ps)))
+	dpi := currentScreenDPI()
+	windowWidth := scaleInt32(560, dpi)
+	windowHeight := scaleInt32(176, dpi)
+	barLeft := scaleInt32(28, dpi)
+	barTop := scaleInt32(86, dpi)
+	barWidth := scaleInt32(504, dpi)
+	barHeight := scaleInt32(10, dpi)
+	dividerTop := scaleInt32(110, dpi)
 
-	fillRectColor(hdc, rect{Left: 0, Top: 0, Right: 560, Bottom: 176}, colorSurface)
-	fillRectColor(hdc, rect{Left: 28, Top: 94, Right: 532, Bottom: 104}, colorProgressTrack)
+	fillRectColor(hdc, rect{Left: 0, Top: 0, Right: windowWidth, Bottom: windowHeight}, colorSurface)
+	fillRectColor(hdc, rect{Left: barLeft, Top: barTop, Right: barLeft + barWidth, Bottom: barTop + barHeight}, colorProgressTrack)
 
 	value, ok := progressWindowStates.Load(hwnd)
 	if !ok {
@@ -479,13 +528,13 @@ func drawProgressWindow(hwnd uintptr) {
 		if done > total {
 			done = total
 		}
-		barWidth := int32(float64(504) * (float64(done) / float64(total)))
-		if barWidth < 4 {
-			barWidth = 4
+		fillWidth := int32(float64(barWidth) * (float64(done) / float64(total)))
+		if fillWidth < scaleInt32(4, dpi) {
+			fillWidth = scaleInt32(4, dpi)
 		}
-		fillRectColor(hdc, rect{Left: 28, Top: 94, Right: 28 + barWidth, Bottom: 104}, colorProgressFill)
+		fillRectColor(hdc, rect{Left: barLeft, Top: barTop, Right: barLeft + fillWidth, Bottom: barTop + barHeight}, colorProgressFill)
 	}
-	fillRectColor(hdc, rect{Left: 28, Top: 118, Right: 532, Bottom: 119}, colorDivider)
+	fillRectColor(hdc, rect{Left: barLeft, Top: dividerTop, Right: barLeft + barWidth, Bottom: dividerTop + 1}, colorDivider)
 }
 
 func fillRectColor(hdc uintptr, area rect, color uintptr) {
