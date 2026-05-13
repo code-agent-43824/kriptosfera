@@ -29,8 +29,7 @@ $normalizedKey = $SshPrivateKey -replace "`r", ""
 Set-Content -Path $keyFile -Value $normalizedKey -Encoding ascii -NoNewline
 
 if ($IsWindows) {
-  icacls $keyFile /inheritance:r | Out-Null
-  icacls $keyFile /grant:r "$env:USERNAME:(R)" | Out-Null
+  cmd /c "icacls \"$keyFile\" /inheritance:r /grant:r %USERNAME%:F" | Out-Null
 } else {
   chmod 600 $keyFile
 }
