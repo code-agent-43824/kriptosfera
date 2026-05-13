@@ -26,7 +26,19 @@ $remoteDir = "$($RemoteRoot.TrimEnd('/'))/$($metadata.payloadVersion)/$($metadat
 
 $keyFile = Join-Path $env:RUNNER_TEMP "kriptosfera-payload-deploy.key"
 $normalizedKey = $SshPrivateKey -replace "`r", ""
-Set-Content -Path $keyFile -Value $normalizedKey -Encoding ascii -NoNewline
+
+if ($normalizedKey -notmatch "BEGIN OPENSSH PRIVATE KEY") {
+  try {
+    $decoded = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($normalizedKey.Trim()))
+    if ($decoded -match "BEGIN OPENSSH PRIVATE KEY") {
+      $normalizedKey = $decoded -replace "`r", ""
+    }
+  } catch {
+    # keep original value; ssh will fail later with a clearer error if the secret is malformed
+  }
+}
+
+Set-Content -Path $keyFile -Value $normalizedKey -Encoding utf8NoBOM -NoNewline
 
 if ($IsWindows) {
   & icacls.exe $keyFile '/inheritance:r' '/remove:g' 'BUILTIN\Users' '/grant:r' "$($env:USERNAME):F" | Out-Null
