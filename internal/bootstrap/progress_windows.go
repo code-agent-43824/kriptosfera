@@ -16,15 +16,16 @@ const (
 	wsCaption          = 0x00C00000
 	wsVisible          = 0x10000000
 	wsChild            = 0x40000000
-	wsBorder           = 0x00800000
+	wsTabStop          = 0x00010000
 	ssLeft             = 0x00000000
 	ssLeftNowordwrap   = 0x0000000c
 	wmDestroy          = 0x0002
 	wmClose            = 0x0010
-	wmPaint            = 0x000f
 	wmSetFont          = 0x0030
 	wmCtlColorStatic   = 0x0138
 	wmProgressClose    = 0x8001
+	pbmSetRange32      = 0x0406
+	pbmSetPos          = 0x0402
 	swShow             = 5
 	cwUseDefault       = 0x80000000
 	cwUseDefaultCoord  = -2147483648
@@ -37,35 +38,32 @@ const (
 	clearTypeQuality   = 5
 	defaultPitchFamily = 0
 	dpiAwarenessContextPerMonitorAwareV2 = ^uintptr(3)
-	colorWindowFrame   = 6
-	colorSurface       = 0x00f7f8fa
-	colorDivider       = 0x00e2e6ea
-	colorProgressFill  = 0x00569fff
-	colorProgressTrack = 0x00e7ebf0
-	colorTextPrimary   = 0x00212929
-	colorTextSecondary = 0x00616a73
+	colorBtnFace       = 15
+	colorWindowText    = 8
+	colorGrayText      = 17
 	transparentBkMode  = 1
 	windowClassName    = "KriptosferaProgressWindow"
 	windowTitle        = "Kriptosfera"
+	progressClassName  = "msctls_progress32"
 )
 
 var (
 	user32                  = syscall.NewLazyDLL("user32.dll")
 	kernel32                = syscall.NewLazyDLL("kernel32.dll")
 	gdi32                   = syscall.NewLazyDLL("gdi32.dll")
+	comctl32                = syscall.NewLazyDLL("comctl32.dll")
 	procBeginPaint          = user32.NewProc("BeginPaint")
 	procCreateWindowExW     = user32.NewProc("CreateWindowExW")
 	procDefWindowProcW      = user32.NewProc("DefWindowProcW")
 	procDestroyWindow       = user32.NewProc("DestroyWindow")
 	procDispatchMessageW    = user32.NewProc("DispatchMessageW")
-	procEndPaint            = user32.NewProc("EndPaint")
-	procFillRect            = user32.NewProc("FillRect")
 	procGetDC               = user32.NewProc("GetDC")
 	procGetMessageW         = user32.NewProc("GetMessageW")
 	procGetModuleHandleW    = kernel32.NewProc("GetModuleHandleW")
-	procGetStockObject      = gdi32.NewProc("GetStockObject")
+	procGetSysColorBrush    = user32.NewProc("GetSysColorBrush")
 	procGetSystemMetrics    = user32.NewProc("GetSystemMetrics")
-	procInvalidateRect      = user32.NewProc("InvalidateRect")
+	procGetSysColor         = user32.NewProc("GetSysColor")
+	procInitCommonControls  = comctl32.NewProc("InitCommonControls")
 	procMulDiv              = kernel32.NewProc("MulDiv")
 	procPostMessageW        = user32.NewProc("PostMessageW")
 	procPostQuitMessage     = user32.NewProc("PostQuitMessage")
@@ -78,7 +76,6 @@ var (
 	procSetTextColor        = gdi32.NewProc("SetTextColor")
 	procSetWindowTextW      = user32.NewProc("SetWindowTextW")
 	procShowWindow          = user32.NewProc("ShowWindow")
-	procCreateSolidBrush    = gdi32.NewProc("CreateSolidBrush")
 	procDeleteObject        = gdi32.NewProc("DeleteObject")
 	procCreateFontW         = gdi32.NewProc("CreateFontW")
 	procGetDeviceCaps       = gdi32.NewProc("GetDeviceCaps")
@@ -92,22 +89,6 @@ var (
 type point struct {
 	X int32
 	Y int32
-}
-
-type rect struct {
-	Left   int32
-	Top    int32
-	Right  int32
-	Bottom int32
-}
-
-type paintStruct struct {
-	Hdc         uintptr
-	Erase       int32
-	Paint       rect
-	Restore     int32
-	IncUpdate   int32
-	Reserved    [32]byte
 }
 
 type msg struct {
@@ -144,6 +125,7 @@ type windowsProgressReporter struct {
 	titleLabel  uintptr
 	statusLabel uintptr
 	detailLabel uintptr
+	progressBar uintptr
 	titleFont   uintptr
 	bodyFont    uintptr
 	mu          sync.Mutex
@@ -179,12 +161,14 @@ func (r *windowsProgressReporter) SetStatus(text string) {
 		r.detailText = ""
 	}
 	statusLabel := r.statusLabel
-	hwnd := r.hwnd
+	progressBar := r.progressBar
 	r.mu.Unlock()
 	if statusLabel != 0 {
 		procSetWindowTextW.Call(statusLabel, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(text))))
 	}
-	invalidateProgressWindow(hwnd)
+	if progressBar != 0 {
+		procSendMessageW.Call(progressBar, pbmSetPos, 0, 0)
+	}
 }
 
 func (r *windowsProgressReporter) SetDownloadProgress(done, total int64) {
@@ -202,7 +186,7 @@ func (r *windowsProgressReporter) SetDownloadProgress(done, total int64) {
 	r.total = total
 	statusLabel := r.statusLabel
 	detailLabel := r.detailLabel
-	hwnd := r.hwnd
+	progressBar := r.progressBar
 	r.mu.Unlock()
 
 	if statusLabel != 0 {
@@ -211,7 +195,10 @@ func (r *windowsProgressReporter) SetDownloadProgress(done, total int64) {
 	if detailLabel != 0 {
 		procSetWindowTextW.Call(detailLabel, uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(detail))))
 	}
-	invalidateProgressWindow(hwnd)
+	if progressBar != 0 {
+		procSendMessageW.Call(progressBar, pbmSetRange32, 0, uintptr(maxInt64(total, 1)))
+		procSendMessageW.Call(progressBar, pbmSetPos, uintptr(done), 0)
+	}
 }
 
 func (r *windowsProgressReporter) Close() error {
@@ -240,6 +227,7 @@ func (r *windowsProgressReporter) run(initialText string) {
 	defer runtime.UnlockOSThread()
 	defer close(r.closed)
 	enableDPIAwareness()
+	procInitCommonControls.Call()
 
 	registerProgressWindowClass()
 	instance, _, _ := procGetModuleHandleW.Call(0)
@@ -248,7 +236,7 @@ func (r *windowsProgressReporter) run(initialText string) {
 	dpi := currentScreenDPI()
 
 	width := scaleInt32(560, dpi)
-	height := scaleInt32(176, dpi)
+	height := scaleInt32(220, dpi)
 	x := centerWindowCoordinate(width, 0)
 	y := centerWindowCoordinate(height, 1)
 
@@ -275,8 +263,9 @@ func (r *windowsProgressReporter) run(initialText string) {
 	statusText := syscall.StringToUTF16Ptr(initialText)
 	detailText := syscall.StringToUTF16Ptr("Это нужно только для первой загрузки или после обновления payload")
 	staticClass := syscall.StringToUTF16Ptr("STATIC")
-	titleFont := createSegoeUIFont(hwnd, 20, fwSemiBold)
-	bodyFont := createSegoeUIFont(hwnd, 12, fwNormal)
+	progressClass := syscall.StringToUTF16Ptr(progressClassName)
+	titleFont := createSegoeUIFont(hwnd, 12, fwSemiBold)
+	bodyFont := createSegoeUIFont(hwnd, 10, fwNormal)
 
 	titleLabel, _, _ := procCreateWindowExW.Call(
 		0,
@@ -284,9 +273,9 @@ func (r *windowsProgressReporter) run(initialText string) {
 		uintptr(unsafe.Pointer(titleText)),
 		uintptr(wsChild|wsVisible|ssLeft),
 		uintptr(scaleInt32(28, dpi)),
-		uintptr(scaleInt32(20, dpi)),
+		uintptr(scaleInt32(24, dpi)),
 		uintptr(scaleInt32(420, dpi)),
-		uintptr(scaleInt32(26, dpi)),
+		uintptr(scaleInt32(20, dpi)),
 		hwnd,
 		0,
 		instance,
@@ -298,7 +287,7 @@ func (r *windowsProgressReporter) run(initialText string) {
 		uintptr(unsafe.Pointer(statusText)),
 		uintptr(wsChild|wsVisible|ssLeft),
 		uintptr(scaleInt32(28, dpi)),
-		uintptr(scaleInt32(58, dpi)),
+		uintptr(scaleInt32(62, dpi)),
 		uintptr(scaleInt32(500, dpi)),
 		uintptr(scaleInt32(22, dpi)),
 		hwnd,
@@ -306,15 +295,30 @@ func (r *windowsProgressReporter) run(initialText string) {
 		instance,
 		0,
 	)
+	progressBar, _, _ := procCreateWindowExW.Call(
+		0,
+		uintptr(unsafe.Pointer(progressClass)),
+		0,
+		uintptr(wsChild|wsVisible|wsTabStop),
+		uintptr(scaleInt32(28, dpi)),
+		uintptr(scaleInt32(98, dpi)),
+		uintptr(scaleInt32(500, dpi)),
+		uintptr(scaleInt32(22, dpi)),
+		hwnd,
+		0,
+		instance,
+		0,
+	)
+
 	detailLabel, _, _ := procCreateWindowExW.Call(
 		0,
 		uintptr(unsafe.Pointer(staticClass)),
 		uintptr(unsafe.Pointer(detailText)),
 		uintptr(wsChild|wsVisible|ssLeft|ssLeftNowordwrap),
 		uintptr(scaleInt32(28, dpi)),
-		uintptr(scaleInt32(118, dpi)),
+		uintptr(scaleInt32(142, dpi)),
 		uintptr(scaleInt32(500, dpi)),
-		uintptr(scaleInt32(20, dpi)),
+		uintptr(scaleInt32(24, dpi)),
 		hwnd,
 		0,
 		instance,
@@ -330,6 +334,7 @@ func (r *windowsProgressReporter) run(initialText string) {
 	r.titleLabel = titleLabel
 	r.statusLabel = statusLabel
 	r.detailLabel = detailLabel
+	r.progressBar = progressBar
 	r.titleFont = titleFont
 	r.bodyFont = bodyFont
 	r.statusText = initialText
@@ -357,6 +362,7 @@ func (r *windowsProgressReporter) run(initialText string) {
 	r.titleLabel = 0
 	r.statusLabel = 0
 	r.detailLabel = 0
+	r.progressBar = 0
 	titleFont = r.titleFont
 	bodyFont = r.bodyFont
 	r.titleFont = 0
@@ -371,12 +377,6 @@ func (r *windowsProgressReporter) run(initialText string) {
 	if r.logger != nil {
 		r.logger.Info("progress window closed")
 	}
-}
-
-func (r *windowsProgressReporter) snapshot() (int64, int64) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.done, r.total
 }
 
 func enableDPIAwareness() {
@@ -413,6 +413,18 @@ func scaleInt32(value int32, dpi int32) int32 {
 	return int32(scaled)
 }
 
+func maxInt64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func mustSysColor(index uintptr) uintptr {
+	value, _, _ := procGetSysColor.Call(index)
+	return value
+}
+
 func centerWindowCoordinate(size int32, axis int) int32 {
 	metric := uintptr(0)
 	if axis == 0 {
@@ -431,14 +443,6 @@ func centerWindowCoordinate(size int32, axis int) int32 {
 	return centered
 }
 
-func invalidateProgressWindow(hwnd uintptr) {
-	if hwnd == 0 {
-		return
-	}
-	procInvalidateRect.Call(hwnd, 0, 1)
-	procUpdateWindow.Call(hwnd)
-}
-
 func registerProgressWindowClass() {
 	progressWindowClassOnce.Do(func() {
 		instance, _, _ := procGetModuleHandleW.Call(0)
@@ -447,7 +451,7 @@ func registerProgressWindowClass() {
 			Size:       uint32(unsafe.Sizeof(wndClassEx{})),
 			WndProc:    progressWndProc,
 			Instance:   instance,
-			Background: uintptr(colorWindowFrame + 1),
+			Background: uintptr(colorBtnFace + 1),
 			ClassName:  className,
 		}
 		procRegisterClassExW.Call(uintptr(unsafe.Pointer(&wc)))
@@ -467,9 +471,6 @@ func progressWindowProc(hwnd uintptr, msg uint32, wParam, lParam uintptr) uintpt
 		return 0
 	case wmCtlColorStatic:
 		return handleStaticColors(hwnd, wParam, lParam)
-	case wmPaint:
-		drawProgressWindow(hwnd)
-		return 0
 	default:
 		ret, _, _ := procDefWindowProcW.Call(hwnd, uintptr(msg), wParam, lParam)
 		return ret
@@ -489,61 +490,14 @@ func handleStaticColors(hwnd, wParam, lParam uintptr) uintptr {
 	procSetBkMode.Call(hdc, transparentBkMode)
 	switch control {
 	case reporter.titleLabel:
-		procSetTextColor.Call(hdc, colorTextPrimary)
+		procSetTextColor.Call(hdc, mustSysColor(colorWindowText))
 	case reporter.statusLabel:
-		procSetTextColor.Call(hdc, colorTextPrimary)
+		procSetTextColor.Call(hdc, mustSysColor(colorWindowText))
 	default:
-		procSetTextColor.Call(hdc, colorTextSecondary)
+		procSetTextColor.Call(hdc, mustSysColor(colorGrayText))
 	}
-	brush, _, _ := procGetStockObject.Call(0)
+	brush, _, _ := procGetSysColorBrush.Call(colorBtnFace)
 	return brush
-}
-
-func drawProgressWindow(hwnd uintptr) {
-	var ps paintStruct
-	hdc, _, _ := procBeginPaint.Call(hwnd, uintptr(unsafe.Pointer(&ps)))
-	if hdc == 0 {
-		return
-	}
-	defer procEndPaint.Call(hwnd, uintptr(unsafe.Pointer(&ps)))
-	dpi := currentScreenDPI()
-	windowWidth := scaleInt32(560, dpi)
-	windowHeight := scaleInt32(176, dpi)
-	barLeft := scaleInt32(28, dpi)
-	barTop := scaleInt32(86, dpi)
-	barWidth := scaleInt32(504, dpi)
-	barHeight := scaleInt32(10, dpi)
-	dividerTop := scaleInt32(110, dpi)
-
-	fillRectColor(hdc, rect{Left: 0, Top: 0, Right: windowWidth, Bottom: windowHeight}, colorSurface)
-	fillRectColor(hdc, rect{Left: barLeft, Top: barTop, Right: barLeft + barWidth, Bottom: barTop + barHeight}, colorProgressTrack)
-
-	value, ok := progressWindowStates.Load(hwnd)
-	if !ok {
-		return
-	}
-	reporter := value.(*windowsProgressReporter)
-	done, total := reporter.snapshot()
-	if total > 0 && done > 0 {
-		if done > total {
-			done = total
-		}
-		fillWidth := int32(float64(barWidth) * (float64(done) / float64(total)))
-		if fillWidth < scaleInt32(4, dpi) {
-			fillWidth = scaleInt32(4, dpi)
-		}
-		fillRectColor(hdc, rect{Left: barLeft, Top: barTop, Right: barLeft + fillWidth, Bottom: barTop + barHeight}, colorProgressFill)
-	}
-	fillRectColor(hdc, rect{Left: barLeft, Top: dividerTop, Right: barLeft + barWidth, Bottom: dividerTop + 1}, colorDivider)
-}
-
-func fillRectColor(hdc uintptr, area rect, color uintptr) {
-	brush, _, _ := procCreateSolidBrush.Call(color)
-	if brush == 0 {
-		return
-	}
-	procFillRect.Call(hdc, uintptr(unsafe.Pointer(&area)), brush)
-	procDeleteObject.Call(brush)
 }
 
 func applyControlFont(hwnd, font uintptr) {
