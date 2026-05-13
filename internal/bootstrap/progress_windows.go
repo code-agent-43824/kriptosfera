@@ -350,8 +350,8 @@ func (r *windowsProgressReporter) run(initialText string) {
 	r.titleLabel = 0
 	r.statusLabel = 0
 	r.detailLabel = 0
-	titleFont := r.titleFont
-	bodyFont := r.bodyFont
+	titleFont = r.titleFont
+	bodyFont = r.bodyFont
 	r.titleFont = 0
 	r.bodyFont = 0
 	r.mu.Unlock()
