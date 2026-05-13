@@ -349,7 +349,7 @@ func centerWindowCoordinate(size int32, axis int) int32 {
 	if value == 0 {
 		return cwUseDefaultCoord
 	}
-	centered := int32(value-int(size)) / 2
+	centered := int32(int(value)-int(size)) / 2
 	if centered < 0 {
 		return cwUseDefaultCoord
 	}
