@@ -56,30 +56,42 @@ build/                      PowerShell scripts для CI/локальной сб
 
 ## Сборка на GitHub Actions
 
-Workflow: `.github/workflows/build-windows.yml`
+Основные workflow:
+- `.github/workflows/build-windows.yml` — обычная сборка launcher'ов
+- `.github/workflows/build-payload.yml` — отдельная редкая сборка/publish payload
 
-Что делает pipeline:
-1. job `payload`: готовит payload (включая Chromium runtime)
-2. job `payload`: упаковывает `dist/payload.zip` и `dist/payload.json`
-3. job `payload`: публикует immutable layout локально и может залить payload на сервер по SSH при наличии secrets
-4. job `payload`: публикует отдельный payload artifact / release assets
-5. job `launcher`: скачивает уже собранный payload как внутренний input
-6. job `launcher`: прогоняет `go test ./...` для embedded path
-7. job `launcher`: собирает `dist/KriptosferaDemo.exe`
-8. job `launcher`: собирает `dist/KriptosferaDemo-remote.exe` с build tag `remote`
-9. job `launcher`: публикует отдельный launcher artifact / release assets
+### Как теперь устроен pipeline
 
-### Важный момент про «без лишнего зазиповывания»
+`build-windows.yml`:
+1. скачивает **стабильный опубликованный payload** по `build/payload-lock.json`
+2. проверяет SHA-256 и размер скачанного payload
+3. собирает `dist/KriptosferaDemo.exe` (embedded)
+4. собирает `dist/KriptosferaDemo-remote.exe` (remote)
+5. публикует один launcher artifact / release assets
+
+`build-payload.yml`:
+1. готовит payload (включая Chromium runtime)
+2. упаковывает `dist/payload.zip` и `dist/payload.json`
+3. публикует payload на сервер по SSH
+4. публикует **один** payload artifact / release assets
+
+### Почему payload больше не пересобирается при каждой сборке приложения
+
+Payload тяжёлый и меняется редко. Поэтому launcher-сборка больше не тратит время на его пересборку.
+
+Источником истины теперь служит `build/payload-lock.json`:
+- там зафиксированы `payloadVersion`, `sha256`, `size`, `url`, `metadataUrl`
+- пока payload не меняется, launcher всегда собирается против одного и того же стабильного payload
+- если payload когда-нибудь обновляется, нужно обновить этот lock-файл на новый immutable URL/хеш
+
+### Важный момент про артефакты
 
 GitHub Actions workflow artifacts технически скачиваются GitHub'ом как zip-контейнер — это ограничение самой платформы.
 
-Поэтому добавлен практичный обходной путь:
-- обычный CI-run публикует **два отдельных workflow artifact**: launcher и payload;
-- tag build (`v*`) дополнительно прикрепляет сырые `.exe` и payload-файлы как **GitHub Release assets**.
-
-То есть пользовательская модель теперь простая:
-- launcher-артефакт содержит только большой `KriptosferaDemo.exe` и маленький `KriptosferaDemo-remote.exe`;
-- payload живёт отдельно и может публиковаться прямо на сервер, не раздувая launcher artifact.
+Теперь модель проще:
+- обычный launcher CI-run публикует только **один** workflow artifact: `launchers`
+- payload workflow публикует только **один** workflow artifact: `payload`
+- tag build (`v*`) дополнительно прикрепляет сырые `.exe` и payload-файлы как **GitHub Release assets**
 
 ## Документно подтверждённые этапы MVP
 
