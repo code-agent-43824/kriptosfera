@@ -37,10 +37,10 @@
 - отдельный `user-data-dir` для запуска встроенного браузера;
 - cache-friendly подготовка Chromium runtime в CI.
 
-Сейчас в работе:
-- thin launcher build/runtime-config generation;
-- immutable payload artifact layout для remote delivery;
-- следующий оставшийся хвост этапа — minimal progress UX.
+Следующий этап:
+- CryptoPro extension;
+- затем native messaging;
+- затем crypto stack.
 
 ## Репозиторий
 
@@ -59,28 +59,27 @@ build/                      PowerShell scripts для CI/локальной сб
 Workflow: `.github/workflows/build-windows.yml`
 
 Что делает pipeline:
-1. checkout
-2. setup Go
-3. восстановление cache Chromium runtime
-4. подготовка payload (включая Chromium runtime)
-5. упаковка `dist/payload.zip` и генерация `dist/payload.json`
-6. публикация immutable layout в `dist/published/payloads/win64/demo/<version>/<sha256>/...`
-7. генерация runtime config для embedded launcher
-8. `go test ./...` для embedded path
-9. сборка `dist/KriptosferaDemo.exe`
-10. генерация runtime config для remote launcher
-11. сборка `dist/KriptosferaDemo-remote.exe` с build tag `remote`
-12. публикация артефактов
+1. job `payload`: готовит payload (включая Chromium runtime)
+2. job `payload`: упаковывает `dist/payload.zip` и `dist/payload.json`
+3. job `payload`: публикует immutable layout локально и может залить payload на сервер по SSH при наличии secrets
+4. job `payload`: публикует отдельный payload artifact / release assets
+5. job `launcher`: скачивает уже собранный payload как внутренний input
+6. job `launcher`: прогоняет `go test ./...` для embedded path
+7. job `launcher`: собирает `dist/KriptosferaDemo.exe`
+8. job `launcher`: собирает `dist/KriptosferaDemo-remote.exe` с build tag `remote`
+9. job `launcher`: публикует отдельный launcher artifact / release assets
 
 ### Важный момент про «без лишнего зазиповывания»
 
 GitHub Actions workflow artifacts технически скачиваются GitHub'ом как zip-контейнер — это ограничение самой платформы.
 
 Поэтому добавлен практичный обходной путь:
-- обычный CI-run публикует workflow artifact;
-- tag build (`v*`) дополнительно прикрепляет **сырой `KriptosferaDemo.exe`**, **`KriptosferaDemo-remote.exe`**, `payload.zip`, `payload.json` и `README.txt` как **GitHub Release assets**.
+- обычный CI-run публикует **два отдельных workflow artifact**: launcher и payload;
+- tag build (`v*`) дополнительно прикрепляет сырые `.exe` и payload-файлы как **GitHub Release assets**.
 
-То есть для реального скачивания итоговых бинарников и payload без дополнительной упаковки нужно брать **release assets**, а не workflow artifact.
+То есть пользовательская модель теперь простая:
+- launcher-артефакт содержит только большой `KriptosferaDemo.exe` и маленький `KriptosferaDemo-remote.exe`;
+- payload живёт отдельно и может публиковаться прямо на сервер, не раздувая launcher artifact.
 
 ## Документно подтверждённые этапы MVP
 
