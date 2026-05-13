@@ -4,11 +4,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 type ExtensionSpec struct {
-	Name        string
-	Path        string
+	Name         string
+	Path         string
 	ManifestPath string
 }
 
@@ -40,4 +41,29 @@ func detectExtensions(appDir string) ([]ExtensionSpec, error) {
 		return extensions[i].Name < extensions[j].Name
 	})
 	return extensions, nil
+}
+
+func loadableExtensions(exts []ExtensionSpec) []ExtensionSpec {
+	loadable := make([]ExtensionSpec, 0, len(exts))
+	for _, ext := range exts {
+		if _, err := os.Stat(ext.ManifestPath); err == nil {
+			loadable = append(loadable, ext)
+		}
+	}
+	return loadable
+}
+
+func buildExtensionArgs(exts []ExtensionSpec) []string {
+	if len(exts) == 0 {
+		return nil
+	}
+	paths := make([]string, 0, len(exts))
+	for _, ext := range exts {
+		paths = append(paths, ext.Path)
+	}
+	joined := strings.Join(paths, ",")
+	return []string{
+		"--disable-extensions-except=" + joined,
+		"--load-extension=" + joined,
+	}
 }

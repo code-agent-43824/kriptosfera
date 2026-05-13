@@ -100,6 +100,12 @@ func Run(cfg config.RuntimeConfig) error {
             }
         }
     }
+    extensionArgs := buildExtensionArgs(loadableExtensions(extensions))
+    if len(extensionArgs) == 0 {
+        logger.Info("extensions load count=0")
+    } else {
+        logger.Info("extensions load count=%d", len(loadableExtensions(extensions)))
+    }
 
     profileDir := filepath.Join(root, "profiles", appCfg.ProfileName)
     if err := os.MkdirAll(profileDir, 0o755); err != nil {
@@ -118,7 +124,7 @@ func Run(cfg config.RuntimeConfig) error {
         return writeDryRun(appDir, profileDir, appCfg, logger)
     }
 
-	args := buildChromiumArgs(profileDir, appCfg)
+	args := buildChromiumArgs(profileDir, appCfg, extensionArgs)
 	logger.Info("launch chromium path=%s args=%s", chromePath, strings.Join(args, " "))
 
 	cmd := exec.Command(chromePath, args...)
@@ -185,10 +191,12 @@ func resolveChromiumExecutable(chromeDir string) (string, error) {
     return "", fmt.Errorf("chromium runtime not found in %s", chromeDir)
 }
 
-func buildChromiumArgs(profileDir string, appCfg config.AppConfig) []string {
+func buildChromiumArgs(profileDir string, appCfg config.AppConfig, extensionArgs []string) []string {
     args := []string{
         "--user-data-dir=" + profileDir,
     }
+
+    args = append(args, extensionArgs...)
 
     if appCfg.WindowMode == "app" {
         args = append(args, "--app="+appCfg.StartURL)
