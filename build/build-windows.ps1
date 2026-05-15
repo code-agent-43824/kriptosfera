@@ -4,12 +4,20 @@ param(
   [ValidateSet("embedded", "remote")]
   [string]$PayloadMode = "embedded",
   [string]$PayloadBaseUrl = "",
-  [string]$PayloadLockPath = "build/payload-lock.json"
+  [string]$PayloadLockPath = "build/payload-lock.json",
+  [switch]$UseStablePayload
 )
 
 $ErrorActionPreference = "Stop"
 
-pwsh ./build/fetch-payload.ps1 -PayloadLockPath $PayloadLockPath -OutputDir $OutputDir
+if ($UseStablePayload) {
+  pwsh ./build/fetch-payload.ps1 -PayloadLockPath $PayloadLockPath -OutputDir $OutputDir
+  Write-Host "Using stable published payload from lock file"
+} else {
+  pwsh ./build/build-payload.ps1 -OutputDir $OutputDir
+  Write-Host "Using payload built from current checkout"
+}
+
 pwsh ./build/build-launcher.ps1 -Version $Version -OutputDir $OutputDir -PayloadMode $PayloadMode -PayloadZip (Join-Path $OutputDir "payload.zip") -PayloadMetadata (Join-Path $OutputDir "payload.json") -PayloadBaseUrl $PayloadBaseUrl
 
-Write-Host "Launcher build completed against stable payload for mode=$PayloadMode"
+Write-Host "Launcher build completed for mode=$PayloadMode"
