@@ -16,6 +16,7 @@ pwsh ./build/prepare-chromium.ps1 -OutputDir (Join-Path $OutputDir "chromium")
 $required = @(
   "config/app-config.json",
   "diagnostics/diagnostics.html",
+  "extensions/cryptopro-cades/manifest.json",
   "chromium/chrome.exe"
 )
 

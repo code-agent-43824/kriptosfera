@@ -3,16 +3,96 @@
 <head>
   <meta charset="utf-8" />
   <title>Kriptosfera Diagnostics</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; line-height: 1.45; }
+    h1, h2 { margin-bottom: 0.4em; }
+    ul { padding-left: 20px; }
+    code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
+    .ok { color: #0a7a2f; }
+    .bad { color: #b00020; }
+    .muted { color: #666; }
+  </style>
 </head>
 <body>
   <h1>Kriptosfera Diagnostics</h1>
-  <p>Здесь будет минимальная диагностика launcher/payload/browser/runtime.</p>
-  <ul>
-    <li>Версия launcher</li>
-    <li>Версия payload</li>
-    <li>Путь к runtime</li>
-    <li>Путь к профилю</li>
-    <li>Состояние native messaging</li>
-  </ul>
+  <p>Минимальная проверка wiring и живости CryptoPro extension.</p>
+
+  <h2>Launcher wiring</h2>
+  <div id="launcher-status">Загрузка…</div>
+
+  <h2>Runtime probe</h2>
+  <div id="runtime-status">Ожидание…</div>
+
+  <script src="./extension-status.js"></script>
+  <script>
+    const status = window.__KRIPTOSFERA_EXTENSION_STATUS__ || null;
+    const launcherEl = document.getElementById('launcher-status');
+    const runtimeEl = document.getElementById('runtime-status');
+
+    function esc(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    }
+
+    function row(label, value) {
+      return `<li><strong>${esc(label)}:</strong> ${value}</li>`;
+    }
+
+    function renderLauncherStatus() {
+      if (!status) {
+        launcherEl.innerHTML = '<p class="bad">extension-status.js не загружен.</p>';
+        return null;
+      }
+      const extensions = Array.isArray(status.extensions) ? status.extensions : [];
+      const primary = extensions.find((item) => item.name === 'cryptopro-cades') || extensions[0] || null;
+      launcherEl.innerHTML = `
+        <ul>
+          ${row('generatedAt', `<code>${esc(status.generatedAt || 'unknown')}</code>`)}
+          ${row('extensionsRoot', `<code>${esc(status.extensionsRoot || 'unknown')}</code>`)}
+          ${row('detectedCount', esc(status.detectedCount ?? '0'))}
+          ${row('loadableCount', esc(status.loadableCount ?? '0'))}
+          ${row('chromiumArgsAdded', status.chromiumArgsAdded ? '<span class="ok">yes</span>' : '<span class="bad">no</span>')}
+          ${primary ? row('primaryExtension', `<code>${esc(primary.name)}</code>`) : row('primaryExtension', '<span class="bad">not found</span>')}
+          ${primary ? row('extensionVersion', `<code>${esc(primary.version || 'unknown')}</code>`) : ''}
+          ${primary ? row('extensionId', `<code>${esc(primary.extensionId || 'unknown')}</code>`) : ''}
+          ${primary && primary.manifestError ? row('manifestError', `<span class="bad">${esc(primary.manifestError)}</span>`) : ''}
+        </ul>`;
+      return primary;
+    }
+
+    function probeScript(url) {
+      return new Promise((resolve) => {
+        const script = document.createElement('script');
+        let done = false;
+        script.src = url;
+        script.onload = () => { if (!done) { done = true; resolve(true); } };
+        script.onerror = () => { if (!done) { done = true; resolve(false); } };
+        document.head.appendChild(script);
+        setTimeout(() => { if (!done) { done = true; resolve(false); } }, 4000);
+      });
+    }
+
+    async function renderRuntimeStatus(primary) {
+      if (!primary || !primary.extensionId) {
+        runtimeEl.innerHTML = '<p class="bad">Нет extension id для runtime probe.</p>';
+        return;
+      }
+      const apiUrl = `chrome-extension://${primary.extensionId}/nmcades_plugin_api.js`;
+      const loaded = await probeScript(apiUrl);
+      const apiReady = !!(window.cpcsp_chrome_nmcades && typeof window.cpcsp_chrome_nmcades.check_chrome_plugin === 'function');
+      runtimeEl.innerHTML = `
+        <ul>
+          ${row('apiScriptUrl', `<code>${esc(apiUrl)}</code>`)}
+          ${row('scriptLoad', loaded ? '<span class="ok">ok</span>' : '<span class="bad">fail</span>')}
+          ${row('window.cpcsp_chrome_nmcades', apiReady ? '<span class="ok">present</span>' : '<span class="bad">missing</span>')}
+        </ul>
+        <p class="muted">Для полного end-to-end сценария нужен следующий слой: native messaging + CryptoPro plugin/CSP.</p>`;
+    }
+
+    const primary = renderLauncherStatus();
+    renderRuntimeStatus(primary);
+  </script>
 </body>
 </html>
