@@ -3,5 +3,6 @@ dist/
 .tmp/
 *.exe
 *.zip
+internal/bootstrap/cryptopro-plugin.zip
 payload/
 .build-cache/

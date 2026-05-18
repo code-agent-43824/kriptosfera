@@ -5,13 +5,15 @@ param(
   [string]$PayloadMode = "embedded",
   [string]$PayloadZip = "dist/payload.zip",
   [string]$PayloadMetadata = "dist/payload.json",
-  [string]$PayloadBaseUrl = ""
+  [string]$PayloadBaseUrl = "",
+  [string]$CryptoProPluginLockPath = "build/cryptopro-plugin-lock.json"
 )
 
 $ErrorActionPreference = "Stop"
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 pwsh ./build/set-build-version.ps1 -Version $Version
+pwsh ./build/fetch-cryptopro-plugin.ps1 -LockPath $CryptoProPluginLockPath -OutputPath "internal/bootstrap/cryptopro-plugin.zip" -MetadataOutputPath (Join-Path $OutputDir "cryptopro-plugin.json")
 
 if ($PayloadMode -eq "embedded") {
   if (-not (Test-Path $PayloadZip)) {

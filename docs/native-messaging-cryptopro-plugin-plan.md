@@ -152,13 +152,15 @@ Added:
 
 - `build/cryptopro-plugin-lock.json`
 - `build/cryptopro-plugin-lock.example.json`
+- `build/fetch-cryptopro-plugin.ps1`
+- `internal/bootstrap/cryptopro_plugin_windows.go`
+- `internal/bootstrap/cryptopro_plugin_other.go`
+- `internal/bootstrap/cryptopro_plugin.go`
 
 Add later, when implementing:
 
-- `build/fetch-cryptopro-plugin.ps1`
-- `build/embed-cryptopro-plugin.ps1` or integrate into `build/build-launcher.ps1`
-- `internal/bootstrap/cryptopro_plugin_embedded.go`
-- `internal/bootstrap/cryptopro_plugin.go`
+- runtime extraction manager for the embedded plugin archive;
+- native messaging manifest generation and HKCU registration.
 
 Lock file shape:
 
@@ -179,14 +181,16 @@ Lock file shape:
 For both embedded and remote launchers:
 
 1. Read `build/cryptopro-plugin-lock.json`.
-2. Download `cryptopro-plugin.zip` from the static server into `dist/` or `.build-cache/`.
-3. Verify SHA-256 and size.
-4. Generate/embed a Go asset file or copy the zip into an embedded location before `go build`.
-5. Build:
+2. Download `cryptopro-plugin.zip` from the static server into `internal/bootstrap/cryptopro-plugin.zip`.
+3. Download `cryptopro-plugin.json` into `dist/cryptopro-plugin.json`.
+4. Verify SHA-256 and size against the lock file.
+5. Verify downloaded metadata matches the pinned SHA-256 and size.
+6. Embed the verified zip through Go `embed` on Windows builds.
+7. Build:
    - `KriptosferaDemo.exe`
    - `KriptosferaDemo-remote.exe`
-6. Do not put the CryptoPro bundle into `payload.zip`.
-7. Do not upload CryptoPro binaries as GitHub workflow artifacts unless explicitly needed and allowed; default artifact should remain launcher executables/README.
+8. Do not put the CryptoPro bundle into `payload.zip`.
+9. Do not upload CryptoPro source archives as GitHub workflow artifacts; launcher executables contain the embedded bundle by design.
 
 Important: if the launcher artifact itself contains embedded CryptoPro binaries, publishing the launcher is already redistribution. That is acceptable per Kirill's permission note, but keep the source archives out of GitHub.
 
@@ -369,9 +373,11 @@ Tasks:
 
 Exit criteria:
 
-- both `KriptosferaDemo.exe` and `KriptosferaDemo-remote.exe` contain the plugin bundle;
-- build fails closed if the static archive is missing or checksum mismatches;
+- both `KriptosferaDemo.exe` and `KriptosferaDemo-remote.exe` contain the plugin bundle: implemented by Windows `go:embed`;
+- build fails closed if the static archive is missing or checksum mismatches: implemented in `build/fetch-cryptopro-plugin.ps1`;
 - GitHub repo still contains no CryptoPro binaries.
+
+Current limitation: this phase only embeds the archive and logs its size/SHA-256 at launcher startup. Runtime extraction and native messaging registration are intentionally left to the next phases.
 
 ### Phase 2 — Runtime extraction next to Chromium
 

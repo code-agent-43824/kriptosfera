@@ -38,6 +38,7 @@
 - отдельный `user-data-dir` для запуска встроенного браузера;
 - cache-friendly подготовка Chromium runtime в CI;
 - CryptoPro extension layer: unpacked extension доставляется в payload, launcher добавляет Chromium extension flags, extension id стабилен через `manifest.key`;
+- CryptoPro Browser Plugin bundle закреплён отдельным lock-файлом, скачивается с project static storage, проверяется по SHA-256/size и встраивается в оба launcher variants;
 - минимальная app-config validation: `startUrl` должен соответствовать `allowedOrigins`, если список задан;
 - diagnostics остаётся включённой для MVP; `diagnosticsEnabled` управляет записью launcher-side diagnostic files.
 
@@ -118,11 +119,12 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - CryptoPro extension добавлен в payload и проверен через launcher/runtime diagnostics.
 
 Что дальше:
-- native messaging host;
+- runtime extraction CryptoPro plugin bundle в AppData рядом с Chromium;
+- native messaging manifest + HKCU registration;
 - затем интеграция crypto stack.
 
 ## Ближайшие инженерные задачи
 
-- подготовить следующий этап MVP: native messaging host в user-space;
+- подготовить runtime extraction и native messaging host в user-space;
 - затем идти в crypto stack и reference signing flow;
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.

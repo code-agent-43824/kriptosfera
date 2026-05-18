@@ -63,6 +63,12 @@ func Run(cfg config.RuntimeConfig) error {
 	}
 	defer logger.Close()
 	logger.Info("launcher start version=%s os=%s mode=%s", cfg.Version, runtime.GOOS, cfg.Payload.Mode)
+	cryptoProPlugin := embeddedCryptoProPluginInfo()
+	if cryptoProPlugin.Available {
+		logger.Info("cryptopro plugin bundle embedded size=%d sha256=%s", cryptoProPlugin.Size, cryptoProPlugin.SHA256)
+	} else {
+		logger.Info("cryptopro plugin bundle not embedded for os=%s", runtime.GOOS)
+	}
 	progress := newProgressReporter(cfg, logger)
 	defer progress.Close()
 
