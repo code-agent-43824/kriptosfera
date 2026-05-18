@@ -20,13 +20,14 @@
 Сейчас есть:
 - каркас `launcher` на Go;
 - логика single-file bootstrapper с embedded `payload.zip`;
-- шаблон payload;
+- remote payload mode для thin launcher с HTTPS-загрузкой, SHA-256 проверкой и cache reuse;
+- шаблон payload с pinned Chromium runtime и CryptoPro CAdES Browser Plug-in extension `1.3.17`;
+- diagnostics page для проверки wiring extension и runtime-доступности `nmcades_plugin_api.js`;
 - PowerShell-скрипты сборки под GitHub Actions;
 - Windows CI workflow на бесплатных GitHub-hosted runners;
 - модель публикации артефактов без дополнительного ручного zip на release-тегах.
 
 Сейчас ещё нет:
-- CryptoPro extension;
 - native messaging host;
 - CSP Lite / библиотек CryptoPro;
 - рабочего сценария подписи.
@@ -35,11 +36,13 @@
 - foundation launcher первого этапа;
 - managed Chromium runtime второго этапа, который подготавливается в payload из pinned Chrome for Testing build;
 - отдельный `user-data-dir` для запуска встроенного браузера;
-- cache-friendly подготовка Chromium runtime в CI.
+- cache-friendly подготовка Chromium runtime в CI;
+- CryptoPro extension layer: unpacked extension доставляется в payload, launcher добавляет Chromium extension flags, extension id стабилен через `manifest.key`;
+- минимальная app-config validation: `startUrl` должен соответствовать `allowedOrigins`, если список задан;
+- `diagnosticsEnabled` управляет записью launcher-side diagnostic files.
 
 Следующий этап:
-- CryptoPro extension;
-- затем native messaging;
+- native messaging;
 - затем crypto stack.
 
 ## Репозиторий
@@ -63,11 +66,10 @@ build/                      PowerShell scripts для CI/локальной сб
 ### Как теперь устроен pipeline
 
 `build-windows.yml`:
-1. скачивает **стабильный опубликованный payload** по `build/payload-lock.json`
-2. проверяет SHA-256 и размер скачанного payload
-3. собирает `dist/KriptosferaDemo.exe` (embedded)
-4. собирает `dist/KriptosferaDemo-remote.exe` (remote)
-5. публикует один launcher artifact / release assets
+1. собирает payload package из текущего commit
+2. собирает `dist/KriptosferaDemo.exe` (embedded)
+3. собирает `dist/KriptosferaDemo-remote.exe` (remote)
+4. публикует один launcher artifact / release assets
 
 `build-payload.yml`:
 1. готовит payload (включая Chromium runtime)
@@ -75,14 +77,11 @@ build/                      PowerShell scripts для CI/локальной сб
 3. публикует payload на сервер по SSH
 4. публикует **один** payload artifact / release assets
 
-### Почему payload больше не пересобирается при каждой сборке приложения
+### Payload source для launcher build
 
-Payload тяжёлый и меняется редко. Поэтому launcher-сборка больше не тратит время на его пересборку.
+Обычный `build-windows.yml` сейчас собирает launchers против payload из текущего commit, чтобы изменения в `payload-template/**` сразу попадали в оба launcher variants.
 
-Источником истины теперь служит `build/payload-lock.json`:
-- там зафиксированы `payloadVersion`, `sha256`, `size`, `url`, `metadataUrl`
-- пока payload не меняется, launcher всегда собирается против одного и того же стабильного payload
-- если payload когда-нибудь обновляется, нужно обновить этот lock-файл на новый immutable URL/хеш
+Для отдельного stable-payload сценария в `build/build-windows.ps1` оставлен флаг `-UseStablePayload`: он скачивает payload по `build/payload-lock.json`, проверяет SHA-256/size и собирает launchers против уже опубликованного immutable payload.
 
 ### Важный момент про артефакты
 
@@ -106,22 +105,22 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 
 ## Текущий следующий шаг
 
-**Этап 4: переход к CryptoPro extension / native messaging.**
+**Этап 5: переход к native messaging.**
 
-Что закрыто внутри этапа 3:
+Что закрыто внутри этапов 3-4:
 - выделен runtime/payload abstraction layer;
 - добавлен remote runtime core (`RemotePayloadSource`, temp download, SHA-256 verify, cache reuse);
 - добавлены build/runtime-config generation и immutable payload artifact layout;
 - workflow уже собирает и embedded launcher, и thin launcher;
 - для remote first-run добавлен minimal progress UX с маленьким progress window на Windows.
+- CryptoPro extension добавлен в payload и проверен через launcher/runtime diagnostics.
 
 Что дальше:
-- загрузка CryptoPro extension;
 - native messaging host;
 - затем интеграция crypto stack.
 
 ## Ближайшие инженерные задачи
 
-- подготовить следующий этап MVP: CryptoPro extension;
-- затем идти в native messaging и crypto stack;
+- подготовить следующий этап MVP: native messaging host в user-space;
+- затем идти в crypto stack и reference signing flow;
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.

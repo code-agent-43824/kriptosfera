@@ -328,7 +328,62 @@ func TestBuildChromiumArgsWindowModeBrowser(t *testing.T) {
     lastArg := args[len(args)-len(cfg.ChromiumArgs)-1]
     if lastArg != "https://example.test" {
         t.Fatalf("expected plain URL arg, got %s", lastArg)
-    }
+	}
+}
+
+func TestValidateAppConfigAcceptsStartURLAllowedOrigin(t *testing.T) {
+	cfg := testAppConfig()
+	cfg.StartURL = "https://www.cryptopro.ru/sites/default/files/products/cades/demopage/cades_bes_sample.html"
+	cfg.AllowedOrigins = []string{"https://www.cryptopro.ru"}
+
+	if err := validateAppConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestValidateAppConfigRejectsStartURLOutsideAllowedOrigins(t *testing.T) {
+	cfg := testAppConfig()
+	cfg.StartURL = "https://example.test"
+	cfg.AllowedOrigins = []string{"https://www.cryptopro.ru"}
+
+	if err := validateAppConfig(cfg); err == nil {
+		t.Fatal("expected startUrl origin validation error")
+	}
+}
+
+func TestValidateAppConfigRejectsInvalidAllowedOrigin(t *testing.T) {
+	cfg := testAppConfig()
+	cfg.AllowedOrigins = []string{"not an origin"}
+
+	if err := validateAppConfig(cfg); err == nil {
+		t.Fatal("expected invalid allowed origin error")
+	}
+}
+
+func TestValidateAppConfigRejectsAllowedOriginWithPath(t *testing.T) {
+	cfg := testAppConfig()
+	cfg.AllowedOrigins = []string{"https://example.test/path"}
+
+	if err := validateAppConfig(cfg); err == nil {
+		t.Fatal("expected allowed origin with path error")
+	}
+}
+
+func TestWriteDryRunSkipsFileWhenDiagnosticsDisabled(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	if err := os.MkdirAll(filepath.Join(appDir, "diagnostics"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := testAppConfig()
+	cfg.DiagnosticsEnabled = false
+
+	if err := writeDryRun(appDir, filepath.Join(appDir, "profile"), cfg, logger); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(appDir, "diagnostics", "runtime-dry-run.txt")); !os.IsNotExist(err) {
+		t.Fatalf("expected no dry-run diagnostics file, got %v", err)
+	}
 }
 
 func TestUnzipRejectsTraversal(t *testing.T) {

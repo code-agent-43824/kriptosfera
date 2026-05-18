@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -80,6 +81,9 @@ func Run(cfg config.RuntimeConfig) error {
 	if err != nil {
 		return err
 	}
+	if err := validateAppConfig(appCfg); err != nil {
+		return err
+	}
 	logger.Info("payload ready reused=%t start_url=%s", prepareResult.Reused, appCfg.StartURL)
 
 	extensions, err := detectExtensions(appDir)
@@ -106,8 +110,12 @@ func Run(cfg config.RuntimeConfig) error {
 	} else {
 		logger.Info("extensions load count=%d", len(loadableExtensions(extensions)))
 	}
-	if err := writeExtensionStatus(appDir, extensions, extensionArgs); err != nil {
-		logger.Info("extension diagnostics write failed: %v", err)
+	if appCfg.DiagnosticsEnabled {
+		if err := writeExtensionStatus(appDir, extensions, extensionArgs); err != nil {
+			logger.Info("extension diagnostics write failed: %v", err)
+		}
+	} else {
+		logger.Info("extension diagnostics disabled by app config")
 	}
 
 	profileDir := filepath.Join(root, "profiles", appCfg.ProfileName)
@@ -211,6 +219,35 @@ func buildChromiumArgs(profileDir string, appCfg config.AppConfig, extensionArgs
 	return args
 }
 
+func validateAppConfig(appCfg config.AppConfig) error {
+	if appCfg.StartURL == "" {
+		return errors.New("app config startUrl is empty")
+	}
+	startURL, err := url.Parse(appCfg.StartURL)
+	if err != nil || startURL.Scheme == "" || startURL.Host == "" {
+		return fmt.Errorf("app config startUrl is invalid: %s", appCfg.StartURL)
+	}
+	if len(appCfg.AllowedOrigins) == 0 {
+		return nil
+	}
+
+	startOrigin := originOf(startURL)
+	for _, allowed := range appCfg.AllowedOrigins {
+		allowedURL, err := url.Parse(allowed)
+		if err != nil || allowedURL.Scheme == "" || allowedURL.Host == "" || (allowedURL.Path != "" && allowedURL.Path != "/") {
+			return fmt.Errorf("app config allowedOrigins contains invalid origin: %s", allowed)
+		}
+		if originOf(allowedURL) == startOrigin {
+			return nil
+		}
+	}
+	return fmt.Errorf("app config startUrl origin %s is not listed in allowedOrigins", startOrigin)
+}
+
+func originOf(u *url.URL) string {
+	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host)
+}
+
 func verifyExtractedPayload(root string) error {
 	manifest, err := loadManifest(filepath.Join(root, payloadManifest))
 	if err != nil {
@@ -272,6 +309,10 @@ func writePayloadState(root string, state PayloadState) error {
 }
 
 func writeDryRun(appDir, profileDir string, appCfg config.AppConfig, logger *logging.Logger) error {
+	if !appCfg.DiagnosticsEnabled {
+		logger.Info("dry-run diagnostics disabled by app config")
+		return nil
+	}
 	diagnosticsPath := filepath.Join(appDir, "diagnostics", "diagnostics.html")
 	dryRunPath := filepath.Join(appDir, "diagnostics", "runtime-dry-run.txt")
 	content := strings.Join([]string{
