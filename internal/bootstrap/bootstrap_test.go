@@ -272,6 +272,83 @@ func TestPayloadManagerRemoteReusesCachedPayload(t *testing.T) {
 	}
 }
 
+func TestCryptoProPluginManagerExtractsAndReusesCurrentState(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	bundle := testCryptoProPluginZip(t)
+	manager := CryptoProPluginManager{
+		Bundle:        bundle,
+		Version:       "2.0.15700",
+		SHA256:        checksumBytes(bundle),
+		LayoutVersion: 1,
+	}
+
+	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Reused {
+		t.Fatal("first CryptoPro plugin extraction must not be reused")
+	}
+	if _, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); err != nil {
+		t.Fatal(err)
+	}
+
+	stateBefore, err := os.ReadFile(filepath.Join(appDir, cryptoProPluginStateFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err = manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Reused {
+		t.Fatal("second CryptoPro plugin extraction must reuse prepared state")
+	}
+	stateAfter, err := os.ReadFile(filepath.Join(appDir, cryptoProPluginStateFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(stateBefore) != string(stateAfter) {
+		t.Fatal("CryptoPro plugin state changed on reuse")
+	}
+}
+
+func TestCryptoProPluginManagerRecoversMissingFile(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	bundle := testCryptoProPluginZip(t)
+	manager := CryptoProPluginManager{
+		Bundle:        bundle,
+		Version:       "2.0.15700",
+		SHA256:        checksumBytes(bundle),
+		LayoutVersion: 1,
+	}
+
+	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hostPath, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(hostPath); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err = manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Reused {
+		t.Fatal("broken CryptoPro plugin extraction must be recovered")
+	}
+	if _, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestWriteDryRunCreatesStubFile(t *testing.T) {
     appDir := t.TempDir()
     logger := testLogger(t)
@@ -535,6 +612,30 @@ func testPayloadZip(t *testing.T, version string) []byte {
         t.Fatal(err)
     }
     return buf.Bytes()
+}
+
+func testCryptoProPluginZip(t *testing.T) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	paths := []string{
+		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
+		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
+		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
+	}
+	for _, path := range paths {
+		w, err := zw.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(path)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
 }
 
 func mustJSON(t *testing.T, value any) string {

@@ -159,7 +159,6 @@ Added:
 
 Add later, when implementing:
 
-- runtime extraction manager for the embedded plugin archive;
 - native messaging manifest generation and HKCU registration.
 
 Lock file shape:
@@ -377,11 +376,22 @@ Exit criteria:
 - build fails closed if the static archive is missing or checksum mismatches: implemented in `build/fetch-cryptopro-plugin.ps1`;
 - GitHub repo still contains no CryptoPro binaries.
 
-Current limitation: this phase only embeds the archive and logs its size/SHA-256 at launcher startup. Runtime extraction and native messaging registration are intentionally left to the next phases.
+Current limitation: this phase only embeds the archive and logs its size/SHA-256 at launcher startup. Runtime extraction is now handled in Phase 2; native messaging registration is intentionally left to the next phases.
 
 ### Phase 2 — Runtime extraction next to Chromium
 
 Objective: deploy CryptoPro plugin files into `appDir` beside Chromium.
+
+Current implementation:
+
+- `CryptoProPluginManager` extracts the embedded `cryptopro-plugin.zip` into `<appDir>/cryptopro/plugin`;
+- extraction uses staging + rename and the same bootstrap lock pattern as payload preparation;
+- state is stored in `<appDir>/.cryptopro-plugin-state.json`;
+- readiness is marked by `<appDir>/.cryptopro-plugin-ready`;
+- required files are validated after extraction and before reuse:
+  - `nmcades.exe`;
+  - `nmcades.json`;
+  - `npcades.dll`.
 
 Tasks:
 
@@ -394,9 +404,11 @@ Tasks:
 
 Exit criteria:
 
-- clean first run extracts CryptoPro plugin files under `%LOCALAPPDATA%/Kriptosfera/apps/demo/<version>/...`;
-- repeat run reuses existing extracted component;
-- broken/missing extraction recovers cleanly.
+- clean first run extracts CryptoPro plugin files under `%LOCALAPPDATA%/Kriptosfera/apps/demo/<version>/...`: implemented;
+- repeat run reuses existing extracted component: covered by tests;
+- broken/missing extraction recovers cleanly: covered by tests.
+
+Current limitation: the extracted files are not yet wired into a generated Chrome native messaging manifest or HKCU registry key. That remains Phase 3/4.
 
 ### Phase 3 — Manifest generation
 

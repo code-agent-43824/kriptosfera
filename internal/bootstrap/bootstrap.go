@@ -92,6 +92,14 @@ func Run(cfg config.RuntimeConfig) error {
 	}
 	logger.Info("payload ready reused=%t start_url=%s", prepareResult.Reused, appCfg.StartURL)
 
+	cryptoProResult, err := NewEmbeddedCryptoProPluginManager().Prepare(appDir, logger, progress)
+	if err != nil {
+		return err
+	}
+	if !cryptoProResult.Skipped {
+		logger.Info("cryptopro plugin ready reused=%t path=%s", cryptoProResult.Reused, cryptoProResult.Path)
+	}
+
 	extensions, err := detectExtensions(appDir)
 	if err != nil {
 		return err
