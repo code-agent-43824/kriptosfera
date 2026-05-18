@@ -90,7 +90,7 @@ The remote payload remains responsible for browser/runtime/application payload. 
 Use a boring immutable layout:
 
 ```text
-https://<watson-static-host>/kriptosfera/cryptopro/
+https://mescheryakov.pro/kriptosfera/cryptopro/
   plugin/
     <plugin-version>/
       <sha256>/
@@ -133,6 +133,7 @@ Rules:
 Add later, when implementing:
 
 - `build/cryptopro-plugin-lock.json`
+- `build/cryptopro-plugin-lock.example.json`
 - `build/fetch-cryptopro-plugin.ps1`
 - `build/embed-cryptopro-plugin.ps1` or integrate into `build/build-launcher.ps1`
 - `internal/bootstrap/cryptopro_plugin_embedded.go`
@@ -145,8 +146,8 @@ Lock file shape:
   "component": "cryptopro-browser-plugin",
   "version": "2.x.x",
   "platform": "windows-amd64",
-  "url": "https://<watson-static-host>/kriptosfera/cryptopro/plugin/2.x.x/<sha256>/cryptopro-plugin.zip",
-  "metadataUrl": "https://<watson-static-host>/kriptosfera/cryptopro/plugin/2.x.x/<sha256>/cryptopro-plugin.json",
+  "url": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.x.x/<sha256>/cryptopro-plugin.zip",
+  "metadataUrl": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.x.x/<sha256>/cryptopro-plugin.json",
   "sha256": "<lowercase sha256>",
   "size": 12345678
 }
@@ -292,7 +293,7 @@ Objective: establish a controlled binary source outside GitHub.
 
 Tasks:
 
-1. Create a static web directory on Watson's server for Kriptosfera binary bundles.
+1. Use the prepared static web directory documented in `docs/cryptopro-static-bundles.md`.
 2. Upload the official CryptoPro Browser Plugin Windows package or a normalized extracted bundle archive.
 3. Generate metadata:
    - version;
@@ -550,4 +551,3 @@ Not part of this plan:
 - system-wide CryptoPro installation.
 
 Those stay in later MVP/product phases.
-
