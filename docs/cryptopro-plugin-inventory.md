@@ -98,3 +98,5 @@ For MVP, the launcher should generate or patch the manifest at runtime so `path`
 The next implementation step can consume `build/cryptopro-plugin-lock.json`, download `cryptopro-plugin.zip`, verify size/SHA-256, and embed the verified archive into both launcher variants.
 
 The main runtime uncertainty remains whether the extracted AppData-only layout is enough for plugin detection, or whether CryptoPro components require additional COM/CSP/system registration. We should test this empirically after native messaging registration is implemented.
+
+Runtime extraction note: the MSI extraction output contains pseudo-path entries such as `.:Common`. These names are valid as MSI table abstractions but invalid as Windows filesystem path components. The launcher skips archive entries with `:` in any path component and then validates the required native host files (`nmcades.exe`, `nmcades.json`, `npcades.dll`) in the AppData layout.

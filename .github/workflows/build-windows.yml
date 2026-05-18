@@ -49,7 +49,7 @@ jobs:
       - name: Build remote launcher
         shell: pwsh
         run: |
-          ./build/build-launcher.ps1 -PayloadMode remote -PayloadZip dist/payload.zip -PayloadMetadata dist/payload.json -PayloadBaseUrl "${{ env.PAYLOAD_BASE_URL }}"
+          ./build/build-launcher.ps1 -PayloadMode remote -UsePayloadLock -PayloadLockPath build/payload-lock.json
 
       - name: Upload launcher workflow artifact
         uses: actions/upload-artifact@v6

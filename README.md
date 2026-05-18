@@ -39,7 +39,7 @@
 - cache-friendly подготовка Chromium runtime в CI;
 - CryptoPro extension layer: unpacked extension доставляется в payload, launcher добавляет Chromium extension flags, extension id стабилен через `manifest.key`;
 - CryptoPro Browser Plugin bundle закреплён отдельным lock-файлом, скачивается с project static storage, проверяется по SHA-256/size и встраивается в оба launcher variants;
-- launcher разворачивает встроенный CryptoPro Browser Plugin bundle в AppData рядом с Chromium и проверяет наличие `nmcades.exe`, `nmcades.json`, `npcades.dll`;
+- launcher разворачивает встроенный CryptoPro Browser Plugin bundle в AppData рядом с Chromium, пропускает MSI pseudo-path entries с Windows-недопустимыми именами и проверяет наличие `nmcades.exe`, `nmcades.json`, `npcades.dll`;
 - launcher генерирует native messaging manifest `ru.cryptopro.nmcades.json` и регистрирует его в HKCU для текущего пользователя;
 - минимальная app-config validation: `startUrl` должен соответствовать `allowedOrigins`, если список задан;
 - diagnostics остаётся включённой для MVP; `diagnosticsEnabled` управляет записью launcher-side diagnostic files.
@@ -84,7 +84,7 @@ build/                      PowerShell scripts для CI/локальной сб
 
 ### Payload source для launcher build
 
-Обычный `build-windows.yml` сейчас собирает launchers против payload из текущего commit, чтобы изменения в `payload-template/**` сразу попадали в оба launcher variants.
+Обычный `build-windows.yml` собирает embedded launcher против payload из текущего commit. Remote launcher в этом workflow собирается против уже опубликованного immutable payload из `build/payload-lock.json`, чтобы release artifact не ссылался на payload URL, который ещё не загружен на сервер.
 
 Для отдельного stable-payload сценария в `build/build-windows.ps1` оставлен флаг `-UseStablePayload`: он скачивает payload по `build/payload-lock.json`, проверяет SHA-256/size и собирает launchers против уже опубликованного immutable payload.
 

@@ -18,6 +18,19 @@ if ($UseStablePayload) {
   Write-Host "Using payload built from current checkout"
 }
 
-pwsh ./build/build-launcher.ps1 -Version $Version -OutputDir $OutputDir -PayloadMode $PayloadMode -PayloadZip (Join-Path $OutputDir "payload.zip") -PayloadMetadata (Join-Path $OutputDir "payload.json") -PayloadBaseUrl $PayloadBaseUrl
+$launcherArgs = @(
+  "-Version", $Version,
+  "-OutputDir", $OutputDir,
+  "-PayloadMode", $PayloadMode,
+  "-PayloadZip", (Join-Path $OutputDir "payload.zip"),
+  "-PayloadMetadata", (Join-Path $OutputDir "payload.json"),
+  "-PayloadBaseUrl", $PayloadBaseUrl
+)
+
+if ($PayloadMode -eq "remote" -and $UseStablePayload) {
+  $launcherArgs += @("-UsePayloadLock", "-PayloadLockPath", $PayloadLockPath)
+}
+
+pwsh ./build/build-launcher.ps1 @launcherArgs
 
 Write-Host "Launcher build completed for mode=$PayloadMode"

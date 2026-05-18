@@ -349,6 +349,38 @@ func TestCryptoProPluginManagerRecoversMissingFile(t *testing.T) {
 	}
 }
 
+func TestCryptoProPluginZipSkipsMSIPseudoPaths(t *testing.T) {
+	if !shouldSkipCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15700/.:Common/Crypto Pro/Shared/cadescom.dll") {
+		t.Fatal("MSI pseudo-path entry must be skipped")
+	}
+	if shouldSkipCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe") {
+		t.Fatal("required native host file must not be skipped")
+	}
+}
+
+func TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	bundle := testCryptoProPluginZipWithMSIPseudoPath(t)
+	manager := CryptoProPluginManager{
+		Bundle:        bundle,
+		Version:       "2.0.15700",
+		SHA256:        checksumBytes(bundle),
+		LayoutVersion: 1,
+	}
+
+	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(result.Path, "cryptopro-cades-plugin-2.0.15700", ".:Common")); !os.IsNotExist(err) {
+		t.Fatalf("MSI pseudo-path entry should not be extracted, got %v", err)
+	}
+}
+
 func TestPrepareCryptoProNativeMessagingWritesManifest(t *testing.T) {
 	appDir := t.TempDir()
 	logger := testLogger(t)
@@ -688,6 +720,18 @@ func testPayloadZip(t *testing.T, version string) []byte {
 
 func testCryptoProPluginZip(t *testing.T) []byte {
 	t.Helper()
+	return testCryptoProPluginZipWithExtraPaths(t, nil)
+}
+
+func testCryptoProPluginZipWithMSIPseudoPath(t *testing.T) []byte {
+	t.Helper()
+	return testCryptoProPluginZipWithExtraPaths(t, []string{
+		"cryptopro-cades-plugin-2.0.15700/.:Common/Crypto Pro/Shared/cadescom.dll",
+	})
+}
+
+func testCryptoProPluginZipWithExtraPaths(t *testing.T, extraPaths []string) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	paths := []string{
@@ -695,6 +739,7 @@ func testCryptoProPluginZip(t *testing.T) []byte {
 		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
 		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
 	}
+	paths = append(paths, extraPaths...)
 	for _, path := range paths {
 		w, err := zw.Create(path)
 		if err != nil {

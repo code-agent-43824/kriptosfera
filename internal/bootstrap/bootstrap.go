@@ -377,12 +377,19 @@ func unzip(data []byte, dest string) error {
 }
 
 func unzipReaderAt(readerAt io.ReaderAt, size int64, dest string) error {
+	return unzipReaderAtFiltered(readerAt, size, dest, nil)
+}
+
+func unzipReaderAtFiltered(readerAt io.ReaderAt, size int64, dest string, skip func(string) bool) error {
 	r, err := zip.NewReader(readerAt, size)
 	if err != nil {
 		return err
 	}
 	cleanDest := filepath.Clean(dest)
 	for _, f := range r.File {
+		if skip != nil && skip(f.Name) {
+			continue
+		}
 		target := filepath.Join(cleanDest, filepath.Clean(f.Name))
 		if !strings.HasPrefix(target, cleanDest+string(os.PathSeparator)) && filepath.Clean(target) != cleanDest {
 			return errors.New("zip path traversal detected")

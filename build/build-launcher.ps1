@@ -6,6 +6,8 @@ param(
   [string]$PayloadZip = "dist/payload.zip",
   [string]$PayloadMetadata = "dist/payload.json",
   [string]$PayloadBaseUrl = "",
+  [string]$PayloadLockPath = "build/payload-lock.json",
+  [switch]$UsePayloadLock,
   [string]$CryptoProPluginLockPath = "build/cryptopro-plugin-lock.json"
 )
 
@@ -26,24 +28,46 @@ if ($PayloadMode -eq "embedded") {
   $exeName = "KriptosferaDemo.exe"
   go test ./...
 } else {
-  if (-not (Test-Path $PayloadMetadata)) {
-    throw "Payload metadata not found: $PayloadMetadata"
-  }
-  if (-not $PayloadBaseUrl) {
-    throw "PayloadBaseUrl is required for remote mode"
-  }
-  if (-not $PayloadBaseUrl.StartsWith("https://")) {
-    throw "PayloadBaseUrl must start with https://"
-  }
-  if ($PayloadBaseUrl -match "agent\.invalid") {
-    throw "PayloadBaseUrl points to placeholder host agent.invalid; set a real HTTPS payload base URL"
-  }
+  if ($UsePayloadLock) {
+    if (-not (Test-Path $PayloadLockPath)) {
+      throw "Payload lock not found: $PayloadLockPath"
+    }
 
-  $payloadMeta = Get-Content $PayloadMetadata -Raw | ConvertFrom-Json
-  $payloadBase = $PayloadBaseUrl.TrimEnd('/')
-  $payloadUrl = "$payloadBase/$($payloadMeta.payloadVersion)/$($payloadMeta.sha256)/payload.zip"
+    $payloadLock = Get-Content $PayloadLockPath -Raw | ConvertFrom-Json
+    if (-not $payloadLock.url) {
+      throw "Payload lock is missing url: $PayloadLockPath"
+    }
+    if (-not $payloadLock.url.StartsWith("https://")) {
+      throw "Payload lock url must start with https://"
+    }
+    if (-not $payloadLock.sha256) {
+      throw "Payload lock is missing sha256: $PayloadLockPath"
+    }
+    if ([long]$payloadLock.size -le 0) {
+      throw "Payload lock has invalid size: $PayloadLockPath"
+    }
 
-  pwsh ./build/generate-runtime-config.ps1 -PayloadMode remote -Version $Version -PayloadUrl $payloadUrl -PayloadSha256 $payloadMeta.sha256 -PayloadSize ([long]$payloadMeta.size)
+    pwsh ./build/generate-runtime-config.ps1 -PayloadMode remote -Version $Version -PayloadUrl $payloadLock.url -PayloadSha256 $payloadLock.sha256 -PayloadSize ([long]$payloadLock.size)
+  } else {
+    if (-not (Test-Path $PayloadMetadata)) {
+      throw "Payload metadata not found: $PayloadMetadata"
+    }
+    if (-not $PayloadBaseUrl) {
+      throw "PayloadBaseUrl is required for remote mode"
+    }
+    if (-not $PayloadBaseUrl.StartsWith("https://")) {
+      throw "PayloadBaseUrl must start with https://"
+    }
+    if ($PayloadBaseUrl -match "agent\.invalid") {
+      throw "PayloadBaseUrl points to placeholder host agent.invalid; set a real HTTPS payload base URL"
+    }
+
+    $payloadMeta = Get-Content $PayloadMetadata -Raw | ConvertFrom-Json
+    $payloadBase = $PayloadBaseUrl.TrimEnd('/')
+    $payloadUrl = "$payloadBase/$($payloadMeta.payloadVersion)/$($payloadMeta.sha256)/payload.zip"
+
+    pwsh ./build/generate-runtime-config.ps1 -PayloadMode remote -Version $Version -PayloadUrl $payloadUrl -PayloadSha256 $payloadMeta.sha256 -PayloadSize ([long]$payloadMeta.size)
+  }
   $buildTags = @("-tags", "remote")
   $exeName = "KriptosferaDemo-remote.exe"
 }

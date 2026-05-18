@@ -104,7 +104,7 @@ func (m CryptoProPluginManager) Prepare(appDir string, logger *logging.Logger, p
 	}
 	defer os.RemoveAll(tempDir)
 
-	if err := unzipReaderAt(bytes.NewReader(m.Bundle), int64(len(m.Bundle)), tempDir); err != nil {
+	if err := unzipCryptoProPlugin(bytes.NewReader(m.Bundle), int64(len(m.Bundle)), tempDir); err != nil {
 		return ComponentPrepareResult{}, fmt.Errorf("extract cryptopro plugin: %w", err)
 	}
 	if err := validateCryptoProPluginLayout(tempDir); err != nil {
