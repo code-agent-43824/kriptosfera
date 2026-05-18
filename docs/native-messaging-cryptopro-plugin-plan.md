@@ -126,14 +126,35 @@ Rules:
 - No CryptoPro binaries in GitHub commits.
 - Keep only source notes, checksums, and build configuration in GitHub.
 
+Current pinned plugin bundle:
+
+```text
+version: 2.0.15700
+url: https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.zip
+sha256: c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe
+size: 21699162
+metadata: https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.json
+```
+
+Source/audit bundle:
+
+```text
+url: https://mescheryakov.pro/kriptosfera/cryptopro/sources/2.0.15700/8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4/cryptopro-cades-official-2.0.15700.zip
+sha256: 8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4
+size: 38472470
+```
+
 ## Build pipeline changes
 
 ### New files/scripts
 
-Add later, when implementing:
+Added:
 
 - `build/cryptopro-plugin-lock.json`
 - `build/cryptopro-plugin-lock.example.json`
+
+Add later, when implementing:
+
 - `build/fetch-cryptopro-plugin.ps1`
 - `build/embed-cryptopro-plugin.ps1` or integrate into `build/build-launcher.ps1`
 - `internal/bootstrap/cryptopro_plugin_embedded.go`
@@ -313,10 +334,25 @@ Tasks:
 
 Exit criteria:
 
-- HTTPS URL is available;
-- checksum/size are known;
-- exact file list is known;
+- HTTPS URL is available: done;
+- checksum/size are known: done;
+- exact file list is known: done for `cadescom-x64.msi` extraction;
 - no binaries are committed to GitHub.
+
+Inventory results from CryptoPro CADESCOM 2.0.15700:
+
+- signed official MSI: `cadescom-x64.msi`;
+- product/version: `CryptoPro CADESCOM` / `2.0.15700`;
+- native messaging host name: `ru.cryptopro.nmcades`;
+- native host executable: `Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe`;
+- Chrome native host manifest template: `Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json`;
+- Firefox manifest template: `Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades_firefox.json`;
+- browser plugin DLL: `Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll`;
+- official installer normally writes browser native messaging keys through MSI registry rows, including `SOFTWARE\\Google\\Chrome\\NativeMessagingHosts\\ru.cryptopro.nmcades`;
+- `nmcades.json` contains `<HOST_PATH>`; our launcher must generate or patch this path at runtime;
+- official `nmcades.json` already includes the stable extension id `pfhgbfnnjiafkhfdkmpiflachepdcjod`;
+- `nmcades.exe` requests `asInvoker`, so starting the host itself should not require admin rights;
+- the extracted archive also contains Mini CSP/runtime DLLs; first MVP attempt will deploy the extracted layout under AppData without system install.
 
 ### Phase 1 — Build-time download + launcher embedding
 

@@ -42,6 +42,26 @@ https://mescheryakov.pro/kriptosfera/cryptopro/plugin/README.txt
 https://mescheryakov.pro/kriptosfera/cryptopro/csp-lite/README.txt
 ```
 
+Current CryptoPro CAdES Browser Plugin bundle:
+
+```text
+https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.zip
+https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.json
+```
+
+The bundle was extracted from the official signed CryptoPro CADESCOM MSI:
+
+```text
+https://cryptopro.ru/sites/default/files/products/cades/current_release_2_0/cadescom-x64.msi
+```
+
+Source installer mirror for audit/rebuild:
+
+```text
+https://mescheryakov.pro/kriptosfera/cryptopro/sources/2.0.15700/8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4/cryptopro-cades-official-2.0.15700.zip
+https://mescheryakov.pro/kriptosfera/cryptopro/sources/2.0.15700/8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4/cryptopro-cades-official.json
+```
+
 ## Publication rules
 
 - Publish each binary bundle under a directory containing its version and SHA-256.
@@ -71,5 +91,15 @@ https://mescheryakov.pro/kriptosfera/cryptopro/csp-lite/README.txt
 
 ## Current status
 
-The static storage scaffold exists and is reachable over HTTPS. No CryptoPro binary archive has been uploaded yet.
+The static storage scaffold exists and is reachable over HTTPS. CryptoPro CAdES Browser Plugin 2.0.15700 has been uploaded as an immutable, checksum-addressed archive.
 
+Known bundle values:
+
+- plugin archive: `cryptopro-plugin.zip`
+- plugin archive size: `21699162`
+- plugin archive SHA-256: `c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe`
+- source installer mirror size: `38472470`
+- source installer mirror SHA-256: `8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4`
+- official `cadescom-x64.msi` SHA-256: `9f73456b6db5d793947f31bf2faabae742cf80fe161b9a21e97035067dd8cf5e`
+
+The binary archives stay on the static server only. GitHub stores this documentation and the pinned lock file, not the CryptoPro binaries.

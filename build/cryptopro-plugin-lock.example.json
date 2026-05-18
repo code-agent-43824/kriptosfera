@@ -1,10 +1,9 @@
 {
   "component": "cryptopro-browser-plugin",
-  "version": "2.x.x",
+  "version": "2.0.15700",
   "platform": "windows-amd64",
-  "url": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.x.x/<sha256>/cryptopro-plugin.zip",
-  "metadataUrl": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.x.x/<sha256>/cryptopro-plugin.json",
-  "sha256": "<lowercase sha256>",
-  "size": 12345678
+  "url": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.zip",
+  "metadataUrl": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.json",
+  "sha256": "c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe",
+  "size": 21699162
 }
-
