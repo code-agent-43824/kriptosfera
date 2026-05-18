@@ -39,7 +39,9 @@
 - cache-friendly подготовка Chromium runtime в CI;
 - CryptoPro extension layer: unpacked extension доставляется в payload, launcher добавляет Chromium extension flags, extension id стабилен через `manifest.key`;
 - минимальная app-config validation: `startUrl` должен соответствовать `allowedOrigins`, если список задан;
-- `diagnosticsEnabled` управляет записью launcher-side diagnostic files.
+- diagnostics остаётся включённой для MVP; `diagnosticsEnabled` управляет записью launcher-side diagnostic files.
+
+Полная доменная политика Chromium после старта — не часть текущего MVP. Это future product hardening для клиентских/брендированных сборок; сейчас `allowedOrigins` используется как guard от неправильного стартового URL в конфиге.
 
 Следующий этап:
 - native messaging;

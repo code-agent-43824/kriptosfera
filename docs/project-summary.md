@@ -35,7 +35,9 @@ Current implementation status:
 - `diagnosticsEnabled` now gates launcher-side diagnostic file generation instead of being a purely decorative field.
 
 Current implementation boundaries:
-- `allowedOrigins` is a startup/config guard, not a full Chromium navigation sandbox yet;
+- `allowedOrigins` is a startup/config guard, not a full Chromium navigation sandbox;
+- full post-start navigation/domain policy is future product hardening, not an MVP blocker;
+- diagnostics remains enabled for the MVP because it is needed to verify launcher/runtime/extension wiring;
 - native messaging, CryptoPro plugin/CSP, Rutoken discovery, certificate selection, and signing remain the next MVP layers.
 
 ## Explicit non-goals for first MVP
