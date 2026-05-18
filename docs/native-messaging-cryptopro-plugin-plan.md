@@ -1,10 +1,32 @@
-# Native messaging + CryptoPro plugin plan
+# Native messaging + embedded CryptoPro binaries plan
 
 ## Goal
 
 Bring the MVP from "the CryptoPro extension is loaded" to "the CryptoPro test page detects both the extension and the native CryptoPro Browser Plugin".
 
-This plan intentionally stops before Rutoken/certificate/signing. The success target for this step is detection and a clean native messaging connection.
+This step stops before Rutoken/certificate/signing. The immediate success target is:
+
+- extension is detected by the CryptoPro test page;
+- native CryptoPro Browser Plugin is detected by the same page;
+- native messaging is registered and observable;
+- all CryptoPro plugin binaries are deployed into Kriptosfera's own AppData application directory, not into system locations.
+
+## Binding product decisions
+
+Kirill confirmed:
+
+- CryptoPro granted permission to redistribute the relevant binaries.
+- Do not commit CryptoPro plugin or future CSP Lite binaries to GitHub.
+- Do not include CryptoPro binaries in the remote Chromium payload.
+- Build scripts must download CryptoPro binary bundles from Watson's own static web folder/server.
+- Both launcher variants must embed the CryptoPro binary bundle:
+  - embedded/thick launcher;
+  - remote/thin launcher.
+- At runtime, launcher extracts CryptoPro binaries into AppData next to Chromium, under the extracted app version directory.
+- Do not install into system locations.
+- Do not write binaries to Program Files or global CryptoPro folders.
+- If CryptoPro binaries contain hardcoded paths, solve those blockers in place after we observe the real failure.
+- Diagnostics remains enabled for MVP.
 
 ## Current baseline
 
@@ -16,16 +38,225 @@ Already done:
 - diagnostics page can load `chrome-extension://pfhgbfnnjiafkhfdkmpiflachepdcjod/nmcades_plugin_api.js`;
 - launcher writes extension diagnostics and starts Chromium with `--disable-extensions-except` / `--load-extension`.
 
-Important constraint:
+Important extension constraint:
 
-- the committed extension calls `chrome.runtime.connectNative("ru.cryptopro.nmcades")` from `background.js`.
-- For MVP, do not patch this extension host name. Register a user-space native messaging host with that exact name.
+- the committed extension calls `chrome.runtime.connectNative("ru.cryptopro.nmcades")` from `background.js`;
+- for MVP, do not patch this extension host name;
+- register a user-space native messaging host with that exact name.
 
-## Reference facts
+## Architecture change from the previous draft
+
+Previous draft treated native-host files as payload contents. That is no longer the target.
+
+New target:
+
+```text
+Build time:
+  static HTTPS server
+    /kriptosfera/cryptopro/plugin/<version>/<sha256>/cryptopro-plugin.zip
+    /kriptosfera/cryptopro/plugin/<version>/<sha256>/cryptopro-plugin.json
+
+  build script downloads + verifies this bundle
+
+  launcher binary embeds:
+    - payload.zip               (embedded launcher only)
+    - runtime-config.json
+    - cryptopro-plugin.zip      (both embedded and remote launchers)
+    - cryptopro-plugin metadata/checksum
+
+Runtime:
+  %LOCALAPPDATA%/Kriptosfera/apps/demo/<version>/
+    chromium/
+    extensions/
+    native-host/
+      cryptopro/
+        ru.cryptopro.nmcades.json
+        bin/
+          <native host exe>
+          <plugin dlls/runtime files>
+    cryptopro/
+      plugin/
+        <if the official package has a separate plugin layout>
+      csp-lite/
+        <future, same delivery model>
+    diagnostics/
+    config/
+```
+
+The remote payload remains responsible for browser/runtime/application payload. CryptoPro binaries are a launcher-owned embedded asset because they are security-sensitive, version-pinned, and must be present in both launcher modes without depending on remote payload composition.
+
+## Static server layout
+
+Use a boring immutable layout:
+
+```text
+https://<watson-static-host>/kriptosfera/cryptopro/
+  plugin/
+    <plugin-version>/
+      <sha256>/
+        cryptopro-plugin.zip
+        cryptopro-plugin.json
+  csp-lite/
+    <future-version>/
+      <sha256>/
+        cryptopro-csp-lite.zip
+        cryptopro-csp-lite.json
+```
+
+Metadata example:
+
+```json
+{
+  "component": "cryptopro-browser-plugin",
+  "version": "2.x.x",
+  "platform": "windows-amd64",
+  "archive": "cryptopro-plugin.zip",
+  "sha256": "<lowercase sha256>",
+  "size": 12345678,
+  "source": "CryptoPro official package, redistribution permitted by CryptoPro",
+  "createdAt": "2026-05-18T00:00:00Z"
+}
+```
+
+Rules:
+
+- URLs are immutable: version + sha256 path.
+- Build must trust the pinned checksum, not server mutable metadata.
+- The static server may expose metadata for human audit, but the build script must verify the archive checksum independently.
+- No CryptoPro binaries in GitHub commits.
+- Keep only source notes, checksums, and build configuration in GitHub.
+
+## Build pipeline changes
+
+### New files/scripts
+
+Add later, when implementing:
+
+- `build/cryptopro-plugin-lock.json`
+- `build/fetch-cryptopro-plugin.ps1`
+- `build/embed-cryptopro-plugin.ps1` or integrate into `build/build-launcher.ps1`
+- `internal/bootstrap/cryptopro_plugin_embedded.go`
+- `internal/bootstrap/cryptopro_plugin.go`
+
+Lock file shape:
+
+```json
+{
+  "component": "cryptopro-browser-plugin",
+  "version": "2.x.x",
+  "platform": "windows-amd64",
+  "url": "https://<watson-static-host>/kriptosfera/cryptopro/plugin/2.x.x/<sha256>/cryptopro-plugin.zip",
+  "metadataUrl": "https://<watson-static-host>/kriptosfera/cryptopro/plugin/2.x.x/<sha256>/cryptopro-plugin.json",
+  "sha256": "<lowercase sha256>",
+  "size": 12345678
+}
+```
+
+### Build flow
+
+For both embedded and remote launchers:
+
+1. Read `build/cryptopro-plugin-lock.json`.
+2. Download `cryptopro-plugin.zip` from the static server into `dist/` or `.build-cache/`.
+3. Verify SHA-256 and size.
+4. Generate/embed a Go asset file or copy the zip into an embedded location before `go build`.
+5. Build:
+   - `KriptosferaDemo.exe`
+   - `KriptosferaDemo-remote.exe`
+6. Do not put the CryptoPro bundle into `payload.zip`.
+7. Do not upload CryptoPro binaries as GitHub workflow artifacts unless explicitly needed and allowed; default artifact should remain launcher executables/README.
+
+Important: if the launcher artifact itself contains embedded CryptoPro binaries, publishing the launcher is already redistribution. That is acceptable per Kirill's permission note, but keep the source archives out of GitHub.
+
+## Runtime extraction model
+
+Add a launcher-owned "component manager" separate from `PayloadManager`.
+
+Suggested state:
+
+```text
+<appDir>/
+  .cryptopro-plugin-state.json
+  .cryptopro-plugin-ready
+```
+
+State fields:
+
+```json
+{
+  "component": "cryptopro-browser-plugin",
+  "version": "2.x.x",
+  "sha256": "<archive sha256>",
+  "layoutVersion": 1
+}
+```
+
+Runtime flow:
+
+1. Prepare normal payload first, so `appDir` exists.
+2. Prepare CryptoPro plugin bundle second:
+   - check `.cryptopro-plugin-ready` and state;
+   - verify extracted files if a component manifest exists;
+   - if missing/stale/broken, extract embedded `cryptopro-plugin.zip` into a staging dir;
+   - validate required files;
+   - rename staging into:
+     - `<appDir>/native-host/cryptopro/`
+     - and/or `<appDir>/cryptopro/plugin/`, depending on the official package layout.
+3. Generate native messaging manifest using paths inside `appDir`.
+4. Register HKCU native messaging key.
+5. Start Chromium.
+
+This keeps the remote/thin launcher independent of remote payload for CryptoPro assets while still using the same extracted app version directory.
+
+## Proposed AppData layout
+
+Target layout after first run:
+
+```text
+%LOCALAPPDATA%/Kriptosfera/
+  apps/
+    demo/
+      <version>/
+        chromium/
+        extensions/
+          cryptopro-cades/
+        native-host/
+          cryptopro/
+            ru.cryptopro.nmcades.json
+            bin/
+              <native host exe>
+              <required plugin dlls/runtime files>
+        cryptopro/
+          plugin/
+            <optional official plugin files if separate from native-host/bin>
+          csp-lite/
+            <future>
+        diagnostics/
+          diagnostics.html
+          extension-status.js
+          native-messaging-status.js
+        config/
+          app-config.json
+        manifest.json
+        .payload-state.json
+        .payload-ready
+        .cryptopro-plugin-state.json
+        .cryptopro-plugin-ready
+  profiles/
+    demo/
+  logs/
+    launcher.log
+    chromium.stdout.log
+    chromium.stderr.log
+```
+
+Keep CryptoPro next to Chromium and extension in the same versioned app dir. Do not share it globally across app versions until we have a real need.
+
+## Native messaging manifest
 
 Chrome native messaging on Windows requires:
 
-- a host manifest JSON with:
+- a manifest JSON with:
   - `name`
   - `description`
   - `path`
@@ -35,15 +266,15 @@ Chrome native messaging on Windows requires:
   - `HKCU\Software\Google\Chrome\NativeMessagingHosts\<host-name>`
   - default value = full path to the manifest JSON
 - no wildcard in `allowed_origins`;
-- the native host talks over stdin/stdout with a 32-bit native-endian length prefix before each UTF-8 JSON message.
+- host communication over stdin/stdout with a 32-bit native-endian length prefix before each UTF-8 JSON message.
 
-For this project the manifest should be:
+For Kriptosfera:
 
 ```json
 {
   "name": "ru.cryptopro.nmcades",
   "description": "CryptoPro CAdES Browser Plugin native host",
-  "path": "C:\\...\\native-host\\cryptopro\\<actual-host-binary>.exe",
+  "path": "C:\\Users\\...\\AppData\\Local\\Kriptosfera\\apps\\demo\\<version>\\native-host\\cryptopro\\bin\\<actual-host-binary>.exe",
   "type": "stdio",
   "allowed_origins": [
     "chrome-extension://pfhgbfnnjiafkhfdkmpiflachepdcjod/"
@@ -51,213 +282,186 @@ For this project the manifest should be:
 }
 ```
 
-## Proposed payload layout
-
-Keep the layout explicit and boring:
-
-```text
-payload/
-  extensions/
-    cryptopro-cades/
-      manifest.json
-      ...
-  native-host/
-    cryptopro/
-      README.md
-      host-manifest.template.json
-      bin/
-        <cryptopro-native-host.exe>
-        <required-plugin-dlls>
-        <required-runtime-files>
-  diagnostics/
-    diagnostics.html
-    extension-status.js
-    native-messaging-status.js
-  cryptopro/
-    plugin/
-      <if source package separates plugin files>
-    csp-lite/
-      <future step, not required for detection-only milestone unless plugin needs it>
-```
-
-Do not mix our future debug host with the real CryptoPro host in the same directory. If a debug host is needed, put it under:
-
-```text
-payload/native-host/debug/
-```
-
-and use a separate host name for it.
+Generate this file at runtime because `appDir` is versioned and user-specific.
 
 ## Implementation phases
 
-### Phase 0 — Source and inventory the CryptoPro native binaries
+### Phase 0 — Static server and binary inventory
 
-Objective: know exactly what we are shipping before wiring it.
+Objective: establish a controlled binary source outside GitHub.
 
 Tasks:
 
-1. Obtain the official CryptoPro Browser Plugin Windows package/archive from a controlled source.
-2. Extract it into a temporary, non-committed workspace.
-3. Identify:
+1. Create a static web directory on Watson's server for Kriptosfera binary bundles.
+2. Upload the official CryptoPro Browser Plugin Windows package or a normalized extracted bundle archive.
+3. Generate metadata:
+   - version;
+   - platform;
+   - sha256;
+   - size;
+   - source note;
+   - redistribution permission note.
+4. Inspect package contents in a temporary non-repo workspace.
+5. Identify:
    - native messaging host executable;
-   - native host manifest, if the package contains one;
+   - native host manifest, if present;
    - required DLLs/runtime files;
-   - registry keys normally created by the installer;
-   - whether the host depends on installed services, COM registration, CSP, VC runtime, or PATH entries.
-4. Record the source URL/package version/checksum in `payload-template/native-host/cryptopro/README.md`.
-5. Decide whether binaries can be committed to this public repo. If not, use a pinned private artifact/download step.
+   - registry keys the official installer normally writes;
+   - whether host expects fixed paths, COM registration, services, CSP, VC runtime, PATH, or current working directory.
+6. Decide normalized archive layout for `cryptopro-plugin.zip`.
 
 Exit criteria:
 
+- HTTPS URL is available;
+- checksum/size are known;
 - exact file list is known;
-- host name is confirmed as `ru.cryptopro.nmcades`;
-- host binary can be run manually enough to show it starts or fails with a specific missing dependency.
+- no binaries are committed to GitHub.
 
-### Phase 1 — Add payload scaffold and required-file checks
+### Phase 1 — Build-time download + launcher embedding
 
-Objective: make payload shape stable without changing launcher behavior yet.
-
-Tasks:
-
-1. Add `payload-template/native-host/cryptopro/README.md`.
-2. Add `host-manifest.template.json` with placeholders for:
-   - host path;
-   - extension origin.
-3. If binaries are allowed in repo, add the minimal real files under `bin/`.
-4. Update `build/prepare-payload.ps1` required checks after real host files exist.
-5. Ensure payload manifest includes native-host files.
-
-Exit criteria:
-
-- payload package contains the native-host layout;
-- CI builds payload and launchers;
-- no registry writes yet.
-
-### Phase 2 — Launcher-side manifest generation
-
-Objective: generate the real native messaging manifest inside the extracted app dir.
+Objective: make both launcher variants carry the CryptoPro plugin bundle.
 
 Tasks:
 
-1. Add a small Go helper, e.g. `internal/bootstrap/native_messaging.go`.
-2. Detect the stable extension id from the already detected CryptoPro extension.
-3. Resolve the native host binary path under:
-   - `<appDir>/native-host/cryptopro/bin/<actual-host-binary>.exe`
-4. Write:
-   - `<appDir>/native-host/cryptopro/ru.cryptopro.nmcades.json`
-5. Manifest content must use:
-   - `name: "ru.cryptopro.nmcades"`
-   - `type: "stdio"`
-   - `allowed_origins: ["chrome-extension://pfhgbfnnjiafkhfdkmpiflachepdcjod/"]`
-   - absolute Windows path to the host binary
-6. Add unit tests for generated JSON and missing-host behavior.
+1. Add `build/cryptopro-plugin-lock.json`.
+2. Add `build/fetch-cryptopro-plugin.ps1`.
+3. Verify archive checksum and size in the fetch script.
+4. Embed the verified archive into launcher build for both modes.
+5. Ensure `build-windows.yml` builds both launchers with the same embedded CryptoPro plugin archive.
+6. Keep `payload.zip` unchanged except for normal browser payload contents.
 
 Exit criteria:
 
-- launcher can generate a valid manifest deterministically;
-- missing binary produces a clear diagnostic/error, not a silent failure.
+- both `KriptosferaDemo.exe` and `KriptosferaDemo-remote.exe` contain the plugin bundle;
+- build fails closed if the static archive is missing or checksum mismatches;
+- GitHub repo still contains no CryptoPro binaries.
 
-### Phase 3 — HKCU registration
+### Phase 2 — Runtime extraction next to Chromium
 
-Objective: register the native host for the current user with no admin rights.
+Objective: deploy CryptoPro plugin files into `appDir` beside Chromium.
+
+Tasks:
+
+1. Add `CryptoProPluginManager` or similar.
+2. Extract embedded `cryptopro-plugin.zip` after payload preparation.
+3. Use staging + atomic rename like payload extraction.
+4. Store component state and ready marker.
+5. Validate required native host executable and key DLLs.
+6. Log extracted version/path/checksum.
+
+Exit criteria:
+
+- clean first run extracts CryptoPro plugin files under `%LOCALAPPDATA%/Kriptosfera/apps/demo/<version>/...`;
+- repeat run reuses existing extracted component;
+- broken/missing extraction recovers cleanly.
+
+### Phase 3 — Manifest generation
+
+Objective: generate the native messaging manifest from extracted paths.
+
+Tasks:
+
+1. Detect extension id from `manifest.key` as already implemented.
+2. Resolve actual host binary path from extracted CryptoPro layout.
+3. Write `<appDir>/native-host/cryptopro/ru.cryptopro.nmcades.json`.
+4. Use:
+   - `name: "ru.cryptopro.nmcades"`;
+   - `type: "stdio"`;
+   - `allowed_origins: ["chrome-extension://pfhgbfnnjiafkhfdkmpiflachepdcjod/"]`;
+   - absolute path to the extracted host binary.
+5. Add tests for manifest generation and missing binary errors.
+
+Exit criteria:
+
+- manifest is valid JSON;
+- manifest path points inside current `appDir`;
+- no hardcoded user path in repo or static metadata.
+
+### Phase 4 — HKCU registration
+
+Objective: register the native host for the current user without admin rights.
 
 Tasks:
 
 1. Add Windows-only registry helper.
 2. Write default value:
    - key: `HKCU\Software\Google\Chrome\NativeMessagingHosts\ru.cryptopro.nmcades`
-   - value: full manifest path
+   - value: full path to generated manifest.
 3. Do not use HKLM for MVP.
-4. Log:
-   - key path;
-   - manifest path;
-   - whether the value was created/updated/reused.
-5. Add non-Windows stub so tests/builds stay simple.
-6. Add tests around path/key construction where possible; registry write itself can be covered by Windows CI smoke later.
+4. Log created/updated/reused status.
+5. Add non-Windows stub for clean builds/tests.
+6. Verify whether Chrome for Testing reads the standard Chrome HKCU key. If not, test Chromium/Chrome-for-Testing specific fallback keys.
 
 Exit criteria:
 
-- launcher registers the host before Chromium starts;
+- launcher registers host before Chromium starts;
 - repeated runs are idempotent;
-- diagnostics can show the current registered manifest path.
+- diagnostics shows registered manifest path.
 
-### Phase 4 — Native messaging diagnostics
+### Phase 5 — Diagnostics and test-page plugin detection
 
-Objective: know whether Chrome can see and start the host.
+Objective: prove the CryptoPro test page sees both extension and plugin.
 
 Tasks:
 
 1. Extend launcher diagnostics:
-   - manifest path;
-   - binary path;
-   - host name;
-   - HKCU registry path;
+   - CryptoPro plugin bundle version/checksum;
+   - extracted plugin path;
+   - native host exe path;
+   - generated manifest path;
+   - HKCU registry key/value;
    - registration result.
 2. Extend `diagnostics.html`:
-   - show native host registration status from launcher-side diagnostics;
-   - trigger extension/plugin probe using `window.cpcsp_chrome_nmcades.check_chrome_plugin(...)`.
-3. Keep the existing extension probe.
-4. Make result states explicit:
-   - extension script loaded;
-   - native host registered;
-   - native host connected;
-   - plugin object created;
-   - plugin missing/dependency error/native host not found.
-
-Exit criteria:
-
-- diagnostics distinguishes "extension loaded but native host missing" from "native host present but plugin/dependency failed".
-
-### Phase 5 — First real plugin detection
-
-Objective: the CryptoPro test page detects the extension and plugin.
-
-Tasks:
-
-1. Run the embedded launcher on Windows.
-2. Open the configured CryptoPro demo page.
-3. Verify page-level detection:
+   - keep current extension probe;
+   - show native messaging registration status;
+   - call `window.cpcsp_chrome_nmcades.check_chrome_plugin(...)`;
+   - show plugin detection result separately from extension detection.
+3. Run the embedded launcher on Windows.
+4. Open the CryptoPro demo page.
+5. Verify:
    - extension detected;
    - plugin detected.
-4. Check logs:
-   - `logs/launcher.log`
-   - Chromium stderr/stdout logs;
-   - extension popup state, if useful.
-5. If detection fails, classify the failure:
-   - host registry not found;
+6. If plugin detection fails, classify exact layer:
+   - registry key missing/wrong;
    - manifest invalid;
    - allowed origin mismatch;
+   - host executable missing;
    - host executable cannot start;
-   - host starts but misses DLL/dependency;
-   - host starts but cannot create CAdESCOM object;
-   - plugin requires system CSP/COM registration and cannot run user-space yet.
+   - missing DLL/runtime dependency;
+   - hardcoded path assumption;
+   - COM/CSP/system registration dependency.
 
 Exit criteria:
 
-- CryptoPro test page reports extension + plugin present, or a concrete blocker is documented with the exact failing layer.
+- CryptoPro test page reports extension + plugin present, or a precise blocker is documented.
 
 ## Validation sequence
 
 Use small commits:
 
-1. docs/scaffold only;
-2. payload native-host files;
-3. manifest generation;
-4. HKCU registration;
-5. diagnostics probe;
-6. manual Windows validation result.
+1. docs update (this document);
+2. static server + lock metadata;
+3. build-time download/embed;
+4. runtime extraction manager;
+5. manifest generation;
+6. HKCU registration;
+7. diagnostics probe;
+8. manual Windows validation result.
 
 Automated checks per code commit:
 
 - `go test ./...`;
 - `build-windows` GitHub Actions;
-- payload artifact contains native-host files;
-- launcher artifact still builds both embedded and remote variants.
+- verify both launcher variants build;
+- verify build fails on checksum mismatch;
+- verify `payload.zip` does not contain CryptoPro binaries;
+- verify GitHub tree does not contain CryptoPro binaries.
 
 Manual checks on Windows:
 
 - clean profile first run;
 - repeat run;
+- inspect AppData layout;
 - inspect HKCU registry key;
 - verify manifest path points inside current extracted app version;
 - verify extension popup moves from missing-host/error toward active;
@@ -265,25 +469,48 @@ Manual checks on Windows:
 
 ## Risk register
 
-### R1 — Binary licensing / redistribution
+### R1 — Static server availability
 
-The real CryptoPro Browser Plugin binaries may not be suitable for a public GitHub repo.
+Build now depends on Watson's static server for CryptoPro bundles.
 
-Decision path:
+Mitigation:
 
-- if redistribution is allowed: commit or release-asset them with checksum;
-- if not: use a private artifact/pinned download and keep only metadata/checksum in public repo.
+- immutable URLs;
+- checksum lock file;
+- cache downloaded archive in CI if useful;
+- fail closed with clear error if unavailable.
 
-### R2 — Host requires installed components
+### R2 — Launcher size
 
-The native host may depend on system-installed CryptoPro CSP, COM registration, services, or drivers.
+Both launcher variants will embed CryptoPro plugin binaries, increasing executable size.
+
+Mitigation:
+
+- measure artifact size after first integration;
+- accept for MVP unless first-run UX or GitHub artifact limits become a real problem.
+
+### R3 — Hardcoded paths inside CryptoPro binaries
+
+The plugin may assume installer-created paths or registry entries.
 
 MVP handling:
 
-- first prove native messaging host detection;
-- if plugin detection needs system registration, record blocker and separate "user-space plugin packaging" from "CSP Lite/signing".
+- deploy into our AppData folder first;
+- observe exact failure;
+- patch environment/current working directory/manifest/registry only as needed;
+- do not pre-emptively install system-wide.
 
-### R3 — Registry path for Chrome for Testing
+### R4 — Host requires installed components
+
+The native host may depend on system-installed CryptoPro CSP, COM registration, services, drivers, or VC runtime.
+
+MVP handling:
+
+- first prove native messaging host visibility;
+- then prove plugin detection;
+- if plugin detection needs system registration, document exact blocker and decide the minimal local/user-space workaround.
+
+### R5 — Registry path for Chrome for Testing
 
 Official docs say Windows native messaging uses Chrome registry keys. Our runtime is Chrome for Testing/Chromium-shaped, so verify empirically that it reads the HKCU Chrome key.
 
@@ -291,18 +518,24 @@ Fallback options, in order:
 
 1. standard HKCU Chrome key;
 2. Chromium key if needed;
-3. profile-level native messaging host location only if Chromium supports it in this runtime;
-4. patch runtime/launch strategy only if all standard paths fail.
+3. Chrome-for-Testing specific key if present/required;
+4. profile-level native messaging host location only if supported by this runtime;
+5. patch runtime/launch strategy only if all standard paths fail.
 
-### R4 — Extension id mismatch
-
-This is mostly controlled by `manifest.key`. Keep generating `allowed_origins` from detected extension id rather than hardcoding it in multiple places.
-
-### R5 — stdout pollution
+### R6 — stdout pollution
 
 Native messaging protocol uses stdout for framed JSON. Any logs written to stdout can break communication.
 
-For our own debug host, log to stderr/file only. For CryptoPro host, capture Chrome stderr and launcher diagnostics.
+Mitigation:
+
+- for our debug tooling, log to stderr/file only;
+- for CryptoPro host, capture Chromium stderr/stdout and launcher diagnostics.
+
+### R7 — Future CSP Lite bundle
+
+CSP Lite should use the same static-server -> build-download -> launcher-embed -> AppData-extract model later.
+
+Do not design a second delivery path for CSP Lite unless CryptoPro's actual packaging forces it.
 
 ## What is not included in this step
 
@@ -310,10 +543,11 @@ Not part of this plan:
 
 - full Rutoken signing flow;
 - certificate selection UX;
-- CSP Lite packaging unless the plugin cannot even be detected without it;
+- CSP Lite integration unless plugin detection cannot work without a minimal CSP component;
 - broad token compatibility;
 - full domain/navigation policy;
-- installer/product polish.
+- installer/product polish;
+- system-wide CryptoPro installation.
 
 Those stay in later MVP/product phases.
 
