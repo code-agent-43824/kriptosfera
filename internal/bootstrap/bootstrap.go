@@ -96,9 +96,6 @@ func Run(cfg config.RuntimeConfig) error {
 	if err != nil {
 		return err
 	}
-	if !cryptoProResult.Skipped {
-		logger.Info("cryptopro plugin ready reused=%t path=%s", cryptoProResult.Reused, cryptoProResult.Path)
-	}
 
 	extensions, err := detectExtensions(appDir)
 	if err != nil {
@@ -123,6 +120,14 @@ func Run(cfg config.RuntimeConfig) error {
 		logger.Info("extensions load count=0")
 	} else {
 		logger.Info("extensions load count=%d", len(loadableExtensions(extensions)))
+	}
+	if !cryptoProResult.Skipped {
+		logger.Info("cryptopro plugin ready reused=%t path=%s", cryptoProResult.Reused, cryptoProResult.Path)
+		if result, err := PrepareCryptoProNativeMessaging(appDir, cryptoProResult.Path, extensions, logger); err != nil {
+			return err
+		} else if !result.Skipped {
+			logger.Info("native messaging ready name=%s registered=%t manifest=%s", result.HostName, result.Registered, result.ManifestPath)
+		}
 	}
 	if appCfg.DiagnosticsEnabled {
 		if err := writeExtensionStatus(appDir, extensions, extensionArgs); err != nil {

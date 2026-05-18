@@ -33,6 +33,7 @@ Current implementation status:
 - diagnostics page now probes `chrome-extension://.../nmcades_plugin_api.js`, so extension delivery and runtime script availability are observable before native messaging/CSP work starts.
 - CryptoPro Browser Plugin `2.0.15700` is pinned in `build/cryptopro-plugin-lock.json`, downloaded from project static storage, verified by SHA-256/size, and embedded into both launcher variants during Windows builds.
 - launcher now extracts the embedded CryptoPro Browser Plugin bundle into the versioned AppData app directory and validates `nmcades.exe`, `nmcades.json`, and `npcades.dll` before reuse.
+- launcher now generates the Chrome native messaging manifest for `ru.cryptopro.nmcades` and registers it under HKCU for the current user before Chromium starts.
 - app config validation now checks that `startUrl` belongs to `allowedOrigins` when origins are configured;
 - `diagnosticsEnabled` now gates launcher-side diagnostic file generation instead of being a purely decorative field.
 
@@ -40,7 +41,7 @@ Current implementation boundaries:
 - `allowedOrigins` is a startup/config guard, not a full Chromium navigation sandbox;
 - full post-start navigation/domain policy is future product hardening, not an MVP blocker;
 - diagnostics remains enabled for the MVP because it is needed to verify launcher/runtime/extension wiring;
-- native messaging registration, CryptoPro CSP, Rutoken discovery, certificate selection, and signing remain the next MVP layers.
+- native messaging diagnostics, CryptoPro CSP, Rutoken discovery, certificate selection, and signing remain the next MVP layers.
 
 ## Explicit non-goals for first MVP
 

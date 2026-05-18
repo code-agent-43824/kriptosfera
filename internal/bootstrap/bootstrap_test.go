@@ -349,6 +349,71 @@ func TestCryptoProPluginManagerRecoversMissingFile(t *testing.T) {
 	}
 }
 
+func TestPrepareCryptoProNativeMessagingWritesManifest(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	stubNativeMessagingRegistrar(t)
+	bundle := testCryptoProPluginZip(t)
+	manager := CryptoProPluginManager{
+		Bundle:        bundle,
+		Version:       "2.0.15700",
+		SHA256:        checksumBytes(bundle),
+		LayoutVersion: 1,
+	}
+	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := PrepareCryptoProNativeMessaging(appDir, pluginResult.Path, []ExtensionSpec{{
+		Name:        "cryptopro-cades",
+		ExtensionID: "pfhgbfnnjiafkhfdkmpiflachepdcjod",
+	}}, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Registered {
+		t.Fatal("native messaging host must be marked as registered")
+	}
+	manifest, err := readNativeMessagingManifest(result.ManifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Name != "ru.cryptopro.nmcades" {
+		t.Fatalf("unexpected native host name: %s", manifest.Name)
+	}
+	if manifest.Type != "stdio" {
+		t.Fatalf("unexpected native host type: %s", manifest.Type)
+	}
+	if manifest.AllowedOrigins[0] != "chrome-extension://pfhgbfnnjiafkhfdkmpiflachepdcjod/" {
+		t.Fatalf("unexpected allowed origin: %v", manifest.AllowedOrigins)
+	}
+	if _, err := os.Stat(manifest.Path); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPrepareCryptoProNativeMessagingRequiresExtensionID(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	stubNativeMessagingRegistrar(t)
+	bundle := testCryptoProPluginZip(t)
+	manager := CryptoProPluginManager{
+		Bundle:        bundle,
+		Version:       "2.0.15700",
+		SHA256:        checksumBytes(bundle),
+		LayoutVersion: 1,
+	}
+	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := PrepareCryptoProNativeMessaging(appDir, pluginResult.Path, nil, logger); err == nil {
+		t.Fatal("expected missing extension id error")
+	}
+}
+
 func TestWriteDryRunCreatesStubFile(t *testing.T) {
     appDir := t.TempDir()
     logger := testLogger(t)
@@ -490,6 +555,13 @@ func testLogger(t *testing.T) *logging.Logger {
     }
     t.Cleanup(func() { _ = logger.Close() })
     return logger
+}
+
+func stubNativeMessagingRegistrar(t *testing.T) {
+	t.Helper()
+	original := registerNativeMessagingHost
+	registerNativeMessagingHost = func(string) error { return nil }
+	t.Cleanup(func() { registerNativeMessagingHost = original })
 }
 
 func preparePayloadFromBytes(rootDir string, cfg config.RuntimeConfig, logger *logging.Logger, payload []byte) (bool, error) {

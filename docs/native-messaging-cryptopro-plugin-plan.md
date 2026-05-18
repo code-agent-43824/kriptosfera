@@ -159,7 +159,7 @@ Added:
 
 Add later, when implementing:
 
-- native messaging manifest generation and HKCU registration.
+- diagnostics probe and manual Windows validation against the CryptoPro test page.
 
 Lock file shape:
 
@@ -414,6 +414,13 @@ Current limitation: the extracted files are not yet wired into a generated Chrom
 
 Objective: generate the native messaging manifest from extracted paths.
 
+Current implementation:
+
+- `PrepareCryptoProNativeMessaging` resolves `nmcades.exe` from the extracted plugin layout;
+- it writes `<appDir>/native-host/cryptopro/ru.cryptopro.nmcades.json`;
+- `allowed_origins` is generated from the detected CryptoPro extension id;
+- tests cover manifest generation and missing extension id.
+
 Tasks:
 
 1. Detect extension id from `manifest.key` as already implemented.
@@ -428,13 +435,19 @@ Tasks:
 
 Exit criteria:
 
-- manifest is valid JSON;
-- manifest path points inside current `appDir`;
-- no hardcoded user path in repo or static metadata.
+- manifest is valid JSON: covered by tests;
+- manifest path points inside current `appDir`: implemented;
+- no hardcoded user path in repo or static metadata: implemented.
 
 ### Phase 4 — HKCU registration
 
 Objective: register the native host for the current user without admin rights.
+
+Current implementation:
+
+- Windows builds call `reg.exe add HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\ru.cryptopro.nmcades /ve /t REG_SZ /d <manifestPath> /f`;
+- non-Windows builds use a no-op stub;
+- tests stub registry writes to avoid mutating HKCU on CI.
 
 Tasks:
 
@@ -449,9 +462,9 @@ Tasks:
 
 Exit criteria:
 
-- launcher registers host before Chromium starts;
-- repeated runs are idempotent;
-- diagnostics shows registered manifest path.
+- launcher registers host before Chromium starts: implemented;
+- repeated runs are idempotent: `reg.exe /f` overwrites the same value;
+- diagnostics shows registered manifest path: pending Phase 5 diagnostics update.
 
 ### Phase 5 — Diagnostics and test-page plugin detection
 
