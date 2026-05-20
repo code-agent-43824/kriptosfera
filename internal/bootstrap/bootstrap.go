@@ -154,7 +154,7 @@ func Run(cfg config.RuntimeConfig) error {
 		return writeDryRun(appDir, profileDir, appCfg, logger)
 	}
 
-	args := buildChromiumArgs(profileDir, appCfg, extensionArgs)
+	args := buildChromiumArgs(profileDir, appDir, appCfg, extensionArgs)
 	logger.Info("launch chromium path=%s args=%s", chromePath, strings.Join(args, " "))
 
 	cmd := exec.Command(chromePath, args...)
@@ -221,14 +221,16 @@ func resolveChromiumExecutable(chromeDir string) (string, error) {
 	return "", fmt.Errorf("chromium runtime not found in %s", chromeDir)
 }
 
-func buildChromiumArgs(profileDir string, appCfg config.AppConfig, extensionArgs []string) []string {
+func buildChromiumArgs(profileDir string, appDir string, appCfg config.AppConfig, extensionArgs []string) []string {
 	args := []string{
 		"--user-data-dir=" + profileDir,
 	}
 
 	args = append(args, extensionArgs...)
 
-	if appCfg.WindowMode == "app" {
+	if appCfg.DiagnosticsEnabled {
+		args = append(args, appCfg.StartURL, diagnosticsPageURL(appDir))
+	} else if appCfg.WindowMode == "app" {
 		args = append(args, "--app="+appCfg.StartURL)
 	} else {
 		args = append(args, appCfg.StartURL)
@@ -236,6 +238,12 @@ func buildChromiumArgs(profileDir string, appCfg config.AppConfig, extensionArgs
 
 	args = append(args, appCfg.ChromiumArgs...)
 	return args
+}
+
+func diagnosticsPageURL(appDir string) string {
+	path := filepath.ToSlash(filepath.Join(appDir, "diagnostics", "diagnostics.html"))
+	path = strings.ReplaceAll(path, "\\", "/")
+	return "file:///" + path
 }
 
 func validateAppConfig(appCfg config.AppConfig) error {

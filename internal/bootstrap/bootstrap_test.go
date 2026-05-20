@@ -11,6 +11,7 @@ import (
     "net/http/httptest"
     "os"
     "path/filepath"
+    "reflect"
     "sync/atomic"
     "strings"
     "testing"
@@ -485,7 +486,9 @@ func TestResolveChromiumExecutableFindsChrome(t *testing.T) {
 }
 
 func TestBuildChromiumArgsAppMode(t *testing.T) {
-    args := buildChromiumArgs(`C:\Profiles\demo`, testAppConfig(), nil)
+	cfg := testAppConfig()
+	cfg.DiagnosticsEnabled = false
+    args := buildChromiumArgs(`C:\Profiles\demo`, `C:\App`, cfg, nil)
     joined := strings.Join(args, " ")
     if !strings.Contains(joined, "--user-data-dir=C:\\Profiles\\demo") {
         t.Fatal("missing user-data-dir arg")
@@ -498,10 +501,30 @@ func TestBuildChromiumArgsAppMode(t *testing.T) {
 func TestBuildChromiumArgsWindowModeBrowser(t *testing.T) {
     cfg := testAppConfig()
     cfg.WindowMode = "browser"
-    args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil)
+	cfg.DiagnosticsEnabled = false
+    args := buildChromiumArgs(`C:\Profiles\demo`, `C:\App`, cfg, nil)
     lastArg := args[len(args)-len(cfg.ChromiumArgs)-1]
     if lastArg != "https://example.test" {
         t.Fatalf("expected plain URL arg, got %s", lastArg)
+	}
+}
+
+func TestBuildChromiumArgsDiagnosticsOpensStartAndDiagnosticsPages(t *testing.T) {
+	cfg := testAppConfig()
+	args := buildChromiumArgs(`C:\Profiles\demo`, `C:\App`, cfg, nil)
+	want := []string{
+		`--user-data-dir=C:\Profiles\demo`,
+		"https://example.test",
+		"file:///C:/App/diagnostics/diagnostics.html",
+		"--no-first-run",
+	}
+	if !reflect.DeepEqual(args, want) {
+		t.Fatalf("unexpected diagnostics args: %#v", args)
+	}
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "--app=") {
+			t.Fatalf("diagnostics mode must not use app window args: %#v", args)
+		}
 	}
 }
 
