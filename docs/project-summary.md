@@ -30,7 +30,7 @@ Current implementation status:
 - remote first-run now has minimal visible progress UX on Windows.
 - canonical unpacked CryptoPro extension `1.3.17` is now committed into `payload-template/extensions/cryptopro-cades/`;
 - launcher now derives stable extension wiring from payload layout, computes the expected extension id from `manifest.json`, and writes diagnostics status into `diagnostics/extension-status.js`;
-- diagnostics page now probes `chrome-extension://.../nmcades_plugin_api.js`, so extension delivery and runtime script availability are observable before native messaging/CSP work starts.
+- diagnostics page now probes `chrome-extension://.../nmcades_plugin_api.js` and targeted `CAdESCOM.About` calls, so extension delivery, runtime script availability, Browser Plugin version, and CSP/provider state are observable before CSP Lite activation starts.
 - CryptoPro Browser Plugin `2.0.15700` is pinned in `build/cryptopro-plugin-lock.json`, downloaded from project static storage, verified by SHA-256/size, and embedded into both launcher variants during Windows builds.
 - launcher now extracts the embedded CryptoPro Browser Plugin bundle into the versioned AppData app directory and validates `nmcades.exe`, `nmcades.json`, and `npcades.dll` before reuse.
 - launcher now generates the Chrome native messaging manifest for `ru.cryptopro.nmcades` and registers it under HKCU for the current user before Chromium starts.

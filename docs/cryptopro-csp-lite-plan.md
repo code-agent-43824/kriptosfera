@@ -96,21 +96,26 @@ Do not hide this behind vague "plugin failed" wording.
 
 Objective: make the current states observable before changing CSP behavior.
 
-Add diagnostics that can be read on both "system CSP installed" and "clean" machines:
+Implemented first diagnostic slice:
+
+- `diagnostics.html` loads the bundled extension's `nmcades_plugin_api.js`;
+- it creates the native plugin object through `cpcsp_chrome_nmcades.CreatePluginObject()`;
+- it creates `CAdESCOM.About`;
+- it probes `PluginVersion`, `Version`, `CSPVersion("", 80)`, `CSPName(80)`, and `EnableInternalCSP`;
+- every call is shown with ok/error status and exact error text.
+
+Still useful to add later:
 
 - native host manifest path and host exe path;
 - extracted Browser Plugin path;
-- `EnableInternalCSP`;
-- `CAdESCOM.About.PluginVersion`;
-- `CAdESCOM.About.Version`;
-- `CAdESCOM.About.CSPVersion("", 80)`;
-- `CAdESCOM.About.CSPName(80)`;
 - certificate store open result and certificate count;
-- HRESULT / message for each failed call.
+- normalized HRESULT field where the browser object exposes it separately from the message.
+
+The current slice intentionally does not open the certificate store. That keeps this step diagnostic-only and avoids triggering the certificate access prompt before we have a clean two-machine `About` matrix.
 
 Exit criteria:
 
-- On system-CSP machine, diagnostics show plugin `2.0.15700`, CSP `5.0.13455`, provider name, and certificate count.
+- On system-CSP machine, diagnostics show plugin `2.0.15700`, CSP `5.0.13455`, and provider name.
 - On clean machine, diagnostics show the exact calls that return `0.0.0000` or fail.
 
 ## Phase 1 - Inventory Mini CSP / CSP Lite files
@@ -310,4 +315,3 @@ Do not suppress the CryptoPro prompt. If a trusted-site whitelist is later requi
 Implement Phase 0 diagnostics first.
 
 Do not start CSP Lite activation until the two-machine diagnostic matrix is captured with exact call results and errors.
-

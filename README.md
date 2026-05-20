@@ -124,11 +124,11 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - Browser Plugin на машине с системным CryptoPro CSP подтверждён ручной проверкой через CryptoPro demo page.
 
 Что дальше:
-- расширить diagnostics по `CAdESCOM.About`, `CSPVersion`, `CSPName`, `EnableInternalCSP`;
+- снять двухмашинную матрицу diagnostics по `CAdESCOM.About`, `CSPVersion`, `CSPName`, `EnableInternalCSP`;
 - затем идти в безопасную активацию bundled CSP Lite / Mini CSP.
 
 ## Ближайшие инженерные задачи
 
-- подготовить diagnostics для CSP state на машине с системным CSP и на чистой машине;
+- проверить обновлённую diagnostics page на машине с системным CSP и на чистой машине;
 - затем идти в bundled CSP Lite / Mini CSP activation и reference signing flow;
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.

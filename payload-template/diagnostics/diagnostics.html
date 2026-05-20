@@ -8,63 +8,170 @@
     h1, h2 { margin-bottom: 0.4em; }
     ul { padding-left: 20px; }
     code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
+    table { border-collapse: collapse; margin-top: 12px; min-width: 720px; max-width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #f7f7f7; }
+    td code { white-space: pre-wrap; word-break: break-word; }
     .ok { color: #0a7a2f; }
     .bad { color: #b00020; }
+    .warn { color: #9a5b00; }
     .muted { color: #666; }
   </style>
 </head>
 <body>
   <h1>Kriptosfera Diagnostics</h1>
-  <p>Минимальная проверка wiring и живости CryptoPro extension.</p>
+  <p>Минимальная проверка wiring, CryptoPro extension и точечных вызовов CAdESCOM.About.</p>
 
   <h2>Launcher wiring</h2>
-  <div id="launcher-status">Загрузка…</div>
+  <div id="launcher-status">Загрузка...</div>
 
   <h2>Runtime probe</h2>
-  <div id="runtime-status">Ожидание…</div>
+  <div id="runtime-status">Ожидание...</div>
+
+  <h2>CryptoPro CSP probe</h2>
+  <div id="csp-status">Ожидание...</div>
 
   <script src="./extension-status.js"></script>
   <script>
     const status = window.__KRIPTOSFERA_EXTENSION_STATUS__ || null;
-    const launcherEl = document.getElementById('launcher-status');
-    const runtimeEl = document.getElementById('runtime-status');
+    const launcherEl = document.getElementById("launcher-status");
+    const runtimeEl = document.getElementById("runtime-status");
+    const cspEl = document.getElementById("csp-status");
 
     function esc(value) {
       return String(value)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
     }
 
     function row(label, value) {
-      return `<li><strong>${esc(label)}:</strong> ${value}</li>`;
+      return "<li><strong>" + esc(label) + ":</strong> " + value + "</li>";
+    }
+
+    function stateLabel(state) {
+      if (state === "ok") return "<span class=\"ok\">ok</span>";
+      if (state === "warn") return "<span class=\"warn\">warn</span>";
+      return "<span class=\"bad\">error</span>";
+    }
+
+    function errorText(err) {
+      if (!err) return "";
+      if (typeof err === "string") return err;
+      const parts = [];
+      if (err.message) parts.push(err.message);
+      if (err.name) parts.push("name=" + err.name);
+      if (err.number !== undefined) parts.push("number=" + err.number);
+      if (err.requestid !== undefined) parts.push("requestid=" + err.requestid);
+      if (err.type) parts.push("type=" + err.type);
+      try {
+        const json = JSON.stringify(err);
+        if (json && json !== "{}") parts.push(json);
+      } catch (_) {
+        // Ignore non-serializable error details.
+      }
+      return parts.join(" | ") || String(err);
+    }
+
+    function withTimeout(promise, ms, label) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error(label + " timed out after " + ms + "ms")), ms);
+        Promise.resolve(promise)
+          .then((value) => {
+            clearTimeout(timer);
+            resolve(value);
+          })
+          .catch((err) => {
+            clearTimeout(timer);
+            reject(err);
+          });
+      });
+    }
+
+    async function readValue(value) {
+      return await Promise.resolve(value);
+    }
+
+    async function readVersionObject(value) {
+      const resolved = await readValue(value);
+      if (resolved === undefined || resolved === null) return resolved;
+      if (typeof resolved === "string") return resolved;
+      if (typeof resolved === "number" || typeof resolved === "boolean") return resolved;
+      const major = await readValue(resolved.MajorVersion);
+      const minor = await readValue(resolved.MinorVersion);
+      const build = await readValue(resolved.BuildVersion);
+      if (major !== undefined && minor !== undefined && build !== undefined) {
+        return String(major) + "." + String(minor) + "." + String(build);
+      }
+      return JSON.stringify(resolved);
+    }
+
+    async function runProbeStep(results, name, fn) {
+      try {
+        const value = await withTimeout(fn(), 6000, name);
+        results.push({ name, state: "ok", value: formatValue(value) });
+        return value;
+      } catch (err) {
+        results.push({ name, state: "error", value: errorText(err) });
+        return undefined;
+      }
+    }
+
+    function formatValue(value) {
+      if (value === undefined) return "(undefined)";
+      if (value === null) return "(null)";
+      if (typeof value === "object" && value.objid) return "objid=" + value.objid;
+      if (typeof value === "object") {
+        try {
+          const json = JSON.stringify(value);
+          if (json && json !== "{}") return json;
+        } catch (_) {
+          // Fall through to String(value).
+        }
+      }
+      return String(value);
+    }
+
+    function renderProbeResults(results, note) {
+      const rows = results.map((item) =>
+        "<tr>" +
+          "<td><code>" + esc(item.name) + "</code></td>" +
+          "<td>" + stateLabel(item.state) + "</td>" +
+          "<td><code>" + esc(item.value) + "</code></td>" +
+        "</tr>"
+      ).join("");
+      return (note ? "<p class=\"muted\">" + esc(note) + "</p>" : "") +
+        "<table>" +
+          "<thead><tr><th>Probe</th><th>Status</th><th>Value / error</th></tr></thead>" +
+          "<tbody>" + rows + "</tbody>" +
+        "</table>";
     }
 
     function renderLauncherStatus() {
       if (!status) {
-        launcherEl.innerHTML = '<p class="bad">extension-status.js не загружен.</p>';
+        launcherEl.innerHTML = "<p class=\"bad\">extension-status.js не загружен.</p>";
         return null;
       }
       const extensions = Array.isArray(status.extensions) ? status.extensions : [];
-      const primary = extensions.find((item) => item.name === 'cryptopro-cades') || extensions[0] || null;
-      launcherEl.innerHTML = `
-        <ul>
-          ${row('generatedAt', `<code>${esc(status.generatedAt || 'unknown')}</code>`)}
-          ${row('extensionsRoot', `<code>${esc(status.extensionsRoot || 'unknown')}</code>`)}
-          ${row('detectedCount', esc(status.detectedCount ?? '0'))}
-          ${row('loadableCount', esc(status.loadableCount ?? '0'))}
-          ${row('chromiumArgsAdded', status.chromiumArgsAdded ? '<span class="ok">yes</span>' : '<span class="bad">no</span>')}
-          ${primary ? row('primaryExtension', `<code>${esc(primary.name)}</code>`) : row('primaryExtension', '<span class="bad">not found</span>')}
-          ${primary ? row('extensionVersion', `<code>${esc(primary.version || 'unknown')}</code>`) : ''}
-          ${primary ? row('extensionId', `<code>${esc(primary.extensionId || 'unknown')}</code>`) : ''}
-          ${primary && primary.manifestError ? row('manifestError', `<span class="bad">${esc(primary.manifestError)}</span>`) : ''}
-        </ul>`;
+      const primary = extensions.find((item) => item.name === "cryptopro-cades") || extensions[0] || null;
+      launcherEl.innerHTML =
+        "<ul>" +
+          row("generatedAt", "<code>" + esc(status.generatedAt || "unknown") + "</code>") +
+          row("extensionsRoot", "<code>" + esc(status.extensionsRoot || "unknown") + "</code>") +
+          row("detectedCount", esc(status.detectedCount ?? "0")) +
+          row("loadableCount", esc(status.loadableCount ?? "0")) +
+          row("chromiumArgsAdded", status.chromiumArgsAdded ? "<span class=\"ok\">yes</span>" : "<span class=\"bad\">no</span>") +
+          (primary ? row("primaryExtension", "<code>" + esc(primary.name) + "</code>") : row("primaryExtension", "<span class=\"bad\">not found</span>")) +
+          (primary ? row("extensionVersion", "<code>" + esc(primary.version || "unknown") + "</code>") : "") +
+          (primary ? row("extensionId", "<code>" + esc(primary.extensionId || "unknown") + "</code>") : "") +
+          (primary && primary.manifestError ? row("manifestError", "<span class=\"bad\">" + esc(primary.manifestError) + "</span>") : "") +
+        "</ul>";
       return primary;
     }
 
     function probeScript(url) {
       return new Promise((resolve) => {
-        const script = document.createElement('script');
+        const script = document.createElement("script");
         let done = false;
         script.src = url;
         script.onload = () => { if (!done) { done = true; resolve(true); } };
@@ -76,19 +183,58 @@
 
     async function renderRuntimeStatus(primary) {
       if (!primary || !primary.extensionId) {
-        runtimeEl.innerHTML = '<p class="bad">Нет extension id для runtime probe.</p>';
+        runtimeEl.innerHTML = "<p class=\"bad\">Нет extension id для runtime probe.</p>";
+        cspEl.innerHTML = "<p class=\"bad\">CSP probe пропущен.</p>";
         return;
       }
-      const apiUrl = `chrome-extension://${primary.extensionId}/nmcades_plugin_api.js`;
+      const apiUrl = "chrome-extension://" + primary.extensionId + "/nmcades_plugin_api.js";
       const loaded = await probeScript(apiUrl);
-      const apiReady = !!(window.cpcsp_chrome_nmcades && typeof window.cpcsp_chrome_nmcades.check_chrome_plugin === 'function');
-      runtimeEl.innerHTML = `
-        <ul>
-          ${row('apiScriptUrl', `<code>${esc(apiUrl)}</code>`)}
-          ${row('scriptLoad', loaded ? '<span class="ok">ok</span>' : '<span class="bad">fail</span>')}
-          ${row('window.cpcsp_chrome_nmcades', apiReady ? '<span class="ok">present</span>' : '<span class="bad">missing</span>')}
-        </ul>
-        <p class="muted">Для полного end-to-end сценария нужен следующий слой: native messaging + CryptoPro plugin/CSP.</p>`;
+      const apiReady = !!(window.cpcsp_chrome_nmcades && typeof window.cpcsp_chrome_nmcades.CreatePluginObject === "function");
+      runtimeEl.innerHTML =
+        "<ul>" +
+          row("apiScriptUrl", "<code>" + esc(apiUrl) + "</code>") +
+          row("scriptLoad", loaded ? "<span class=\"ok\">ok</span>" : "<span class=\"bad\">fail</span>") +
+          row("window.cpcsp_chrome_nmcades", apiReady ? "<span class=\"ok\">present</span>" : "<span class=\"bad\">missing</span>") +
+        "</ul>" +
+        "<p class=\"muted\">Runtime probe проверяет загрузку extension API. CSP probe ниже делает точечные вызовы через native messaging.</p>";
+      await renderCspStatus(apiReady);
+    }
+
+    async function renderCspStatus(apiReady) {
+      if (!apiReady) {
+        cspEl.innerHTML = "<p class=\"bad\">CryptoPro extension API недоступен, CSP probe пропущен.</p>";
+        return;
+      }
+      cspEl.innerHTML = "<p class=\"muted\">Выполняются точечные вызовы CAdESCOM.About...</p>";
+      const results = [];
+      const api = window.cpcsp_chrome_nmcades;
+
+      const pluginObject = await runProbeStep(results, "CreatePluginObject()", async () => {
+        return await api.CreatePluginObject();
+      });
+      if (!pluginObject) {
+        cspEl.innerHTML = renderProbeResults(results, "Native host или Browser Plugin object недоступен.");
+        return;
+      }
+
+      const about = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.About\")", async () => {
+        return await pluginObject.CreateObjectAsync("CAdESCOM.About");
+      });
+      if (!about) {
+        cspEl.innerHTML = renderProbeResults(results, "CAdESCOM.About не создан; дальше version/CSP calls невозможны.");
+        return;
+      }
+
+      await runProbeStep(results, "About.PluginVersion", async () => readVersionObject(about.PluginVersion));
+      await runProbeStep(results, "About.Version", async () => readVersionObject(about.Version));
+      await runProbeStep(results, "About.CSPVersion(\"\", 80)", async () => readVersionObject(await about.CSPVersion("", 80)));
+      await runProbeStep(results, "About.CSPName(80)", async () => readValue(await about.CSPName(80)));
+      await runProbeStep(results, "cadesplugin.EnableInternalCSP", async () => {
+        if (typeof window.cadesplugin === "undefined") return "(cadesplugin global undefined)";
+        return window.cadesplugin.EnableInternalCSP;
+      });
+
+      cspEl.innerHTML = renderProbeResults(results, "Эта диагностика не открывает certificate store и не должна сама вызывать окно доступа к сертификатам.");
     }
 
     const primary = renderLauncherStatus();
