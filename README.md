@@ -28,9 +28,8 @@
 - модель публикации артефактов без дополнительного ручного zip на release-тегах.
 
 Сейчас ещё нет:
-- native messaging host;
-- CSP Lite / библиотек CryptoPro;
-- рабочего сценария подписи.
+- активированного bundled CSP Lite / Mini CSP режима для чистой машины;
+- рабочего сценария подписи без установленного системного CryptoPro CSP.
 
 Сейчас уже есть:
 - foundation launcher первого этапа;
@@ -41,14 +40,15 @@
 - CryptoPro Browser Plugin bundle закреплён отдельным lock-файлом, скачивается с project static storage, проверяется по SHA-256/size и встраивается в оба launcher variants;
 - launcher разворачивает встроенный CryptoPro Browser Plugin bundle в AppData рядом с Chromium, пропускает MSI pseudo-path entries с Windows-недопустимыми именами и проверяет наличие `nmcades.exe`, `nmcades.json`, `npcades.dll`;
 - launcher генерирует native messaging manifest `ru.cryptopro.nmcades.json` и регистрирует его в HKCU для текущего пользователя;
+- ручная проверка показала, что на машине с установленным обычным CryptoPro CSP приложение ведёт себя как настроенный Chrome: видит extension, Browser Plugin, plugin version, системный CSP, стандартное окно подтверждения доступа и сертификаты;
 - минимальная app-config validation: `startUrl` должен соответствовать `allowedOrigins`, если список задан;
 - diagnostics остаётся включённой для MVP; `diagnosticsEnabled` управляет записью launcher-side diagnostic files.
 
 Полная доменная политика Chromium после старта — не часть текущего MVP. Это future product hardening для клиентских/брендированных сборок; сейчас `allowedOrigins` используется как guard от неправильного стартового URL в конфиге.
 
 Следующий этап:
-- native messaging;
-- затем crypto stack.
+- диагностика `CAdESCOM.About` / CSP state;
+- затем аккуратная активация bundled CSP Lite / Mini CSP.
 
 ## Репозиторий
 
@@ -104,13 +104,14 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 3. Remote payload mode / thin launcher.
 4. CryptoPro extension.
 5. Native messaging.
-6. CryptoPro components + Рутокен.
-7. Минимальная диагностика.
-8. macOS PoC.
+6. CryptoPro CSP Lite / Mini CSP activation.
+7. Рутокен и тестовая подпись.
+8. Минимальная диагностика.
+9. macOS PoC.
 
 ## Текущий следующий шаг
 
-**Этап 5: переход к native messaging.**
+**Этап 6: переход к CSP Lite / Mini CSP.**
 
 Что закрыто внутри этапов 3-4:
 - выделен runtime/payload abstraction layer;
@@ -119,13 +120,15 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - workflow уже собирает и embedded launcher, и thin launcher;
 - для remote first-run добавлен minimal progress UX с маленьким progress window на Windows.
 - CryptoPro extension добавлен в payload и проверен через launcher/runtime diagnostics.
+- native messaging manifest генерируется и регистрируется в HKCU;
+- Browser Plugin на машине с системным CryptoPro CSP подтверждён ручной проверкой через CryptoPro demo page.
 
 Что дальше:
-- diagnostics для native messaging и проверка на CryptoPro test page;
-- затем интеграция crypto stack.
+- расширить diagnostics по `CAdESCOM.About`, `CSPVersion`, `CSPName`, `EnableInternalCSP`;
+- затем идти в безопасную активацию bundled CSP Lite / Mini CSP.
 
 ## Ближайшие инженерные задачи
 
-- подготовить diagnostics для native messaging и ручную проверку CryptoPro test page;
-- затем идти в crypto stack и reference signing flow;
+- подготовить diagnostics для CSP state на машине с системным CSP и на чистой машине;
+- затем идти в bundled CSP Lite / Mini CSP activation и reference signing flow;
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.

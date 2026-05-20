@@ -100,3 +100,26 @@ The next implementation step can consume `build/cryptopro-plugin-lock.json`, dow
 The main runtime uncertainty remains whether the extracted AppData-only layout is enough for plugin detection, or whether CryptoPro components require additional COM/CSP/system registration. We should test this empirically after native messaging registration is implemented.
 
 Runtime extraction note: the MSI extraction output contains pseudo-path entries such as `.:Common`. These names are valid as MSI table abstractions but invalid as Windows filesystem path components. The launcher skips archive entries with `:` in any path component and then validates the required native host files (`nmcades.exe`, `nmcades.json`, `npcades.dll`) in the AppData layout.
+
+## Manual runtime findings
+
+Manual Windows validation on 2026-05-20 clarified the boundary of the current Browser Plugin bundle:
+
+- On a machine with normal system CryptoPro CSP installed, Kriptosfera's bundled extension/native host/plugin layer behaves like regular configured Chrome:
+  - extension loaded;
+  - plugin loaded;
+  - plugin version reported as `2.0.15700`;
+  - CSP version reported as `5.0.13455`;
+  - provider reported as `Crypto-Pro GOST R 34.10-2012 Cryptographic Service Provider`;
+  - the standard CryptoPro access confirmation dialog appears;
+  - approving the dialog allows certificate enumeration;
+  - denying the dialog returns the expected user-cancelled error `0x000004C7`.
+- On a clean machine without system CryptoPro CSP installed:
+  - extension loaded;
+  - plugin loaded;
+  - CSP not loaded;
+  - plugin version reported as `0.0.0000`;
+  - no access confirmation dialog appears;
+  - certificates are not enumerated.
+
+Conclusion: current native messaging and Browser Plugin integration works. The remaining clean-machine gap is CSP/provider activation, likely through the bundled `Mini CSP` / future CSP Lite layer. The `0.0.0000` plugin version should be treated as a symptom of missing provider activation, not as a separate UI formatting bug.
