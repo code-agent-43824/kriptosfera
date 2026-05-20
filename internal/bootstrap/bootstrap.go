@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -154,7 +156,17 @@ func Run(cfg config.RuntimeConfig) error {
 		return writeDryRun(appDir, profileDir, appCfg, logger)
 	}
 
-	args := buildChromiumArgs(profileDir, appDir, appCfg, extensionArgs)
+	diagnosticsURL := ""
+	var diagnosticsServer *http.Server
+	if appCfg.DiagnosticsEnabled {
+		diagnosticsURL, diagnosticsServer, err = startDiagnosticsServer(appDir, logger)
+		if err != nil {
+			return err
+		}
+		defer diagnosticsServer.Close()
+	}
+
+	args := buildChromiumArgs(profileDir, appCfg, extensionArgs, diagnosticsURL)
 	logger.Info("launch chromium path=%s args=%s", chromePath, strings.Join(args, " "))
 
 	cmd := exec.Command(chromePath, args...)
@@ -169,6 +181,9 @@ func Run(cfg config.RuntimeConfig) error {
 
 	if err := progress.Close(); err != nil {
 		logger.Info("progress close failed: %v", err)
+	}
+	if appCfg.DiagnosticsEnabled {
+		return cmd.Run()
 	}
 	return cmd.Start()
 }
@@ -221,15 +236,15 @@ func resolveChromiumExecutable(chromeDir string) (string, error) {
 	return "", fmt.Errorf("chromium runtime not found in %s", chromeDir)
 }
 
-func buildChromiumArgs(profileDir string, appDir string, appCfg config.AppConfig, extensionArgs []string) []string {
+func buildChromiumArgs(profileDir string, appCfg config.AppConfig, extensionArgs []string, diagnosticsURL string) []string {
 	args := []string{
 		"--user-data-dir=" + profileDir,
 	}
 
 	args = append(args, extensionArgs...)
 
-	if appCfg.DiagnosticsEnabled {
-		args = append(args, appCfg.StartURL, diagnosticsPageURL(appDir))
+	if diagnosticsURL != "" {
+		args = append(args, appCfg.StartURL, diagnosticsURL)
 	} else if appCfg.WindowMode == "app" {
 		args = append(args, "--app="+appCfg.StartURL)
 	} else {
@@ -240,10 +255,25 @@ func buildChromiumArgs(profileDir string, appDir string, appCfg config.AppConfig
 	return args
 }
 
-func diagnosticsPageURL(appDir string) string {
-	path := filepath.ToSlash(filepath.Join(appDir, "diagnostics", "diagnostics.html"))
-	path = strings.ReplaceAll(path, "\\", "/")
-	return "file:///" + path
+func startDiagnosticsServer(appDir string, logger *logging.Logger) (string, *http.Server, error) {
+	diagnosticsDir := filepath.Join(appDir, "diagnostics")
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", nil, fmt.Errorf("start diagnostics server: %w", err)
+	}
+
+	server := &http.Server{
+		Handler: http.FileServer(http.Dir(diagnosticsDir)),
+	}
+	go func() {
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Info("diagnostics server failed: %v", err)
+		}
+	}()
+
+	url := "http://" + listener.Addr().String() + "/diagnostics.html"
+	logger.Info("diagnostics server url=%s root=%s", url, diagnosticsDir)
+	return url, server, nil
 }
 
 func validateAppConfig(appCfg config.AppConfig) error {

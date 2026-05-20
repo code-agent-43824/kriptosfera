@@ -133,4 +133,4 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - затем идти в bundled CSP Lite / Mini CSP activation и reference signing flow;
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.
 
-Пока `diagnosticsEnabled=true`, launcher открывает целевую страницу и локальную `diagnostics.html` рядом, в обычном Chromium window-mode. Это временно удобнее для снятия CSP matrix; app-style single-window UX вернётся после диагностического этапа.
+Пока `diagnosticsEnabled=true`, launcher открывает целевую страницу и локальную `diagnostics.html` через временный `127.0.0.1` diagnostics server, в обычном Chromium window-mode. Это временно удобнее для снятия CSP matrix; app-style single-window UX вернётся после диагностического этапа.

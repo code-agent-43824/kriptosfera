@@ -42,7 +42,7 @@ Current implementation boundaries:
 - `allowedOrigins` is a startup/config guard, not a full Chromium navigation sandbox;
 - full post-start navigation/domain policy is future product hardening, not an MVP blocker;
 - diagnostics remains enabled for the MVP because it is needed to verify launcher/runtime/extension wiring;
-- while diagnostics is enabled, launcher opens both the configured start URL and local `diagnostics.html` in Chromium window mode so test machines can capture the CSP matrix without manual file navigation;
+- while diagnostics is enabled, launcher serves local diagnostics from a temporary `127.0.0.1` diagnostics server and opens both the configured start URL and `diagnostics.html` in Chromium window mode so test machines can capture the CSP matrix without manual file navigation;
 - bundled CSP Lite / Mini CSP activation on clean machines, Rutoken discovery, certificate selection, and signing remain the next MVP layers.
 - on clean machines without system CryptoPro CSP, the current embedded Browser Plugin layer loads but reports plugin version `0.0.0000` and does not load CSP/provider state; treat this as missing provider activation, not an extension/native messaging failure.
 

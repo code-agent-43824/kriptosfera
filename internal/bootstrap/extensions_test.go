@@ -110,12 +110,12 @@ func TestBuildChromiumArgsPlacesExtensionFlagsBeforeURL(t *testing.T) {
 	cfg := testAppConfigWithVersion("0.1.0")
 	cfg.StartURL = "https://example.test"
 	cfg.ChromiumArgs = []string{"--enable-logging"}
-	got := buildChromiumArgs(`C:\profile`, `C:\app`, cfg, []string{"--load-extension=C:\\ext"})
+	got := buildChromiumArgs(`C:\profile`, cfg, []string{"--load-extension=C:\\ext"}, "http://127.0.0.1:12345/diagnostics.html")
 	want := []string{
 		`--user-data-dir=C:\profile`,
 		`--load-extension=C:\ext`,
 		`https://example.test`,
-		`file:///C:/app/diagnostics/diagnostics.html`,
+		`http://127.0.0.1:12345/diagnostics.html`,
 		`--enable-logging`,
 	}
 	if !reflect.DeepEqual(got, want) {
