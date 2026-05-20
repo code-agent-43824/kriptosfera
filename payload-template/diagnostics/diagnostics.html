@@ -181,6 +181,20 @@
       });
     }
 
+    function ensureCadesPluginGlobal() {
+      if (typeof window.cadesplugin !== "undefined") return;
+      window.cadesplugin = {
+        LOG_LEVEL_DEBUG: 4,
+        LOG_LEVEL_INFO: 2,
+        LOG_LEVEL_ERROR: 1,
+        current_log_level: 1,
+        EnableInternalCSP: false,
+        set: function (pluginObject) {
+          this.pluginObject = pluginObject;
+        }
+      };
+    }
+
     async function renderRuntimeStatus(primary) {
       if (!primary || !primary.extensionId) {
         runtimeEl.innerHTML = "<p class=\"bad\">Нет extension id для runtime probe.</p>";
@@ -188,6 +202,7 @@
         return;
       }
       const apiUrl = "chrome-extension://" + primary.extensionId + "/nmcades_plugin_api.js";
+      ensureCadesPluginGlobal();
       const loaded = await probeScript(apiUrl);
       const apiReady = !!(window.cpcsp_chrome_nmcades && typeof window.cpcsp_chrome_nmcades.CreatePluginObject === "function");
       runtimeEl.innerHTML =

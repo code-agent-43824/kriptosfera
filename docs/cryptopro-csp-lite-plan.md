@@ -99,6 +99,7 @@ Objective: make the current states observable before changing CSP behavior.
 Implemented first diagnostic slice:
 
 - `diagnostics.html` loads the bundled extension's `nmcades_plugin_api.js`;
+- it prepares the minimal `window.cadesplugin` global expected by CryptoPro's low-level `nmcades_plugin_api.js`;
 - it creates the native plugin object through `cpcsp_chrome_nmcades.CreatePluginObject()`;
 - it creates `CAdESCOM.About`;
 - it probes `PluginVersion`, `Version`, `CSPVersion("", 80)`, `CSPName(80)`, and `EnableInternalCSP`;
