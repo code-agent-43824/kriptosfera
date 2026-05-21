@@ -122,6 +122,12 @@ Exit criteria:
 
 Objective: understand exactly what is already inside the current bundle and what is missing.
 
+First implementation slice:
+
+- expand launcher-side bundle validation from native-host-only files to the CAdES runtime and core Mini CSP files;
+- keep token-specific DLLs diagnostic-only until the clean-machine matrix proves which token path is needed;
+- do not add activation logic, registry writes, wrapper processes, or DLL search-path changes in this slice.
+
 Tasks:
 
 1. Inventory files under:
@@ -132,16 +138,29 @@ Tasks:
    - `cpconfig.exe`
    - `cplib.dll`
    - token-related DLLs such as `rutoken.dll`, `pcsc.dll`, `jacarta.dll`
-3. Compare this with a normal installed CryptoPro CSP machine:
+3. Validate that the extracted Browser Plugin layout contains at least:
+   - `nmcades.exe`
+   - `nmcades.json`
+   - `npcades.dll`
+   - `cades.dll`
+   - `xades.dll`
+   - `cplib.dll`
+   - `Mini CSP/capi10.dll`
+   - `Mini CSP/capi20.dll`
+   - `Mini CSP/cpcspi.dll`
+   - `Mini CSP/cpsuprt.dll`
+   - `Mini CSP/cpui.dll`
+4. Compare this with a normal installed CryptoPro CSP machine:
    - relevant registry keys under `Software\\Crypto Pro\\...`;
    - AppPath-like values;
    - provider names;
    - installed file paths;
    - user-level settings.
-4. Record only facts, not guessed registry emulation.
+5. Record only facts, not guessed registry emulation.
 
 Exit criteria:
 
+- Launcher rejects a bundle that lacks the core CAdES runtime or Mini CSP files needed for the next diagnostics step.
 - New inventory section documents which Mini CSP files exist and which system/registry locations `npcades.dll` references.
 - We know whether the currently bundled plugin archive already contains enough CSP Lite bits to attempt activation.
 

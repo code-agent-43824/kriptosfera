@@ -25,6 +25,14 @@ var requiredCryptoProPluginFiles = []string{
 	"Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
 	"Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
 	"Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
+	"Program Files/Crypto Pro/CAdES Browser Plug-in/cades.dll",
+	"Program Files/Crypto Pro/CAdES Browser Plug-in/xades.dll",
+	"Program Files/Crypto Pro/CAdES Browser Plug-in/cplib.dll",
+	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi10.dll",
+	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll",
+	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpcspi.dll",
+	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpsuprt.dll",
+	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll",
 }
 
 type CryptoProPluginState struct {

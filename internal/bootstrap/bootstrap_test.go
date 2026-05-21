@@ -349,6 +349,30 @@ func TestCryptoProPluginManagerRecoversMissingFile(t *testing.T) {
 	}
 }
 
+func TestCryptoProPluginManagerRequiresCadesAndMiniCSPFiles(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	bundle := testCryptoProPluginZipWithPaths(t, []string{
+		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
+		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
+		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
+	})
+	manager := CryptoProPluginManager{
+		Bundle:        bundle,
+		Version:       "2.0.15700",
+		SHA256:        checksumBytes(bundle),
+		LayoutVersion: 1,
+	}
+
+	_, err := manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err == nil {
+		t.Fatal("expected missing CAdES runtime files to fail layout validation")
+	}
+	if !strings.Contains(err.Error(), "cades.dll") {
+		t.Fatalf("expected missing cades.dll error, got %v", err)
+	}
+}
+
 func TestCryptoProPluginZipSkipsMSIPseudoPaths(t *testing.T) {
 	if !shouldSkipCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15700/.:Common/Crypto Pro/Shared/cadescom.dll") {
 		t.Fatal("MSI pseudo-path entry must be skipped")
@@ -773,14 +797,15 @@ func testCryptoProPluginZipWithMSIPseudoPath(t *testing.T) []byte {
 
 func testCryptoProPluginZipWithExtraPaths(t *testing.T, extraPaths []string) []byte {
 	t.Helper()
+	paths := append([]string{}, requiredTestCryptoProPluginPaths...)
+	paths = append(paths, extraPaths...)
+	return testCryptoProPluginZipWithPaths(t, paths)
+}
+
+func testCryptoProPluginZipWithPaths(t *testing.T, paths []string) []byte {
+	t.Helper()
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
-	paths := []string{
-		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
-		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
-		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
-	}
-	paths = append(paths, extraPaths...)
 	for _, path := range paths {
 		w, err := zw.Create(path)
 		if err != nil {
@@ -794,6 +819,20 @@ func testCryptoProPluginZipWithExtraPaths(t *testing.T, extraPaths []string) []b
 		t.Fatal(err)
 	}
 	return buf.Bytes()
+}
+
+var requiredTestCryptoProPluginPaths = []string{
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/cades.dll",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/xades.dll",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/cplib.dll",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi10.dll",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpcspi.dll",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpsuprt.dll",
+	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll",
 }
 
 func mustJSON(t *testing.T, value any) string {

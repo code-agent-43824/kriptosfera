@@ -99,7 +99,27 @@ The next implementation step can consume `build/cryptopro-plugin-lock.json`, dow
 
 The main runtime uncertainty remains whether the extracted AppData-only layout is enough for plugin detection, or whether CryptoPro components require additional COM/CSP/system registration. We should test this empirically after native messaging registration is implemented.
 
-Runtime extraction note: the MSI extraction output contains pseudo-path entries such as `.:Common`. These names are valid as MSI table abstractions but invalid as Windows filesystem path components. The launcher skips archive entries with `:` in any path component and then validates the required native host files (`nmcades.exe`, `nmcades.json`, `npcades.dll`) in the AppData layout.
+Runtime extraction note: the MSI extraction output contains pseudo-path entries such as `.:Common`. These names are valid as MSI table abstractions but invalid as Windows filesystem path components. The launcher skips archive entries with `:` in any path component.
+
+The AppData layout is now validated for the native host, CAdES runtime, and core Mini CSP files:
+
+```text
+Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe
+Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json
+Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll
+Program Files/Crypto Pro/CAdES Browser Plug-in/cades.dll
+Program Files/Crypto Pro/CAdES Browser Plug-in/xades.dll
+Program Files/Crypto Pro/CAdES Browser Plug-in/cplib.dll
+Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi10.dll
+Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll
+Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpcspi.dll
+Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpsuprt.dll
+Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll
+```
+
+Token-specific DLLs such as `rutoken.dll`, `jacarta.dll`, `pcsc.dll`, and `safenet.dll` are present in the bundle and should be reported by runtime diagnostics, but they are not hard blockers yet because the first Mini CSP prototype must prove provider activation before token-specific behavior.
+
+`cadescom.dll` is present in MSI pseudo-path locations (`.:Common` / `.:Common64`) rather than the current safe AppData Browser Plug-in layout. Do not make it a required extracted file until we decide how to map those MSI pseudo-paths intentionally.
 
 ## Manual runtime findings
 
