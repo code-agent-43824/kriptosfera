@@ -211,9 +211,6 @@
       await runProbeStep(results, "cadesplugin_api.js", async () =>
         typeof window.cadesplugin === "undefined" ? Promise.reject(new Error("cadesplugin global missing")) : "loaded"
       );
-      await runProbeStep(results, "extension id response", async () =>
-        callbackProbe((done) => window.cadesplugin.get_extension_id(done), 3000, "extension id response")
-      );
       await runProbeStep(results, "extension version response", async () =>
         callbackProbe((done) => window.cadesplugin.get_extension_version(done), 3000, "extension version response")
       );
@@ -231,9 +228,10 @@
       }
       cspEl.innerHTML = "<p class=\"muted\">Выполняются точечные вызовы CAdESCOM.About...</p>";
       const results = [];
-      await runProbeStep(results, "cadesplugin ready", async () =>
-        withTimeout(window.cadesplugin, 10000, "cadesplugin ready")
-      );
+      await runProbeStep(results, "cadesplugin ready", async () => {
+        await withTimeout(window.cadesplugin, 10000, "cadesplugin ready");
+        return "ready";
+      });
       if (results[results.length - 1].state !== "ok") {
         cspEl.innerHTML = renderProbeResults(results, "Native host или Browser Plugin object недоступен.");
         return;

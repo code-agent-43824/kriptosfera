@@ -22,7 +22,7 @@
 - логика single-file bootstrapper с embedded `payload.zip`;
 - remote payload mode для thin launcher с HTTPS-загрузкой, SHA-256 проверкой и cache reuse;
 - шаблон payload с pinned Chromium runtime и CryptoPro CAdES Browser Plug-in extension `1.3.17`;
-- diagnostics page для проверки wiring extension и runtime-доступности `nmcades_plugin_api.js`;
+- hosted diagnostics page для проверки CryptoPro extension, Browser Plugin и CSP/provider state через официальный `cadesplugin_api.js`;
 - PowerShell-скрипты сборки под GitHub Actions;
 - Windows CI workflow на бесплатных GitHub-hosted runners;
 - модель публикации артефактов без дополнительного ручного zip на release-тегах.
@@ -42,13 +42,14 @@
 - launcher генерирует native messaging manifest `ru.cryptopro.nmcades.json` и регистрирует его в HKCU для текущего пользователя;
 - ручная проверка показала, что на машине с установленным обычным CryptoPro CSP приложение ведёт себя как настроенный Chrome: видит extension, Browser Plugin, plugin version, системный CSP, стандартное окно подтверждения доступа и сертификаты;
 - минимальная app-config validation: `startUrl` должен соответствовать `allowedOrigins`, если список задан;
-- diagnostics остаётся включённой для MVP; `diagnosticsEnabled` управляет записью launcher-side diagnostic files, а `diagnosticsUrl` включает открытие публичной HTTPS-страницы диагностики рядом с целевой страницей.
+- diagnostics остаётся включённой для MVP; `diagnosticsUrl` включает открытие публичной HTTPS-страницы диагностики рядом с целевой страницей.
 
 Полная доменная политика Chromium после старта — не часть текущего MVP. Это future product hardening для клиентских/брендированных сборок; сейчас `allowedOrigins` используется как guard от неправильного стартового URL в конфиге.
 
-Следующий этап:
-- диагностика `CAdESCOM.About` / CSP state;
-- затем аккуратная активация bundled CSP Lite / Mini CSP.
+Текущая точка:
+- двухмашинная diagnostics matrix по `CAdESCOM.About` / CSP state снята;
+- extension + native Browser Plugin delivery подтверждены;
+- следующий этап — аккуратная активация bundled CSP Lite / Mini CSP.
 
 ## Репозиторий
 
@@ -123,13 +124,15 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - native messaging manifest генерируется и регистрируется в HKCU;
 - Browser Plugin на машине с системным CryptoPro CSP подтверждён ручной проверкой через CryptoPro demo page.
 
+Что закрыто диагностикой:
+- на машине с системным CSP diagnostics показывает plugin `2.0.15700`, CSP `5.0.13455`, provider name и целевая страница видит сертификаты;
+- на чистой машине extension/API и `CAdESCOM.About` доступны, но plugin/CSP state остаётся `0.0.0` / `0x80090017`.
+
 Что дальше:
-- снять двухмашинную матрицу diagnostics по `CAdESCOM.About`, `CSPVersion`, `CSPName`, `EnableInternalCSP`;
-- затем идти в безопасную активацию bundled CSP Lite / Mini CSP.
+- идти в безопасную активацию bundled CSP Lite / Mini CSP.
 
 ## Ближайшие инженерные задачи
 
-- проверить обновлённую diagnostics page на машине с системным CSP и на чистой машине;
 - затем идти в bundled CSP Lite / Mini CSP activation и reference signing flow;
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.
 

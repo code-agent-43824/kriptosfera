@@ -1,1 +1,0 @@
-window.__KRIPTOSFERA_EXTENSION_STATUS__ = null;

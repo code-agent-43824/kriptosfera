@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -61,36 +60,6 @@ func TestDetectExtensionsReadsManifestAndExtensionID(t *testing.T) {
 	}
 	if exts[0].ManifestError != "" {
 		t.Fatalf("unexpected manifest error: %s", exts[0].ManifestError)
-	}
-}
-
-func TestWriteExtensionStatusWritesJSEnvelope(t *testing.T) {
-	appDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(appDir, "diagnostics"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	exts := []ExtensionSpec{{
-		Name:            "cryptopro-cades",
-		Path:            filepath.Join(appDir, "extensions", "cryptopro-cades"),
-		ManifestPath:    filepath.Join(appDir, "extensions", "cryptopro-cades", "manifest.json"),
-		ManifestVersion: 3,
-		Version:         "1.3.17",
-		ExtensionID:     "pfhgbfnnjiafkhfdkmpiflachepdcjod",
-	}}
-	if err := writeExtensionStatus(appDir, exts, []string{"--load-extension=C:/ext"}); err != nil {
-		t.Fatal(err)
-	}
-
-	data, err := os.ReadFile(filepath.Join(appDir, "diagnostics", "extension-status.js"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(data)
-	if !strings.HasPrefix(text, "window.__KRIPTOSFERA_EXTENSION_STATUS__ = ") {
-		t.Fatalf("unexpected js envelope: %s", text)
-	}
-	if !strings.Contains(text, `"extensionId": "pfhgbfnnjiafkhfdkmpiflachepdcjod"`) {
-		t.Fatalf("expected extension id in status: %s", text)
 	}
 }
 

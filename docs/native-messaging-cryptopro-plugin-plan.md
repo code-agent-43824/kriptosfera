@@ -35,7 +35,7 @@ Already done:
 - pinned Chromium runtime is delivered in payload;
 - CryptoPro CAdES Browser Plug-in extension 1.3.17 is delivered as unpacked extension;
 - extension id is stable: `pfhgbfnnjiafkhfdkmpiflachepdcjod`;
-- diagnostics page can load `chrome-extension://pfhgbfnnjiafkhfdkmpiflachepdcjod/nmcades_plugin_api.js`;
+- hosted diagnostics can use CryptoPro's official `cadesplugin_api.js` path with the stable extension id `pfhgbfnnjiafkhfdkmpiflachepdcjod`;
 - launcher writes extension diagnostics and starts Chromium with `--disable-extensions-except` / `--load-extension`.
 
 Important extension constraint:
@@ -258,7 +258,6 @@ Target layout after first run:
             <future>
         diagnostics/
           diagnostics.html
-          extension-status.js
           native-messaging-status.js
         config/
           app-config.json

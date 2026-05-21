@@ -129,14 +129,6 @@ func Run(cfg config.RuntimeConfig) error {
 			logger.Info("native messaging ready name=%s registered=%t manifest=%s", result.HostName, result.Registered, result.ManifestPath)
 		}
 	}
-	if appCfg.DiagnosticsEnabled {
-		if err := writeExtensionStatus(appDir, extensions, extensionArgs); err != nil {
-			logger.Info("extension diagnostics write failed: %v", err)
-		}
-	} else {
-		logger.Info("extension diagnostics disabled by app config")
-	}
-
 	profileDir := filepath.Join(root, "profiles", appCfg.ProfileName)
 	if err := os.MkdirAll(profileDir, 0o755); err != nil {
 		return err

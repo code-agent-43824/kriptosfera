@@ -29,14 +29,14 @@ Current implementation status:
 - payload artifacts are produced in immutable version/sha-based layout for delivery.
 - remote first-run now has minimal visible progress UX on Windows.
 - canonical unpacked CryptoPro extension `1.3.17` is now committed into `payload-template/extensions/cryptopro-cades/`;
-- launcher now derives stable extension wiring from payload layout, computes the expected extension id from `manifest.json`, and writes diagnostics status into `diagnostics/extension-status.js`;
-- diagnostics page now probes `chrome-extension://.../nmcades_plugin_api.js` and targeted `CAdESCOM.About` calls, so extension delivery, runtime script availability, Browser Plugin version, and CSP/provider state are observable before CSP Lite activation starts.
+- launcher now derives stable extension wiring from payload layout and computes the expected extension id from `manifest.json`;
+- hosted diagnostics now uses CryptoPro's official `cadesplugin_api.js` path and targeted `CAdESCOM.About` calls, so extension delivery, Browser Plugin version, and CSP/provider state are observable before CSP Lite activation starts.
 - CryptoPro Browser Plugin `2.0.15700` is pinned in `build/cryptopro-plugin-lock.json`, downloaded from project static storage, verified by SHA-256/size, and embedded into both launcher variants during Windows builds.
 - launcher now extracts the embedded CryptoPro Browser Plugin bundle into the versioned AppData app directory and validates `nmcades.exe`, `nmcades.json`, and `npcades.dll` before reuse.
 - launcher now generates the Chrome native messaging manifest for `ru.cryptopro.nmcades` and registers it under HKCU for the current user before Chromium starts.
 - manual Windows validation showed that, when a normal system CryptoPro CSP is installed, Kriptosfera behaves like a configured Chrome: extension, Browser Plugin, plugin version, system CSP, standard access confirmation dialog, and certificate enumeration all work.
 - app config validation now checks that `startUrl` belongs to `allowedOrigins` when origins are configured;
-- `diagnosticsEnabled` now gates launcher-side diagnostic file generation, and `diagnosticsUrl` controls whether Chromium opens a public HTTPS diagnostics page alongside the target page.
+- `diagnosticsUrl` controls whether Chromium opens a public HTTPS diagnostics page alongside the target page.
 
 Current implementation boundaries:
 - `allowedOrigins` is a startup/config guard, not a full Chromium navigation sandbox;

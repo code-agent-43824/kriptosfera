@@ -96,12 +96,11 @@ Do not hide this behind vague "plugin failed" wording.
 
 Objective: make the current states observable before changing CSP behavior.
 
-Implemented first diagnostic slice:
+Implemented diagnostic slice:
 
-- `diagnostics.html` loads the bundled extension's `nmcades_plugin_api.js`;
-- it prepares the minimal `window.cadesplugin` global expected by CryptoPro's low-level `nmcades_plugin_api.js`;
-- it creates the native plugin object through `cpcsp_chrome_nmcades.CreatePluginObject()`;
-- it creates `CAdESCOM.About`;
+- hosted `diagnostics.html` loads CryptoPro's official `cadesplugin_api.js`;
+- it checks extension API readiness through the same public API path used by the CryptoPro demo page;
+- it creates `CAdESCOM.About` through `cadesplugin.CreateObjectAsync`;
 - it probes `PluginVersion`, `Version`, `CSPVersion("", 80)`, `CSPName(80)`, and `EnableInternalCSP`;
 - every call is shown with ok/error status and exact error text.
 
@@ -112,12 +111,12 @@ Still useful to add later:
 - certificate store open result and certificate count;
 - normalized HRESULT field where the browser object exposes it separately from the message.
 
-The current slice intentionally does not open the certificate store. That keeps this step diagnostic-only and avoids triggering the certificate access prompt before we have a clean two-machine `About` matrix.
+The current slice intentionally does not open the certificate store. That keeps this step diagnostic-only and avoids triggering the certificate access prompt.
 
 Exit criteria:
 
-- On system-CSP machine, diagnostics show plugin `2.0.15700`, CSP `5.0.13455`, and provider name.
-- On clean machine, diagnostics show the exact calls that return `0.0.0000` or fail.
+- Done: on system-CSP machine, diagnostics show plugin `2.0.15700`, CSP `5.0.13455`, and provider name.
+- Done: on clean machine, diagnostics show `0.0.0` plugin/provider state and exact `0x80090017` provider errors.
 
 ## Phase 1 - Inventory Mini CSP / CSP Lite files
 
