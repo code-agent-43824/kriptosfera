@@ -51,6 +51,15 @@ jobs:
         run: |
           ./build/build-launcher.ps1 -PayloadMode remote -UsePayloadLock -PayloadLockPath build/payload-lock.json
 
+      - name: Validate CryptoPro module diagnostics script
+        shell: pwsh
+        run: |
+          ./tools/windows/inspect-cryptopro-modules.ps1 -OutputPath dist/cryptopro-modules-ci.json
+          $report = Get-Content dist/cryptopro-modules-ci.json -Raw | ConvertFrom-Json
+          if ($report.status -ne 'process_not_found') {
+            throw "Unexpected CI diagnostics status: $($report.status)"
+          }
+
       - name: Upload launcher workflow artifact
         uses: actions/upload-artifact@v6
         with:
