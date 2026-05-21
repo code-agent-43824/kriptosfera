@@ -1,11 +1,11 @@
 {
   "appId": "ru.kriptosfera.demo",
   "platform": "win64",
-  "payloadVersion": "0.1.0",
+  "payloadVersion": "0.5.0",
   "archive": "payload.zip",
-  "sha256": "2d749200c01ef3a21d6adfd861961bff1672b2d76199b9ca20db89b69cd92389",
-  "size": 191113131,
+  "sha256": "cead85b42ccc502cf220247337f73953d03869544625ed62574a5b9a3189592f",
+  "size": 191113130,
   "baseUrl": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo",
-  "url": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo/0.1.0/2d749200c01ef3a21d6adfd861961bff1672b2d76199b9ca20db89b69cd92389/payload.zip",
-  "metadataUrl": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo/0.1.0/2d749200c01ef3a21d6adfd861961bff1672b2d76199b9ca20db89b69cd92389/payload.json"
+  "url": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo/0.5.0/cead85b42ccc502cf220247337f73953d03869544625ed62574a5b9a3189592f/payload.zip",
+  "metadataUrl": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo/0.5.0/cead85b42ccc502cf220247337f73953d03869544625ed62574a5b9a3189592f/payload.json"
 }
