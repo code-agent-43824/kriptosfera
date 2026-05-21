@@ -203,9 +203,11 @@ tools/windows/inspect-cryptopro-modules.ps1
 It records:
 
 - every running `nmcades.exe` process id/path;
+- full loaded module list for each `nmcades.exe`, plus a filtered CryptoPro-focused subset;
 - filtered loaded modules whose name/path mentions CryptoPro, CAdES, Mini CSP, token support, or PC/SC terms;
 - module path origin classified as `app`, `system`, `windows`, `other`, or `unknown`;
 - file/product versions where Windows exposes them;
+- related running processes whose name/path matches the same CryptoPro/CAdES/token filters;
 - module access errors, if Windows refuses module enumeration.
 
 Default output:

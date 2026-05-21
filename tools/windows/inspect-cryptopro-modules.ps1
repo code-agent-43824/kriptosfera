@@ -53,6 +53,46 @@ function Test-InterestingModule {
   return $false
 }
 
+function New-ModuleReport {
+  param(
+    [System.Diagnostics.ProcessModule]$Module,
+    [string]$ResolvedAppDir
+  )
+
+  [ordered]@{
+    name = $Module.ModuleName
+    path = $Module.FileName
+    origin = Resolve-Origin -Path $Module.FileName -ResolvedAppDir $ResolvedAppDir
+    fileVersion = $Module.FileVersionInfo.FileVersion
+    productVersion = $Module.FileVersionInfo.ProductVersion
+    filterMatch = Test-InterestingModule -Name $Module.ModuleName -Path $Module.FileName
+  }
+}
+
+function Get-ProcessPathSafe {
+  param([System.Diagnostics.Process]$Process)
+
+  try {
+    return $Process.Path
+  } catch {
+    return ""
+  }
+}
+
+function Get-ProcessStartTimeUtcString {
+  param([System.Diagnostics.Process]$Process)
+
+  try {
+    if ($Process.StartTime) {
+      return $Process.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+    }
+  } catch {
+    return $null
+  }
+
+  return $null
+}
+
 function Resolve-Origin {
   param(
     [string]$Path,
@@ -135,20 +175,16 @@ if (-not $resolvedAppDir) {
 $processReports = @()
 foreach ($process in $processes) {
   $processError = ""
+  $allModules = @()
   $modules = @()
 
   try {
     foreach ($module in @($process.Modules)) {
-      if (-not (Test-InterestingModule -Name $module.ModuleName -Path $module.FileName)) {
-        continue
-      }
+      $moduleReport = New-ModuleReport -Module $module -ResolvedAppDir $resolvedAppDir
+      $allModules += $moduleReport
 
-      $modules += [ordered]@{
-        name = $module.ModuleName
-        path = $module.FileName
-        origin = Resolve-Origin -Path $module.FileName -ResolvedAppDir $resolvedAppDir
-        fileVersion = $module.FileVersionInfo.FileVersion
-        productVersion = $module.FileVersionInfo.ProductVersion
+      if ($moduleReport.filterMatch) {
+        $modules += $moduleReport
       }
     }
   } catch {
@@ -158,10 +194,29 @@ foreach ($process in $processes) {
   $processReports += [ordered]@{
     id = $process.Id
     name = $process.ProcessName
-    path = $process.Path
-    startTime = if ($process.StartTime) { $process.StartTime.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ") } else { $null }
+    path = Get-ProcessPathSafe -Process $process
+    startTime = Get-ProcessStartTimeUtcString -Process $process
     moduleAccessError = $processError
+    allModuleCount = $allModules.Count
     filteredModules = $modules
+    modules = $allModules
+  }
+}
+
+$relatedProcesses = @()
+foreach ($process in @(Get-Process -ErrorAction SilentlyContinue)) {
+  $path = Get-ProcessPathSafe -Process $process
+
+  if (-not (Test-InterestingModule -Name $process.ProcessName -Path $path)) {
+    continue
+  }
+
+  $relatedProcesses += [ordered]@{
+    id = $process.Id
+    name = $process.ProcessName
+    path = $path
+    startTime = Get-ProcessStartTimeUtcString -Process $process
+    origin = Resolve-Origin -Path $path -ResolvedAppDir $resolvedAppDir
   }
 }
 
@@ -180,6 +235,7 @@ $report = [ordered]@{
   includeAllModules = [bool]$IncludeAllModules
   filterTerms = $filterTerms
   processes = $processReports
+  relatedProcesses = $relatedProcesses
 }
 
 $resolvedOutputPath = Resolve-OutputPath -RequestedOutputPath $OutputPath -ResolvedAppDir $resolvedAppDir
