@@ -1,7 +1,7 @@
 param(
   [ValidateSet("embedded", "remote")]
   [string]$PayloadMode = "embedded",
-  [string]$Version = "0.1.0",
+  [string]$Version = "0.5.0",
   [string]$ProductName = "Kriptosfera Demo",
   [string]$PayloadUrl = "",
   [string]$PayloadSha256 = "",

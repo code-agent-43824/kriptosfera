@@ -2,7 +2,7 @@
   "appId": "ru.kriptosfera.demo",
   "productName": "Криптосфера Demo",
   "customerName": "Demo Customer",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "startUrl": "https://www.cryptopro.ru/sites/default/files/products/cades/demopage/cades_bes_sample.html",
   "allowedOrigins": [
     "https://www.cryptopro.ru"
