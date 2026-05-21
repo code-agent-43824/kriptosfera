@@ -3,9 +3,9 @@
   "platform": "win64",
   "payloadVersion": "0.1.0",
   "archive": "payload.zip",
-  "sha256": "769d59c5c2c41a45fdc9203666297bf894369367c96c1280f20fc9efe4cc2cb0",
-  "size": 191064704,
+  "sha256": "0106730ef9e507009d4473e354ba549dede2b7a050b80fbe4f8b046fac9f99e7",
+  "size": 191113475,
   "baseUrl": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo",
-  "url": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo/0.1.0/769d59c5c2c41a45fdc9203666297bf894369367c96c1280f20fc9efe4cc2cb0/payload.zip",
-  "metadataUrl": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo/0.1.0/769d59c5c2c41a45fdc9203666297bf894369367c96c1280f20fc9efe4cc2cb0/payload.json"
+  "url": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo/0.1.0/0106730ef9e507009d4473e354ba549dede2b7a050b80fbe4f8b046fac9f99e7/payload.zip",
+  "metadataUrl": "https://mescheryakov.pro/kriptosfera/payloads/win64/demo/0.1.0/0106730ef9e507009d4473e354ba549dede2b7a050b80fbe4f8b046fac9f99e7/payload.json"
 }
