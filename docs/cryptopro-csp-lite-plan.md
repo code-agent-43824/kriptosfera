@@ -190,6 +190,38 @@ Exit criteria:
 - A manual launcher run on each test machine produces `cryptopro-runtime.json`.
 - The file is enough to compare clean/system-CSP machines for extracted file presence and native host path correctness.
 
+## Phase 1.6 - Read-only loaded module diagnostics
+
+Objective: prove which CryptoPro/CAdES/Mini CSP DLLs are actually loaded by `nmcades.exe` before any activation experiment.
+
+Implemented diagnostic tool:
+
+```text
+tools/windows/inspect-cryptopro-modules.ps1
+```
+
+It records:
+
+- every running `nmcades.exe` process id/path;
+- filtered loaded modules whose name/path mentions CryptoPro, CAdES, Mini CSP, token support, or PC/SC terms;
+- module path origin classified as `app`, `system`, `windows`, `other`, or `unknown`;
+- file/product versions where Windows exposes them;
+- module access errors, if Windows refuses module enumeration.
+
+Default output:
+
+```text
+<appDir>/diagnostics/cryptopro-modules.json
+```
+
+The script is intentionally read-only. It does not activate Mini CSP, write CSP registry/config values, change DLL search paths, or introduce a native-host wrapper.
+
+Exit criteria:
+
+- On the clean machine, the report shows whether `nmcades.exe` loads bundled CAdES DLLs and Mini CSP DLLs from AppData.
+- On the system-CSP machine, the report shows whether extra modules are loaded from `C:\Program Files\Crypto Pro\...`.
+- If `nmcades.exe` is not running, the report says `process_not_found`; in that case the diagnostics page must be opened first so the extension starts the native host.
+
 ## Phase 2 - Read official behavior where possible
 
 Objective: avoid blind registry poking.

@@ -59,6 +59,7 @@ jobs:
             dist/KriptosferaDemo.exe
             dist/KriptosferaDemo-remote.exe
             dist/README.txt
+            tools/windows/inspect-cryptopro-modules.ps1
           if-no-files-found: error
 
       - name: Attach launcher files to GitHub release
@@ -72,4 +73,4 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag --title $tag --notes "Automated build for $tag"
           }
-          gh release upload $tag dist/KriptosferaDemo.exe dist/KriptosferaDemo-remote.exe dist/README.txt --clobber
+          gh release upload $tag dist/KriptosferaDemo.exe dist/KriptosferaDemo-remote.exe dist/README.txt tools/windows/inspect-cryptopro-modules.ps1 --clobber

@@ -23,6 +23,7 @@
 - remote payload mode для thin launcher с HTTPS-загрузкой, SHA-256 проверкой и cache reuse;
 - шаблон payload с pinned Chromium runtime и CryptoPro CAdES Browser Plug-in extension `1.3.17`;
 - hosted diagnostics page для проверки CryptoPro extension, Browser Plugin и CSP/provider state через официальный `cadesplugin_api.js`;
+- read-only Windows script `tools/windows/inspect-cryptopro-modules.ps1` для фиксации фактически загруженных модулей `nmcades.exe`;
 - PowerShell-скрипты сборки под GitHub Actions;
 - Windows CI workflow на бесплатных GitHub-hosted runners;
 - модель публикации артефактов без дополнительного ручного zip на release-тегах.
@@ -127,6 +128,7 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 Что закрыто диагностикой:
 - на машине с системным CSP diagnostics показывает plugin `2.0.15700`, CSP `5.0.13455`, provider name и целевая страница видит сертификаты;
 - на чистой машине extension/API и `CAdESCOM.About` доступны, но plugin/CSP state остаётся `0.0.0` / `0x80090017`.
+- launcher пишет `cryptopro-runtime.json`, а отдельный read-only script может записать `cryptopro-modules.json` со списком загруженных CryptoPro/CAdES/Mini CSP модулей.
 
 Что дальше:
 - идти в безопасную активацию bundled CSP Lite / Mini CSP.
