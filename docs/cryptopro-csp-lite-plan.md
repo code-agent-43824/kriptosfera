@@ -164,6 +164,32 @@ Exit criteria:
 - New inventory section documents which Mini CSP files exist and which system/registry locations `npcades.dll` references.
 - We know whether the currently bundled plugin archive already contains enough CSP Lite bits to attempt activation.
 
+## Phase 1.5 - Read-only runtime diagnostics
+
+Objective: make each launcher run leave a machine-readable snapshot of the CryptoPro runtime layout before any activation experiment.
+
+Implemented diagnostic file:
+
+```text
+<appDir>/diagnostics/cryptopro-runtime.json
+```
+
+It records:
+
+- `appDir`;
+- extracted CryptoPro Browser Plugin root;
+- selected CryptoPro extension id;
+- embedded plugin bundle component/version/SHA-256/layout version;
+- native messaging host name, generated manifest path, native host executable path, registration status, and expected HKCU registry key;
+- expected CAdES/Mini CSP files with suffix, resolved path, exists flag, SHA-256, and error if missing/unreadable.
+
+This is intentionally read-only. It does not activate Mini CSP, write CSP registry/config values, change DLL search paths, or introduce a native-host wrapper.
+
+Exit criteria:
+
+- A manual launcher run on each test machine produces `cryptopro-runtime.json`.
+- The file is enough to compare clean/system-CSP machines for extracted file presence and native host path correctness.
+
 ## Phase 2 - Read official behavior where possible
 
 Objective: avoid blind registry poking.

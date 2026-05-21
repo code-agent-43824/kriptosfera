@@ -449,6 +449,67 @@ func TestPrepareCryptoProNativeMessagingWritesManifest(t *testing.T) {
 	}
 }
 
+func TestWriteCryptoProRuntimeDiagnostics(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	stubNativeMessagingRegistrar(t)
+	bundle := testCryptoProPluginZip(t)
+	manager := CryptoProPluginManager{
+		Bundle:        bundle,
+		Version:       "2.0.15700",
+		SHA256:        checksumBytes(bundle),
+		LayoutVersion: 1,
+	}
+	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	extensions := []ExtensionSpec{{
+		Name:        "cryptopro-cades",
+		ExtensionID: "pfhgbfnnjiafkhfdkmpiflachepdcjod",
+	}}
+	nativeResult, err := PrepareCryptoProNativeMessaging(appDir, pluginResult.Path, extensions, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reportPath, err := WriteCryptoProRuntimeDiagnostics(appDir, pluginResult.Path, nativeResult, extensions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report CryptoProRuntimeReport
+	data, err := os.ReadFile(reportPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.AppDir != appDir {
+		t.Fatalf("unexpected appDir: %s", report.AppDir)
+	}
+	if report.PluginRoot != pluginResult.Path {
+		t.Fatalf("unexpected pluginRoot: %s", report.PluginRoot)
+	}
+	if report.ExtensionID != "pfhgbfnnjiafkhfdkmpiflachepdcjod" {
+		t.Fatalf("unexpected extension id: %s", report.ExtensionID)
+	}
+	if report.Bundle.Version != "2.0.15700" || report.Bundle.SHA256 == "" {
+		t.Fatalf("unexpected bundle info: %#v", report.Bundle)
+	}
+	if report.NativeMessaging.ManifestPath == "" || report.NativeMessaging.HostPath == "" || !report.NativeMessaging.Registered {
+		t.Fatalf("unexpected native messaging info: %#v", report.NativeMessaging)
+	}
+	if len(report.ExpectedFiles) != len(requiredCryptoProPluginFiles) {
+		t.Fatalf("expected %d files, got %d", len(requiredCryptoProPluginFiles), len(report.ExpectedFiles))
+	}
+	for _, file := range report.ExpectedFiles {
+		if !file.Exists || file.Path == "" || file.SHA256 == "" || file.Error != "" {
+			t.Fatalf("unexpected file report for %s: %#v", file.Suffix, file)
+		}
+	}
+}
+
 func TestPrepareCryptoProNativeMessagingRequiresExtensionID(t *testing.T) {
 	appDir := t.TempDir()
 	logger := testLogger(t)

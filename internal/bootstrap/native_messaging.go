@@ -23,6 +23,7 @@ type NativeMessagingResult struct {
 	HostPath     string
 	Registered   bool
 	Skipped      bool
+	RegistryKey  string
 }
 
 type nativeMessagingManifest struct {
@@ -71,6 +72,7 @@ func PrepareCryptoProNativeMessaging(appDir, pluginDir string, extensions []Exte
 		ManifestPath: manifestPath,
 		HostPath:     hostPath,
 		Registered:   true,
+		RegistryKey:  "HKCU\\" + chromeNativeHostKeyPath,
 	}, nil
 }
 

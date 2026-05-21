@@ -121,6 +121,14 @@ Token-specific DLLs such as `rutoken.dll`, `jacarta.dll`, `pcsc.dll`, and `safen
 
 `cadescom.dll` is present in MSI pseudo-path locations (`.:Common` / `.:Common64`) rather than the current safe AppData Browser Plug-in layout. Do not make it a required extracted file until we decide how to map those MSI pseudo-paths intentionally.
 
+Runtime diagnostics are written by the launcher to:
+
+```text
+<appDir>/diagnostics/cryptopro-runtime.json
+```
+
+The file captures the extracted plugin root, selected extension id, native messaging manifest/host paths, expected HKCU native messaging key, plugin bundle metadata, and SHA-256 values for the required CAdES/Mini CSP files. It is a read-only snapshot for the next two-machine comparison and does not attempt CSP activation.
+
 ## Manual runtime findings
 
 Manual Windows validation on 2026-05-20 clarified the boundary of the current Browser Plugin bundle:

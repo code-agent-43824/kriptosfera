@@ -123,10 +123,17 @@ func Run(cfg config.RuntimeConfig) error {
 	}
 	if !cryptoProResult.Skipped {
 		logger.Info("cryptopro plugin ready reused=%t path=%s", cryptoProResult.Reused, cryptoProResult.Path)
-		if result, err := PrepareCryptoProNativeMessaging(appDir, cryptoProResult.Path, extensions, logger); err != nil {
+		nativeResult, err := PrepareCryptoProNativeMessaging(appDir, cryptoProResult.Path, extensions, logger)
+		if err != nil {
 			return err
-		} else if !result.Skipped {
-			logger.Info("native messaging ready name=%s registered=%t manifest=%s", result.HostName, result.Registered, result.ManifestPath)
+		}
+		if !nativeResult.Skipped {
+			logger.Info("native messaging ready name=%s registered=%t manifest=%s", nativeResult.HostName, nativeResult.Registered, nativeResult.ManifestPath)
+		}
+		if path, err := WriteCryptoProRuntimeDiagnostics(appDir, cryptoProResult.Path, nativeResult, extensions); err != nil {
+			logger.Info("cryptopro runtime diagnostics write failed error=%s", err)
+		} else {
+			logger.Info("cryptopro runtime diagnostics ready path=%s", path)
 		}
 	}
 	profileDir := filepath.Join(root, "profiles", appCfg.ProfileName)
