@@ -1,23 +1,22 @@
 package bootstrap
 
 import (
-    "archive/zip"
-    "bytes"
-    "context"
-    "encoding/json"
-    "errors"
-    "io"
-    "net/http"
-    "net/http/httptest"
-    "os"
-    "path/filepath"
-    "reflect"
-    "sync/atomic"
-    "strings"
-    "testing"
+	"archive/zip"
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync/atomic"
+	"testing"
 
-    "github.com/code-agent-43824/kriptosfera/internal/config"
-    "github.com/code-agent-43824/kriptosfera/internal/logging"
+	"github.com/code-agent-43824/kriptosfera/internal/config"
+	"github.com/code-agent-43824/kriptosfera/internal/logging"
 )
 
 func TestDefaultConfig(t *testing.T) {
@@ -488,43 +487,53 @@ func TestResolveChromiumExecutableFindsChrome(t *testing.T) {
 func TestBuildChromiumArgsAppMode(t *testing.T) {
 	cfg := testAppConfig()
 	cfg.DiagnosticsEnabled = false
-    args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil, "")
-    joined := strings.Join(args, " ")
-    if !strings.Contains(joined, "--user-data-dir=C:\\Profiles\\demo") {
-        t.Fatal("missing user-data-dir arg")
-    }
-    if !strings.Contains(joined, "--app=https://example.test") {
-        t.Fatal("missing app mode arg")
-    }
+	args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil)
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "--user-data-dir=C:\\Profiles\\demo") {
+		t.Fatal("missing user-data-dir arg")
+	}
+	if !strings.Contains(joined, "--app=https://example.test") {
+		t.Fatal("missing app mode arg")
+	}
 }
 
 func TestBuildChromiumArgsWindowModeBrowser(t *testing.T) {
-    cfg := testAppConfig()
-    cfg.WindowMode = "browser"
+	cfg := testAppConfig()
+	cfg.WindowMode = "browser"
 	cfg.DiagnosticsEnabled = false
-    args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil, "")
-    lastArg := args[len(args)-len(cfg.ChromiumArgs)-1]
-    if lastArg != "https://example.test" {
-        t.Fatalf("expected plain URL arg, got %s", lastArg)
+	args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil)
+	lastArg := args[len(args)-len(cfg.ChromiumArgs)-1]
+	if lastArg != "https://example.test" {
+		t.Fatalf("expected plain URL arg, got %s", lastArg)
 	}
 }
 
-func TestBuildChromiumArgsDiagnosticsOpensStartAndDiagnosticsPages(t *testing.T) {
+func TestBuildChromiumArgsDiagnosticsOpensConfiguredURL(t *testing.T) {
 	cfg := testAppConfig()
-	args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil, "http://127.0.0.1:12345/diagnostics.html")
+	args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil)
 	want := []string{
 		`--user-data-dir=C:\Profiles\demo`,
 		"https://example.test",
-		"http://127.0.0.1:12345/diagnostics.html",
+		"https://mescheryakov.pro/kriptosfera/diagnostics/diagnostics.html",
 		"--no-first-run",
 	}
-	if !reflect.DeepEqual(args, want) {
+	if strings.Join(args, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("unexpected diagnostics args: %#v", args)
 	}
 	for _, arg := range args {
 		if strings.HasPrefix(arg, "--app=") {
 			t.Fatalf("diagnostics mode must not use app window args: %#v", args)
 		}
+	}
+}
+
+func TestBuildChromiumArgsDiagnosticsFallsBackToAppModeWithoutURL(t *testing.T) {
+	cfg := testAppConfig()
+	cfg.DiagnosticsURL = ""
+	args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil)
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "--app=https://example.test") {
+		t.Fatalf("expected app mode without diagnostics URL, got %#v", args)
 	}
 }
 
@@ -554,6 +563,15 @@ func TestValidateAppConfigRejectsInvalidAllowedOrigin(t *testing.T) {
 
 	if err := validateAppConfig(cfg); err == nil {
 		t.Fatal("expected invalid allowed origin error")
+	}
+}
+
+func TestValidateAppConfigRejectsNonHTTPSDiagnosticsURL(t *testing.T) {
+	cfg := testAppConfig()
+	cfg.DiagnosticsURL = "http://127.0.0.1:12345/diagnostics.html"
+
+	if err := validateAppConfig(cfg); err == nil {
+		t.Fatal("expected diagnosticsUrl HTTPS validation error")
 	}
 }
 
@@ -779,29 +797,30 @@ func testCryptoProPluginZipWithExtraPaths(t *testing.T, extraPaths []string) []b
 }
 
 func mustJSON(t *testing.T, value any) string {
-    t.Helper()
-    data, err := json.Marshal(value)
-    if err != nil {
-        t.Fatal(err)
-    }
-    return string(data)
+	t.Helper()
+	data, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
 }
 
 func testAppConfig() config.AppConfig {
-    return testAppConfigWithVersion("0.1.0")
+	return testAppConfigWithVersion("0.1.0")
 }
 
 func testAppConfigWithVersion(version string) config.AppConfig {
-    return config.AppConfig{
-        AppID:              "ru.kriptosfera.demo",
-        ProductName:        "Kriptosfera Demo",
-        CustomerName:       "Demo Customer",
-        Version:            version,
-        StartURL:           "https://example.test",
-        AllowedOrigins:     []string{"https://example.test"},
-        ProfileName:        "demo",
-        WindowMode:         "app",
-        DiagnosticsEnabled: true,
-        ChromiumArgs:       []string{"--no-first-run"},
-    }
+	return config.AppConfig{
+		AppID:              "ru.kriptosfera.demo",
+		ProductName:        "Kriptosfera Demo",
+		CustomerName:       "Demo Customer",
+		Version:            version,
+		StartURL:           "https://example.test",
+		AllowedOrigins:     []string{"https://example.test"},
+		ProfileName:        "demo",
+		WindowMode:         "app",
+		DiagnosticsEnabled: true,
+		DiagnosticsURL:     "https://mescheryakov.pro/kriptosfera/diagnostics/diagnostics.html",
+		ChromiumArgs:       []string{"--no-first-run"},
+	}
 }

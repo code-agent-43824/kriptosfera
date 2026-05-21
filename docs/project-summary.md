@@ -36,13 +36,13 @@ Current implementation status:
 - launcher now generates the Chrome native messaging manifest for `ru.cryptopro.nmcades` and registers it under HKCU for the current user before Chromium starts.
 - manual Windows validation showed that, when a normal system CryptoPro CSP is installed, Kriptosfera behaves like a configured Chrome: extension, Browser Plugin, plugin version, system CSP, standard access confirmation dialog, and certificate enumeration all work.
 - app config validation now checks that `startUrl` belongs to `allowedOrigins` when origins are configured;
-- `diagnosticsEnabled` now gates launcher-side diagnostic file generation instead of being a purely decorative field.
+- `diagnosticsEnabled` now gates launcher-side diagnostic file generation, and `diagnosticsUrl` controls whether Chromium opens a public HTTPS diagnostics page alongside the target page.
 
 Current implementation boundaries:
 - `allowedOrigins` is a startup/config guard, not a full Chromium navigation sandbox;
 - full post-start navigation/domain policy is future product hardening, not an MVP blocker;
 - diagnostics remains enabled for the MVP because it is needed to verify launcher/runtime/extension wiring;
-- while diagnostics is enabled, launcher serves local diagnostics from a temporary `127.0.0.1` diagnostics server and opens both the configured start URL and `diagnostics.html` in Chromium window mode so test machines can capture the CSP matrix without manual file navigation;
+- while diagnostics is enabled and `diagnosticsUrl` is configured, launcher opens both the configured start URL and the public HTTPS diagnostics page in Chromium window mode so test machines can capture the CSP matrix without manual file navigation;
 - bundled CSP Lite / Mini CSP activation on clean machines, Rutoken discovery, certificate selection, and signing remain the next MVP layers.
 - on clean machines without system CryptoPro CSP, the current embedded Browser Plugin layer loads but reports plugin version `0.0.0000` and does not load CSP/provider state; treat this as missing provider activation, not an extension/native messaging failure.
 

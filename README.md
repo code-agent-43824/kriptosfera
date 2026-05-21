@@ -42,7 +42,7 @@
 - launcher генерирует native messaging manifest `ru.cryptopro.nmcades.json` и регистрирует его в HKCU для текущего пользователя;
 - ручная проверка показала, что на машине с установленным обычным CryptoPro CSP приложение ведёт себя как настроенный Chrome: видит extension, Browser Plugin, plugin version, системный CSP, стандартное окно подтверждения доступа и сертификаты;
 - минимальная app-config validation: `startUrl` должен соответствовать `allowedOrigins`, если список задан;
-- diagnostics остаётся включённой для MVP; `diagnosticsEnabled` управляет записью launcher-side diagnostic files.
+- diagnostics остаётся включённой для MVP; `diagnosticsEnabled` управляет записью launcher-side diagnostic files, а `diagnosticsUrl` включает открытие публичной HTTPS-страницы диагностики рядом с целевой страницей.
 
 Полная доменная политика Chromium после старта — не часть текущего MVP. Это future product hardening для клиентских/брендированных сборок; сейчас `allowedOrigins` используется как guard от неправильного стартового URL в конфиге.
 
@@ -133,4 +133,4 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - затем идти в bundled CSP Lite / Mini CSP activation и reference signing flow;
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.
 
-Пока `diagnosticsEnabled=true`, launcher открывает целевую страницу и локальную `diagnostics.html` через временный `127.0.0.1` diagnostics server, в обычном Chromium window-mode. Это временно удобнее для снятия CSP matrix; app-style single-window UX вернётся после диагностического этапа.
+Пока `diagnosticsEnabled=true` и задан `diagnosticsUrl`, launcher открывает целевую страницу и публичную HTTPS-страницу диагностики рядом в обычном Chromium window-mode. Локальный diagnostics server в launcher не используется.

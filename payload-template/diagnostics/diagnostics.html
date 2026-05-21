@@ -31,8 +31,13 @@
   <h2>CryptoPro CSP probe</h2>
   <div id="csp-status">Ожидание...</div>
 
-  <script src="./extension-status.js"></script>
   <script>
+    const knownExtension = {
+      name: "cryptopro-cades",
+      extensionId: "pfhgbfnnjiafkhfdkmpiflachepdcjod",
+      version: "1.3.17",
+      loadable: true
+    };
     const status = window.__KRIPTOSFERA_EXTENSION_STATUS__ || null;
     const launcherEl = document.getElementById("launcher-status");
     const runtimeEl = document.getElementById("runtime-status");
@@ -149,8 +154,14 @@
 
     function renderLauncherStatus() {
       if (!status) {
-        launcherEl.innerHTML = "<p class=\"bad\">extension-status.js не загружен.</p>";
-        return null;
+        launcherEl.innerHTML =
+          "<p class=\"muted\">Launcher status file недоступен на публичной diagnostics page; используется стабильный extension id из manifest.key.</p>" +
+          "<ul>" +
+            row("primaryExtension", "<code>" + esc(knownExtension.name) + "</code>") +
+            row("extensionVersion", "<code>" + esc(knownExtension.version) + "</code>") +
+            row("extensionId", "<code>" + esc(knownExtension.extensionId) + "</code>") +
+          "</ul>";
+        return knownExtension;
       }
       const extensions = Array.isArray(status.extensions) ? status.extensions : [];
       const primary = extensions.find((item) => item.name === "cryptopro-cades") || extensions[0] || null;
