@@ -312,6 +312,6 @@ Do not suppress the CryptoPro prompt. If a trusted-site whitelist is later requi
 
 ## Immediate next step
 
-Implement Phase 0 diagnostics first.
+Start Phase 1: inventory the bundled Mini CSP / CSP Lite files and compare them with the working system-CSP machine.
 
-Do not start CSP Lite activation until the two-machine diagnostic matrix is captured with exact call results and errors.
+Phase 0 is complete enough for this transition: the two-machine diagnostic matrix now distinguishes the working system-CSP state from the clean-machine missing-provider state without adding more launcher plumbing.
