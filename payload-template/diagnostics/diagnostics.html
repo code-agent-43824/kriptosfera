@@ -172,6 +172,14 @@
       return await readValue(await object[methodName].apply(object, args || []));
     }
 
+    async function getPropertyOrCall(object, propertyName) {
+      const value = await getProperty(object, propertyName);
+      if (typeof value === "function") {
+        return await readValue(await value.call(object));
+      }
+      return value;
+    }
+
     async function readCertificateDetails(results, certificates, index) {
       const prefix = "Certificates.Item(" + index + ")";
       const certificate = await runProbeStep(results, prefix, async () => callOptionalMethod(certificates, "Item", [index]), 10000);
@@ -183,7 +191,7 @@
       await runProbeStep(results, prefix + ".Thumbprint", async () => getProperty(certificate, "Thumbprint"), 10000);
       await runProbeStep(results, prefix + ".ValidFromDate", async () => getProperty(certificate, "ValidFromDate"), 10000);
       await runProbeStep(results, prefix + ".ValidToDate", async () => getProperty(certificate, "ValidToDate"), 10000);
-      await runProbeStep(results, prefix + ".HasPrivateKey", async () => getProperty(certificate, "HasPrivateKey"), 10000);
+      await runProbeStep(results, prefix + ".HasPrivateKey", async () => getPropertyOrCall(certificate, "HasPrivateKey"), 10000);
 
       const privateKey = await runProbeStep(results, prefix + ".PrivateKey", async () => getProperty(certificate, "PrivateKey"), 10000);
       if (!privateKey) return;
