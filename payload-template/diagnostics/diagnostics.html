@@ -34,6 +34,10 @@
   <button id="rerun-csp-probe" type="button" disabled>Run again</button>
   <div id="csp-status">Ожидание...</div>
 
+  <h2>Test signature probe</h2>
+  <button id="run-sign-probe" type="button" disabled>Run test signature</button>
+  <div id="sign-status">Ожидание...</div>
+
   <script>window.cadesplugin_load_timeout = 8000;</script>
   <script src="https://www.cryptopro.ru/sites/default/files/products/cades/cadesplugin_api.js?v=313061"></script>
   <script>
@@ -47,8 +51,10 @@
     const launcherEl = document.getElementById("launcher-status");
     const runtimeEl = document.getElementById("runtime-status");
     const cspEl = document.getElementById("csp-status");
+    const signEl = document.getElementById("sign-status");
     const runCspButton = document.getElementById("run-csp-probe");
     const rerunCspButton = document.getElementById("rerun-csp-probe");
+    const runSignButton = document.getElementById("run-sign-probe");
     let runtimeHasAsyncApi = false;
 
     function esc(value) {
@@ -172,6 +178,13 @@
       return await readValue(await object[methodName].apply(object, args || []));
     }
 
+    async function callRequiredMethod(object, methodName, args) {
+      if (!object || typeof object[methodName] !== "function") {
+        throw new Error(methodName + " unavailable");
+      }
+      return await readValue(await object[methodName].apply(object, args || []));
+    }
+
     async function getPropertyOrCall(object, propertyName) {
       const value = await getProperty(object, propertyName);
       if (typeof value === "function") {
@@ -252,6 +265,7 @@
       if (!primary || !primary.extensionId) {
         runtimeEl.innerHTML = "<p class=\"bad\">Нет extension id для runtime probe.</p>";
         cspEl.innerHTML = "<p class=\"bad\">CSP probe пропущен.</p>";
+        signEl.innerHTML = "<p class=\"bad\">Signature probe пропущен.</p>";
         return;
       }
       const results = [];
@@ -278,6 +292,9 @@
       rerunCspButton.disabled = false;
       cspEl.innerHTML =
         "<p class=\"muted\">Нажмите кнопку CSP certificate-store probe. Запуск идёт из пользовательского действия, чтобы системное окно разрешения CryptoPro/CSP могло появиться в этой же вкладке.</p>";
+      runSignButton.disabled = false;
+      signEl.innerHTML =
+        "<p class=\"muted\">Нажмите Run test signature только после проверки store. Тест выберет первый сертификат с приватным ключом и подпишет короткую диагностическую строку.</p>";
     }
 
     async function renderCspStatus() {
@@ -353,10 +370,110 @@
       rerunCspButton.disabled = false;
     }
 
+    async function findFirstCertificateWithPrivateKey(results, store) {
+      await runProbeStep(results, "Store.Open(2, \"My\", 2)", async () => {
+        await store.Open(2, "My", 2);
+        return "opened";
+      }, 30000);
+
+      const certificates = await runProbeStep(results, "Store.Certificates", async () => getProperty(store, "Certificates"), 10000);
+      const certificateCount = await runProbeStep(results, "Certificates.Count", async () => getProperty(certificates, "Count"), 10000);
+      const numericCount = Number(certificateCount);
+      if (!Number.isFinite(numericCount) || numericCount < 1) return null;
+
+      for (let index = 1; index <= numericCount; index += 1) {
+        const certificate = await runProbeStep(results, "Certificates.Item(" + index + ")", async () => callRequiredMethod(certificates, "Item", [index]), 10000);
+        if (!certificate) continue;
+        const subject = await runProbeStep(results, "Certificates.Item(" + index + ").SubjectName", async () => getProperty(certificate, "SubjectName"), 10000);
+        const thumbprint = await runProbeStep(results, "Certificates.Item(" + index + ").Thumbprint", async () => getProperty(certificate, "Thumbprint"), 10000);
+        const hasPrivateKey = await runProbeStep(results, "Certificates.Item(" + index + ").HasPrivateKey", async () => getPropertyOrCall(certificate, "HasPrivateKey"), 10000);
+        if (hasPrivateKey === true || String(hasPrivateKey).toLowerCase() === "true") {
+          await runProbeStep(results, "selected certificate", async () => String(subject || "(no subject)") + " / " + String(thumbprint || "(no thumbprint)"));
+          return certificate;
+        }
+      }
+      return null;
+    }
+
+    async function renderSignStatus() {
+      if (!runtimeHasAsyncApi) {
+        signEl.innerHTML = "<p class=\"bad\">CryptoPro extension API недоступен, signature probe пропущен.</p>";
+        return;
+      }
+      runSignButton.disabled = true;
+      signEl.innerHTML = "<p class=\"muted\">Выполняется тестовая CAdES подпись короткой строки...</p>";
+      const results = [];
+
+      await runProbeStep(results, "cadesplugin ready", async () => {
+        await withTimeout(window.cadesplugin, 15000, "cadesplugin ready");
+        return "ready";
+      }, 16000);
+      if (results[results.length - 1].state !== "ok") {
+        signEl.innerHTML = renderProbeResults(results, "Native host или Browser Plugin object недоступен.");
+        runSignButton.disabled = false;
+        return;
+      }
+
+      const store = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.Store\")", async () => {
+        return await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+      }, 10000);
+      if (!store) {
+        signEl.innerHTML = renderProbeResults(results, "CAdESCOM.Store не создан; signature flow невозможен.");
+        runSignButton.disabled = false;
+        return;
+      }
+
+      const certificate = await findFirstCertificateWithPrivateKey(results, store);
+      if (!certificate) {
+        await runProbeStep(results, "Store.Close()", async () => callOptionalMethod(store, "Close", []), 6000);
+        signEl.innerHTML = renderProbeResults(results, "Сертификат с приватным ключом не найден.");
+        runSignButton.disabled = false;
+        return;
+      }
+
+      const signer = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.CPSigner\")", async () => {
+        return await window.cadesplugin.CreateObjectAsync("CAdESCOM.CPSigner");
+      }, 10000);
+      if (!signer) {
+        await runProbeStep(results, "Store.Close()", async () => callOptionalMethod(store, "Close", []), 6000);
+        signEl.innerHTML = renderProbeResults(results, "CAdESCOM.CPSigner не создан.");
+        runSignButton.disabled = false;
+        return;
+      }
+
+      await runProbeStep(results, "CPSigner.propset_Certificate", async () => callRequiredMethod(signer, "propset_Certificate", [certificate]), 10000);
+      await runProbeStep(results, "CPSigner.propset_CheckCertificate(false)", async () => callRequiredMethod(signer, "propset_CheckCertificate", [false]), 10000);
+
+      const signedData = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.CadesSignedData\")", async () => {
+        return await window.cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
+      }, 10000);
+      if (!signedData) {
+        await runProbeStep(results, "Store.Close()", async () => callOptionalMethod(store, "Close", []), 6000);
+        signEl.innerHTML = renderProbeResults(results, "CAdESCOM.CadesSignedData не создан.");
+        runSignButton.disabled = false;
+        return;
+      }
+
+      const content = "Kriptosfera diagnostics test";
+      await runProbeStep(results, "CadesSignedData.propset_Content", async () => callRequiredMethod(signedData, "propset_Content", [content]), 10000);
+      const signature = await runProbeStep(results, "CadesSignedData.SignCades(CADES_BES, detached)", async () => {
+        return await callRequiredMethod(signedData, "SignCades", [signer, 1, true]);
+      }, 60000);
+      if (typeof signature === "string") {
+        await runProbeStep(results, "Signature length", async () => signature.length);
+        await runProbeStep(results, "Signature prefix", async () => signature.slice(0, 80));
+      }
+      await runProbeStep(results, "Store.Close()", async () => callOptionalMethod(store, "Close", []), 6000);
+
+      signEl.innerHTML = renderProbeResults(results, "Этот тест проверяет реальную криптооперацию через выбранный сертификат, а не только видимость ключа.");
+      runSignButton.disabled = false;
+    }
+
     const primary = renderLauncherStatus();
     renderRuntimeStatus(primary);
     runCspButton.addEventListener("click", renderCspStatus);
     rerunCspButton.addEventListener("click", renderCspStatus);
+    runSignButton.addEventListener("click", renderSignStatus);
   </script>
 </body>
 </html>
