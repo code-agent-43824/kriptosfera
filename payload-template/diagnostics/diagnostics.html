@@ -7,6 +7,7 @@
     body { font-family: system-ui, sans-serif; margin: 24px; line-height: 1.45; }
     h1, h2 { margin-bottom: 0.4em; }
     ul { padding-left: 20px; }
+    button { margin: 8px 8px 8px 0; padding: 8px 12px; }
     code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
     table { border-collapse: collapse; margin-top: 12px; min-width: 720px; max-width: 100%; }
     th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
@@ -20,7 +21,7 @@
 </head>
 <body>
   <h1>Kriptosfera Diagnostics</h1>
-  <p>Минимальная проверка wiring, CryptoPro extension и точечных вызовов CAdESCOM.About.</p>
+  <p>Проверка wiring, CryptoPro extension и полного пути CAdESCOM до открытия хранилища сертификатов.</p>
 
   <h2>Launcher wiring</h2>
   <div id="launcher-status">Загрузка...</div>
@@ -29,6 +30,8 @@
   <div id="runtime-status">Ожидание...</div>
 
   <h2>CryptoPro CSP probe</h2>
+  <button id="run-csp-probe" type="button" disabled>Run CSP certificate-store probe</button>
+  <button id="rerun-csp-probe" type="button" disabled>Run again</button>
   <div id="csp-status">Ожидание...</div>
 
   <script>window.cadesplugin_load_timeout = 8000;</script>
@@ -44,6 +47,9 @@
     const launcherEl = document.getElementById("launcher-status");
     const runtimeEl = document.getElementById("runtime-status");
     const cspEl = document.getElementById("csp-status");
+    const runCspButton = document.getElementById("run-csp-probe");
+    const rerunCspButton = document.getElementById("rerun-csp-probe");
+    let runtimeHasAsyncApi = false;
 
     function esc(value) {
       return String(value)
@@ -113,9 +119,9 @@
       return JSON.stringify(resolved);
     }
 
-    async function runProbeStep(results, name, fn) {
+    async function runProbeStep(results, name, fn, timeoutMs) {
       try {
-        const value = await withTimeout(fn(), 6000, name);
+        const value = await withTimeout(fn(), timeoutMs || 6000, name);
         results.push({ name, state: "ok", value: formatValue(value) });
         return value;
       } catch (err) {
@@ -152,6 +158,18 @@
           "<thead><tr><th>Probe</th><th>Status</th><th>Value / error</th></tr></thead>" +
           "<tbody>" + rows + "</tbody>" +
         "</table>";
+    }
+
+    async function getProperty(object, propertyName) {
+      if (!object) return undefined;
+      return await readValue(object[propertyName]);
+    }
+
+    async function callOptionalMethod(object, methodName, args) {
+      if (!object || typeof object[methodName] !== "function") {
+        return "(" + methodName + " unavailable)";
+      }
+      return await readValue(await object[methodName].apply(object, args || []));
     }
 
     function renderLauncherStatus() {
@@ -215,50 +233,101 @@
         callbackProbe((done) => window.cadesplugin.get_extension_version(done), 3000, "extension version response")
       );
       const hasAsyncApi = !!(window.cadesplugin && typeof window.cadesplugin.CreateObjectAsync === "function");
+      runtimeHasAsyncApi = hasAsyncApi;
       runtimeEl.innerHTML =
         renderProbeResults(results, "Runtime probe использует официальный cadesplugin_api.js, как демо-страница CryptoPro.") +
         "<ul>" + row("cadesplugin.CreateObjectAsync", hasAsyncApi ? "<span class=\"ok\">present</span>" : "<span class=\"bad\">missing</span>") + "</ul>";
-      await renderCspStatus(hasAsyncApi);
+      renderCspStatusIntro(hasAsyncApi);
     }
 
-    async function renderCspStatus(hasAsyncApi) {
+    function renderCspStatusIntro(hasAsyncApi) {
       if (!hasAsyncApi) {
         cspEl.innerHTML = "<p class=\"bad\">CryptoPro extension API недоступен, CSP probe пропущен.</p>";
         return;
       }
-      cspEl.innerHTML = "<p class=\"muted\">Выполняются точечные вызовы CAdESCOM.About...</p>";
+      runCspButton.disabled = false;
+      rerunCspButton.disabled = false;
+      cspEl.innerHTML =
+        "<p class=\"muted\">Нажмите кнопку CSP certificate-store probe. Запуск идёт из пользовательского действия, чтобы системное окно разрешения CryptoPro/CSP могло появиться в этой же вкладке.</p>";
+    }
+
+    async function renderCspStatus() {
+      if (!runtimeHasAsyncApi) {
+        cspEl.innerHTML = "<p class=\"bad\">CryptoPro extension API недоступен, CSP probe пропущен.</p>";
+        return;
+      }
+      runCspButton.disabled = true;
+      rerunCspButton.disabled = true;
+      cspEl.innerHTML = "<p class=\"muted\">Выполняется полный CAdESCOM/CSP сценарий: About, provider types, Store.Open, Certificates.Count...</p>";
       const results = [];
       await runProbeStep(results, "cadesplugin ready", async () => {
-        await withTimeout(window.cadesplugin, 10000, "cadesplugin ready");
+        await withTimeout(window.cadesplugin, 15000, "cadesplugin ready");
         return "ready";
-      });
+      }, 16000);
       if (results[results.length - 1].state !== "ok") {
         cspEl.innerHTML = renderProbeResults(results, "Native host или Browser Plugin object недоступен.");
+        runCspButton.disabled = false;
+        rerunCspButton.disabled = false;
         return;
       }
 
       const about = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.About\")", async () => {
         return await window.cadesplugin.CreateObjectAsync("CAdESCOM.About");
-      });
+      }, 10000);
       if (!about) {
         cspEl.innerHTML = renderProbeResults(results, "CAdESCOM.About не создан; дальше version/CSP calls невозможны.");
+        runCspButton.disabled = false;
+        rerunCspButton.disabled = false;
         return;
       }
 
       await runProbeStep(results, "About.PluginVersion", async () => readVersionObject(about.PluginVersion));
       await runProbeStep(results, "About.Version", async () => readVersionObject(about.Version));
-      await runProbeStep(results, "About.CSPVersion(\"\", 80)", async () => readVersionObject(await about.CSPVersion("", 80)));
-      await runProbeStep(results, "About.CSPName(80)", async () => readValue(await about.CSPName(80)));
+      for (const providerType of [75, 80, 81]) {
+        await runProbeStep(results, "About.CSPName(" + providerType + ")", async () => readValue(await about.CSPName(providerType)));
+        await runProbeStep(results, "About.CSPVersion(\"\", " + providerType + ")", async () => readVersionObject(await about.CSPVersion("", providerType)));
+      }
       await runProbeStep(results, "cadesplugin.EnableInternalCSP", async () => {
         if (typeof window.cadesplugin === "undefined") return "(cadesplugin global undefined)";
         return window.cadesplugin.EnableInternalCSP;
       });
 
-      cspEl.innerHTML = renderProbeResults(results, "Эта диагностика не открывает certificate store и не должна сама вызывать окно доступа к сертификатам.");
+      const store = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.Store\")", async () => {
+        return await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+      }, 10000);
+      if (!store) {
+        cspEl.innerHTML = renderProbeResults(results, "CAdESCOM.Store не создан; certificate-store flow дальше невозможен.");
+        runCspButton.disabled = false;
+        rerunCspButton.disabled = false;
+        return;
+      }
+
+      await runProbeStep(results, "Store.Open(2, \"My\", 2)", async () => {
+        await store.Open(2, "My", 2);
+        return "opened";
+      }, 30000);
+
+      const certificates = await runProbeStep(results, "Store.Certificates", async () => getProperty(store, "Certificates"), 10000);
+      const certificateCount = await runProbeStep(results, "Certificates.Count", async () => getProperty(certificates, "Count"), 10000);
+      const numericCount = Number(certificateCount);
+      if (Number.isFinite(numericCount) && numericCount > 0) {
+        const firstCertificate = await runProbeStep(results, "Certificates.Item(1)", async () => callOptionalMethod(certificates, "Item", [1]), 10000);
+        await runProbeStep(results, "Certificate.SubjectName", async () => getProperty(firstCertificate, "SubjectName"), 10000);
+        await runProbeStep(results, "Certificate.Thumbprint", async () => getProperty(firstCertificate, "Thumbprint"), 10000);
+        await runProbeStep(results, "Certificate.ValidFromDate", async () => getProperty(firstCertificate, "ValidFromDate"), 10000);
+        await runProbeStep(results, "Certificate.ValidToDate", async () => getProperty(firstCertificate, "ValidToDate"), 10000);
+      }
+      await runProbeStep(results, "Store.Close()", async () => callOptionalMethod(store, "Close", []), 6000);
+
+      cspEl.innerHTML = renderProbeResults(results, "Этот сценарий должен выполняться в той же вкладке, где подтверждается системное разрешение CryptoPro/CSP. После него можно сразу снимать modules JSON для nmcades.exe.");
+      runCspButton.disabled = false;
+      rerunCspButton.disabled = false;
     }
 
     const primary = renderLauncherStatus();
     renderRuntimeStatus(primary);
+    runCspButton.addEventListener("click", renderCspStatus);
+    rerunCspButton.addEventListener("click", renderCspStatus);
   </script>
 </body>
 </html>
