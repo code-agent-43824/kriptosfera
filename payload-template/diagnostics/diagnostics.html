@@ -443,6 +443,7 @@
 
       await runProbeStep(results, "CPSigner.propset_Certificate", async () => callRequiredMethod(signer, "propset_Certificate", [certificate]), 10000);
       await runProbeStep(results, "CPSigner.propset_CheckCertificate(false)", async () => callRequiredMethod(signer, "propset_CheckCertificate", [false]), 10000);
+      await runProbeStep(results, "CPSigner.propset_Options(2)", async () => callRequiredMethod(signer, "propset_Options", [2]), 10000);
 
       const signedData = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.CadesSignedData\")", async () => {
         return await window.cadesplugin.CreateObjectAsync("CAdESCOM.CadesSignedData");
@@ -456,7 +457,7 @@
 
       const content = "Kriptosfera diagnostics test";
       await runProbeStep(results, "CadesSignedData.propset_Content", async () => callRequiredMethod(signedData, "propset_Content", [content]), 10000);
-      const signature = await runProbeStep(results, "CadesSignedData.SignCades(CADES_BES, detached)", async () => {
+      const signature = await runProbeStep(results, "CadesSignedData.SignCades(CADES_BES, detached, end-entity-only)", async () => {
         return await callRequiredMethod(signedData, "SignCades", [signer, 1, true]);
       }, 60000);
       if (typeof signature === "string") {
