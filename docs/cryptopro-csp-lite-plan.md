@@ -63,6 +63,10 @@ The plugin can see and use a system-installed CryptoPro CSP. That is valuable fa
 
 The `0.0.0000` plugin version on a clean machine should be treated as a symptom of missing/inactive CSP/provider activation, not as a string-formatting bug.
 
+Follow-up diagnostics on 2026-05-24 narrowed the clean-machine path further. `CAdESCOM.Store` can open the Windows `MY` store and enumerate certificates even when CryptoPro provider types 75/80/81 are absent. A user certificate with `HasPrivateKey=true` is visible, but its private key is exposed as `Microsoft Smart Card Key Storage Provider` with `ProviderType=0`. `CAdESCOM.CadesSignedData.SignCades` fails on that key with `0x80090014` once certificate-chain inclusion is disabled. Therefore, plain CNG/KSP visibility is not enough for standard CAdESCOM site compatibility.
+
+The main implementation direction is now **CSP-compatible activation**: the bundled Mini CSP/CSP Lite layer must appear to CAdESCOM as a legacy CryptoAPI CSP provider with the expected provider type/name, and usable certificates must carry CSP-style `CERT_KEY_PROV_INFO`. Direct CNG/KSP signing remains a fallback/native-product option, but it is not sufficient for ordinary third-party pages that call CryptoPro CAdESCOM APIs.
+
 ## Product decision for MVP
 
 Support two modes explicitly:
