@@ -50,7 +50,25 @@
 Текущая точка:
 - двухмашинная diagnostics matrix по `CAdESCOM.About` / CSP state снята;
 - extension + native Browser Plugin delivery подтверждены;
-- следующий этап — аккуратная активация bundled CSP Lite / Mini CSP.
+- ProcMon на чистой машине показал, что `nmcades.exe` реально загружает bundled `npcades.dll` и `cplib.dll` из AppData;
+- следующий этап — аккуратная активация bundled CSP Lite / Mini CSP через CryptoPro runtime/CAPI layer, а не через замену CAdES-плагина.
+
+## Текущие выводы по CSP Lite / Mini CSP
+
+Исследование на 2026-05-24:
+
+- На машине без системного CSP запускаются extension, native host и `CAdESCOM.About`; `About.CSPName(80)` / `CSPVersion("", 80)` падают с `0x80090017` («Тип поставщика не определен»).
+- На чистой машине `CAdESCOM.Store` может открыть `MY` и увидеть сертификат с приватным ключом через `Microsoft Smart Card Key Storage Provider`, но `SignCades` падает с `0x80090014` (`wrong provider type`). Одна видимость CNG/KSP-ключа не равна совместимости с CAdESCOM-подписью.
+- Ранний `cryptopro-modules.json` был недостаточен: он не показал `npcades.dll` / `cplib.dll`, хотя ProcMon позже подтвердил их загрузку. Для DLL-загрузки и failed lookup основным инструментом теперь считается ProcMon.
+- Linux/Unix-модель CryptoPro указывает на собственный runtime/config слой CryptoPro: `cpconfig`, `capi10`, `capi20`, `csp`, `pcsc`, `cng`. Поэтому MiniCSP/CSP Lite может не регистрировать полноценный Windows provider напрямую, а ожидать вызова через CryptoPro CAPI/CSP libraries.
+- Рабочая гипотеза: цепочка должна быть `nmcades.exe -> npcades.dll -> cplib.dll -> capi10/capi20/cpcspi/Mini CSP runtime -> token/container`. Сейчас подтверждена только первая часть до `cplib.dll`.
+
+Скорректированное направление:
+
+- Не начинать с ручной записи в системный Windows CSP registry.
+- Сначала выяснить, какие DLL/config/registry paths `cplib.dll` и CAdES runtime пытаются открыть при `Store.Open` и `SignCades`.
+- Проверять именно 32-bit слой: текущий `nmcades.exe` работает под WOW64, значит x64-only MiniCSP DLL не подцепятся.
+- Подключение MiniCSP делать маленькими обратимыми шагами: сначала DLL search path / app-local layout / environment, затем только при необходимости HKCU/HKLM config or registry.
 
 ## Репозиторий
 
@@ -129,13 +147,19 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - на машине с системным CSP diagnostics показывает plugin `2.0.15700`, CSP `5.0.13455`, provider name и целевая страница видит сертификаты;
 - на чистой машине extension/API и `CAdESCOM.About` доступны, но plugin/CSP state остаётся `0.0.0` / `0x80090017`.
 - launcher пишет `cryptopro-runtime.json`, а отдельный read-only script может записать `cryptopro-modules.json` со списком загруженных CryptoPro/CAdES/Mini CSP модулей.
+- ProcMon на чистой машине подтвердил загрузку `npcades.dll` и `cplib.dll` из bundled Browser Plug-in каталога; значит следующий пробел — не native messaging и не CAdES plugin bootstrap, а переход от `cplib.dll` к CAPI/MiniCSP runtime.
 
 Что дальше:
-- идти в безопасную активацию bundled CSP Lite / Mini CSP.
+- снять расширенный ProcMon-трейс на чистой машине во время `Store.Open` и `SignCades`, с фокусом на `capi`, `csp`, `cpcsp`, `cplib`, `config`, `Crypto Pro`, `NAME NOT FOUND`;
+- собрать такой же ProcMon-трейс на машине с системным CSP для сравнения successful path;
+- проверить состав bundled MiniCSP/CSP Lite, особенно наличие 32-bit `capi10.dll`, `capi20.dll`, `cpcspi.dll`, `cpsuprt.dll`, `cpui.dll`, `csp*.dll` и config/layout files;
+- попробовать app-local/PATH activation так, чтобы MiniCSP DLL лежали в search path процесса `nmcades.exe`, и фиксировать, меняется ли `0x80090017` / `0x80090014`.
 
 ## Ближайшие инженерные задачи
 
-- затем идти в bundled CSP Lite / Mini CSP activation и reference signing flow;
+- расширить диагностику/скрипты так, чтобы они фиксировали не только loaded modules, но и ProcMon-derived failed DLL/config lookups;
+- после подтверждения нужного DLL/config layout реализовать минимальный обратимый activation step для bundled CSP Lite / Mini CSP;
+- затем вернуться к reference signing flow с Рутокеном;
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.
 
 Пока `diagnosticsEnabled=true` и задан `diagnosticsUrl`, launcher открывает целевую страницу и публичную HTTPS-страницу диагностики рядом в обычном Chromium window-mode. Локальный diagnostics server в launcher не используется.
