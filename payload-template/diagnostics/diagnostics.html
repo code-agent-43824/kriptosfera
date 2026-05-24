@@ -7,7 +7,8 @@
     body { font-family: system-ui, sans-serif; margin: 24px; line-height: 1.45; }
     h1, h2 { margin-bottom: 0.4em; }
     ul { padding-left: 20px; }
-    button { margin: 8px 8px 8px 0; padding: 8px 12px; }
+    button, select { margin: 8px 8px 8px 0; padding: 8px 12px; }
+    select { min-width: 520px; max-width: 100%; }
     code { background: #f3f3f3; padding: 1px 4px; border-radius: 4px; }
     table { border-collapse: collapse; margin-top: 12px; min-width: 720px; max-width: 100%; }
     th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
@@ -35,6 +36,10 @@
   <div id="csp-status">Ожидание...</div>
 
   <h2>Test signature probe</h2>
+  <button id="load-sign-certs" type="button" disabled>Load signing certificates</button>
+  <select id="sign-cert-select" disabled>
+    <option value="">No certificate loaded</option>
+  </select>
   <button id="run-sign-probe" type="button" disabled>Run test signature</button>
   <div id="sign-status">Ожидание...</div>
 
@@ -54,8 +59,11 @@
     const signEl = document.getElementById("sign-status");
     const runCspButton = document.getElementById("run-csp-probe");
     const rerunCspButton = document.getElementById("rerun-csp-probe");
+    const loadSignCertsButton = document.getElementById("load-sign-certs");
+    const signCertSelect = document.getElementById("sign-cert-select");
     const runSignButton = document.getElementById("run-sign-probe");
     let runtimeHasAsyncApi = false;
+    let signingCertificates = [];
 
     function esc(value) {
       return String(value)
@@ -214,6 +222,22 @@
       }
     }
 
+    function shortText(value, maxLength) {
+      const text = String(value || "");
+      if (text.length <= maxLength) return text;
+      return text.slice(0, maxLength - 1) + "...";
+    }
+
+    function renderSigningCertificateOptions() {
+      const options = signingCertificates.map((item) => {
+        const label = "#" + item.index + " " + shortText(item.subject, 80) + " [" + item.thumbprint + "]";
+        return "<option value=\"" + esc(item.thumbprint) + "\">" + esc(label) + "</option>";
+      }).join("");
+      signCertSelect.innerHTML = options || "<option value=\"\">No private-key certificate found</option>";
+      signCertSelect.disabled = signingCertificates.length === 0;
+      runSignButton.disabled = !runtimeHasAsyncApi || signingCertificates.length === 0;
+    }
+
     function renderLauncherStatus() {
       if (!status) {
         launcherEl.innerHTML =
@@ -292,9 +316,10 @@
       rerunCspButton.disabled = false;
       cspEl.innerHTML =
         "<p class=\"muted\">Нажмите кнопку CSP certificate-store probe. Запуск идёт из пользовательского действия, чтобы системное окно разрешения CryptoPro/CSP могло появиться в этой же вкладке.</p>";
-      runSignButton.disabled = false;
+      loadSignCertsButton.disabled = false;
+      renderSigningCertificateOptions();
       signEl.innerHTML =
-        "<p class=\"muted\">Нажмите Run test signature только после проверки store. Тест выберет первый сертификат с приватным ключом и подпишет короткую диагностическую строку.</p>";
+        "<p class=\"muted\">Нажмите Load signing certificates, выберите сертификат, затем Run test signature.</p>";
     }
 
     async function renderCspStatus() {
@@ -370,7 +395,69 @@
       rerunCspButton.disabled = false;
     }
 
-    async function findFirstCertificateWithPrivateKey(results, store) {
+    async function loadSigningCertificates() {
+      if (!runtimeHasAsyncApi) {
+        signEl.innerHTML = "<p class=\"bad\">CryptoPro extension API недоступен, certificate loading пропущен.</p>";
+        return;
+      }
+      loadSignCertsButton.disabled = true;
+      runSignButton.disabled = true;
+      signEl.innerHTML = "<p class=\"muted\">Загружается список сертификатов с приватным ключом...</p>";
+      const results = [];
+      const found = [];
+
+      await runProbeStep(results, "cadesplugin ready", async () => {
+        await withTimeout(window.cadesplugin, 15000, "cadesplugin ready");
+        return "ready";
+      }, 16000);
+      if (results[results.length - 1].state !== "ok") {
+        signingCertificates = [];
+        renderSigningCertificateOptions();
+        signEl.innerHTML = renderProbeResults(results, "Native host или Browser Plugin object недоступен.");
+        loadSignCertsButton.disabled = false;
+        return;
+      }
+
+      const store = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.Store\")", async () => {
+        return await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");
+      }, 10000);
+      if (!store) {
+        signingCertificates = [];
+        renderSigningCertificateOptions();
+        signEl.innerHTML = renderProbeResults(results, "CAdESCOM.Store не создан.");
+        loadSignCertsButton.disabled = false;
+        return;
+      }
+
+      await runProbeStep(results, "Store.Open(2, \"My\", 2)", async () => {
+        await store.Open(2, "My", 2);
+        return "opened";
+      }, 30000);
+      const certificates = await runProbeStep(results, "Store.Certificates", async () => getProperty(store, "Certificates"), 10000);
+      const certificateCount = await runProbeStep(results, "Certificates.Count", async () => getProperty(certificates, "Count"), 10000);
+      const numericCount = Number(certificateCount);
+
+      if (Number.isFinite(numericCount) && numericCount > 0) {
+        for (let index = 1; index <= numericCount; index += 1) {
+          const certificate = await runProbeStep(results, "Certificates.Item(" + index + ")", async () => callRequiredMethod(certificates, "Item", [index]), 10000);
+          if (!certificate) continue;
+          const subject = await runProbeStep(results, "Certificates.Item(" + index + ").SubjectName", async () => getProperty(certificate, "SubjectName"), 10000);
+          const thumbprint = await runProbeStep(results, "Certificates.Item(" + index + ").Thumbprint", async () => getProperty(certificate, "Thumbprint"), 10000);
+          const hasPrivateKey = await runProbeStep(results, "Certificates.Item(" + index + ").HasPrivateKey", async () => getPropertyOrCall(certificate, "HasPrivateKey"), 10000);
+          if ((hasPrivateKey === true || String(hasPrivateKey).toLowerCase() === "true") && thumbprint) {
+            found.push({ index, subject: String(subject || ""), thumbprint: String(thumbprint) });
+          }
+        }
+      }
+
+      await runProbeStep(results, "Store.Close()", async () => callOptionalMethod(store, "Close", []), 6000);
+      signingCertificates = found;
+      renderSigningCertificateOptions();
+      signEl.innerHTML = renderProbeResults(results, "Выберите сертификат в списке над кнопкой Run test signature.");
+      loadSignCertsButton.disabled = false;
+    }
+
+    async function findSelectedCertificateWithPrivateKey(results, store) {
       await runProbeStep(results, "Store.Open(2, \"My\", 2)", async () => {
         await store.Open(2, "My", 2);
         return "opened";
@@ -380,6 +467,8 @@
       const certificateCount = await runProbeStep(results, "Certificates.Count", async () => getProperty(certificates, "Count"), 10000);
       const numericCount = Number(certificateCount);
       if (!Number.isFinite(numericCount) || numericCount < 1) return null;
+      const selectedThumbprint = signCertSelect.value;
+      await runProbeStep(results, "selected thumbprint", async () => selectedThumbprint || "(first private-key certificate)");
 
       for (let index = 1; index <= numericCount; index += 1) {
         const certificate = await runProbeStep(results, "Certificates.Item(" + index + ")", async () => callRequiredMethod(certificates, "Item", [index]), 10000);
@@ -387,7 +476,8 @@
         const subject = await runProbeStep(results, "Certificates.Item(" + index + ").SubjectName", async () => getProperty(certificate, "SubjectName"), 10000);
         const thumbprint = await runProbeStep(results, "Certificates.Item(" + index + ").Thumbprint", async () => getProperty(certificate, "Thumbprint"), 10000);
         const hasPrivateKey = await runProbeStep(results, "Certificates.Item(" + index + ").HasPrivateKey", async () => getPropertyOrCall(certificate, "HasPrivateKey"), 10000);
-        if (hasPrivateKey === true || String(hasPrivateKey).toLowerCase() === "true") {
+        const thumbprintMatches = !selectedThumbprint || String(thumbprint).toUpperCase() === selectedThumbprint.toUpperCase();
+        if (thumbprintMatches && (hasPrivateKey === true || String(hasPrivateKey).toLowerCase() === "true")) {
           await runProbeStep(results, "selected certificate", async () => String(subject || "(no subject)") + " / " + String(thumbprint || "(no thumbprint)"));
           return certificate;
         }
@@ -423,7 +513,7 @@
         return;
       }
 
-      const certificate = await findFirstCertificateWithPrivateKey(results, store);
+      const certificate = await findSelectedCertificateWithPrivateKey(results, store);
       if (!certificate) {
         await runProbeStep(results, "Store.Close()", async () => callOptionalMethod(store, "Close", []), 6000);
         signEl.innerHTML = renderProbeResults(results, "Сертификат с приватным ключом не найден.");
@@ -474,6 +564,7 @@
     renderRuntimeStatus(primary);
     runCspButton.addEventListener("click", renderCspStatus);
     rerunCspButton.addEventListener("click", renderCspStatus);
+    loadSignCertsButton.addEventListener("click", loadSigningCertificates);
     runSignButton.addEventListener("click", renderSignStatus);
   </script>
 </body>
