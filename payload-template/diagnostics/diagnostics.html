@@ -172,6 +172,27 @@
       return await readValue(await object[methodName].apply(object, args || []));
     }
 
+    async function readCertificateDetails(results, certificates, index) {
+      const prefix = "Certificates.Item(" + index + ")";
+      const certificate = await runProbeStep(results, prefix, async () => callOptionalMethod(certificates, "Item", [index]), 10000);
+      if (!certificate) return;
+
+      await runProbeStep(results, prefix + ".SubjectName", async () => getProperty(certificate, "SubjectName"), 10000);
+      await runProbeStep(results, prefix + ".IssuerName", async () => getProperty(certificate, "IssuerName"), 10000);
+      await runProbeStep(results, prefix + ".SerialNumber", async () => getProperty(certificate, "SerialNumber"), 10000);
+      await runProbeStep(results, prefix + ".Thumbprint", async () => getProperty(certificate, "Thumbprint"), 10000);
+      await runProbeStep(results, prefix + ".ValidFromDate", async () => getProperty(certificate, "ValidFromDate"), 10000);
+      await runProbeStep(results, prefix + ".ValidToDate", async () => getProperty(certificate, "ValidToDate"), 10000);
+      await runProbeStep(results, prefix + ".HasPrivateKey", async () => getProperty(certificate, "HasPrivateKey"), 10000);
+
+      const privateKey = await runProbeStep(results, prefix + ".PrivateKey", async () => getProperty(certificate, "PrivateKey"), 10000);
+      if (!privateKey) return;
+
+      for (const propertyName of ["ProviderName", "ProviderType", "ContainerName", "UniqueContainerName", "KeySpec"]) {
+        await runProbeStep(results, prefix + ".PrivateKey." + propertyName, async () => getProperty(privateKey, propertyName), 10000);
+      }
+    }
+
     function renderLauncherStatus() {
       if (!status) {
         launcherEl.innerHTML =
@@ -311,11 +332,11 @@
       const certificateCount = await runProbeStep(results, "Certificates.Count", async () => getProperty(certificates, "Count"), 10000);
       const numericCount = Number(certificateCount);
       if (Number.isFinite(numericCount) && numericCount > 0) {
-        const firstCertificate = await runProbeStep(results, "Certificates.Item(1)", async () => callOptionalMethod(certificates, "Item", [1]), 10000);
-        await runProbeStep(results, "Certificate.SubjectName", async () => getProperty(firstCertificate, "SubjectName"), 10000);
-        await runProbeStep(results, "Certificate.Thumbprint", async () => getProperty(firstCertificate, "Thumbprint"), 10000);
-        await runProbeStep(results, "Certificate.ValidFromDate", async () => getProperty(firstCertificate, "ValidFromDate"), 10000);
-        await runProbeStep(results, "Certificate.ValidToDate", async () => getProperty(firstCertificate, "ValidToDate"), 10000);
+        const limit = Math.min(numericCount, 10);
+        await runProbeStep(results, "Certificates detail limit", async () => limit + " of " + numericCount);
+        for (let index = 1; index <= limit; index += 1) {
+          await readCertificateDetails(results, certificates, index);
+        }
       }
       await runProbeStep(results, "Store.Close()", async () => callOptionalMethod(store, "Close", []), 6000);
 
