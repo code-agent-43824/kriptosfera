@@ -31,6 +31,11 @@
   <div id="runtime-status">Ожидание...</div>
 
   <h2>CryptoPro CSP probe</h2>
+  <label>
+    <input id="enable-internal-csp" type="checkbox" checked />
+    EnableInternalCSP=true before CAdES calls
+  </label>
+  <br />
   <button id="run-csp-probe" type="button" disabled>Run CSP certificate-store probe</button>
   <button id="rerun-csp-probe" type="button" disabled>Run again</button>
   <div id="csp-status">Ожидание...</div>
@@ -59,6 +64,7 @@
     const signEl = document.getElementById("sign-status");
     const runCspButton = document.getElementById("run-csp-probe");
     const rerunCspButton = document.getElementById("rerun-csp-probe");
+    const enableInternalCspCheckbox = document.getElementById("enable-internal-csp");
     const loadSignCertsButton = document.getElementById("load-sign-certs");
     const signCertSelect = document.getElementById("sign-cert-select");
     const runSignButton = document.getElementById("run-sign-probe");
@@ -238,6 +244,25 @@
       runSignButton.disabled = !runtimeHasAsyncApi || signingCertificates.length === 0;
     }
 
+    async function applyInternalCspMode(results) {
+      const enabled = Boolean(enableInternalCspCheckbox.checked);
+      await runProbeStep(results, "EnableInternalCSP checkbox", async () => enabled);
+      await runProbeStep(results, "EnableInternalCSP before", async () => {
+        if (typeof window.cadesplugin === "undefined") return "(cadesplugin global undefined)";
+        return window.cadesplugin.EnableInternalCSP;
+      });
+      await runProbeStep(results, "EnableInternalCSP set result", async () => {
+        if (typeof window.cadesplugin === "undefined") return "(cadesplugin global undefined)";
+        window.cadesplugin.EnableInternalCSP = enabled;
+        window.postMessage("EnableInternalCSP=" + String(enabled), "*");
+        return "posted EnableInternalCSP=" + String(enabled);
+      });
+      await runProbeStep(results, "EnableInternalCSP after", async () => {
+        if (typeof window.cadesplugin === "undefined") return "(cadesplugin global undefined)";
+        return window.cadesplugin.EnableInternalCSP;
+      });
+    }
+
     function renderLauncherStatus() {
       if (!status) {
         launcherEl.innerHTML =
@@ -331,6 +356,7 @@
       rerunCspButton.disabled = true;
       cspEl.innerHTML = "<p class=\"muted\">Выполняется полный CAdESCOM/CSP сценарий: About, provider types, Store.Open, Certificates.Count...</p>";
       const results = [];
+      await applyInternalCspMode(results);
       await runProbeStep(results, "cadesplugin ready", async () => {
         await withTimeout(window.cadesplugin, 15000, "cadesplugin ready");
         return "ready";
@@ -358,7 +384,7 @@
         await runProbeStep(results, "About.CSPName(" + providerType + ")", async () => readValue(await about.CSPName(providerType)));
         await runProbeStep(results, "About.CSPVersion(\"\", " + providerType + ")", async () => readVersionObject(await about.CSPVersion("", providerType)));
       }
-      await runProbeStep(results, "cadesplugin.EnableInternalCSP", async () => {
+      await runProbeStep(results, "cadesplugin.EnableInternalCSP after ready", async () => {
         if (typeof window.cadesplugin === "undefined") return "(cadesplugin global undefined)";
         return window.cadesplugin.EnableInternalCSP;
       });
@@ -405,6 +431,7 @@
       signEl.innerHTML = "<p class=\"muted\">Загружается список сертификатов с приватным ключом...</p>";
       const results = [];
       const found = [];
+      await applyInternalCspMode(results);
 
       await runProbeStep(results, "cadesplugin ready", async () => {
         await withTimeout(window.cadesplugin, 15000, "cadesplugin ready");
@@ -493,6 +520,7 @@
       runSignButton.disabled = true;
       signEl.innerHTML = "<p class=\"muted\">Выполняется тестовая CAdES подпись короткой строки...</p>";
       const results = [];
+      await applyInternalCspMode(results);
 
       await runProbeStep(results, "cadesplugin ready", async () => {
         await withTimeout(window.cadesplugin, 15000, "cadesplugin ready");
