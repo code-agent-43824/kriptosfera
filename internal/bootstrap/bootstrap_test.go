@@ -418,8 +418,12 @@ func TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths(t *testing.T) {
 	if _, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(result.Path, "cryptopro-cades-plugin-2.0.15700", ".:Common")); !os.IsNotExist(err) {
-		t.Fatalf("MSI pseudo-path entry should not be extracted, got %v", err)
+	// The MSI pseudo-path entry (name contains ':') must be skipped, so the file
+	// must not exist. We only treat a successful stat (err == nil) as a failure:
+	// on Windows os.Stat of a path containing ':' returns a syntax error rather
+	// than fs.ErrNotExist, so checking os.IsNotExist would be non-portable.
+	if _, err := os.Stat(filepath.Join(result.Path, "cryptopro-cades-plugin-2.0.15700", ".:Common")); err == nil {
+		t.Fatal("MSI pseudo-path entry should not be extracted")
 	}
 }
 
