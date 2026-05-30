@@ -3,6 +3,13 @@ dist/
 .tmp/
 *.exe
 *.zip
-internal/bootstrap/cryptopro-plugin.zip
 payload/
 .build-cache/
+
+# Committed empty placeholders for go:embed so the launcher compiles and
+# `go test ./...` runs on a clean checkout (e.g. Linux/macOS dev machines).
+# Windows build scripts (build/embed-payload.ps1, build/fetch-cryptopro-plugin.ps1)
+# overwrite these with the real payload/plugin archives during a build.
+# No CryptoPro binaries are committed: both files are zero-byte placeholders.
+!internal/bootstrap/payload.zip
+!internal/bootstrap/cryptopro-plugin.zip
