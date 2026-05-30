@@ -47,10 +47,17 @@ type PayloadState struct {
 	PayloadSHA256 string `json:"payloadSha256"`
 }
 
+// DefaultConfig returns the runtime configuration baked into the launcher
+// binary at build time.
 func DefaultConfig() (config.RuntimeConfig, error) {
 	return config.DefaultRuntimeConfig()
 }
 
+// Run executes the full launcher flow for the given runtime configuration:
+// prepare the payload, load and validate the app config, set up the CryptoPro
+// plugin / native messaging layer, and start Chromium (or write a diagnostics
+// dry-run on non-Windows hosts). See the package documentation for the ordered
+// steps.
 func Run(cfg config.RuntimeConfig) error {
 	root, err := appRoot()
 	if err != nil {

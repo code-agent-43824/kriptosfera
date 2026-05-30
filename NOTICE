@@ -1,0 +1,15 @@
+Kriptosfera
+Copyright 2026 The Kriptosfera Authors
+
+This product includes software developed by the Kriptosfera project.
+
+Licensed under the Apache License, Version 2.0 (see the LICENSE file).
+
+Third-party components delivered at runtime are NOT covered by this license:
+the bundled Chromium runtime, the CryptoPro CAdES Browser Plug-in, the
+CryptoPro native messaging host, and any CryptoPro CSP / Mini CSP components
+are proprietary software owned by their respective rights holders (Google LLC
+and CRYPTO-PRO LLC) and are governed by their own license terms. These
+binaries are never committed to this repository; they are fetched or
+generated at build time. Their redistribution must comply with the
+applicable third-party agreements.

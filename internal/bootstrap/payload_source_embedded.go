@@ -31,7 +31,7 @@ func (s *EmbeddedPayloadSource) Open(context.Context) (PayloadArchive, error) {
 	reader := bytes.NewReader(s.payload)
 	return PayloadArchive{
 		ReaderAt: reader,
-		Size:   int64(len(s.payload)),
-		Close:  func() error { return nil },
+		Size:     int64(len(s.payload)),
+		Close:    func() error { return nil },
 	}, nil
 }

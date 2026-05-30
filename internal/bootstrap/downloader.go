@@ -14,6 +14,8 @@ import (
 	"github.com/code-agent-43824/kriptosfera/internal/logging"
 )
 
+// DownloadResult describes a completed download: the temp file path, the number
+// of bytes written, and the SHA-256 computed over the streamed content.
 type DownloadResult struct {
 	TempPath string
 	Bytes    int64
@@ -27,6 +29,11 @@ const maxPayloadDownloadBytes = 1 << 30 // 1 GiB
 
 var defaultDownloadClient = &http.Client{Timeout: 5 * time.Minute}
 
+// DownloadFile streams an HTTPS URL to a temporary file while computing its
+// SHA-256. It rejects non-HTTPS URLs, enforces a size cap (the pinned
+// expectedSize when positive, otherwise maxPayloadDownloadBytes), and reports
+// progress via the optional callback. The caller owns the returned temp file
+// and must remove it.
 func DownloadFile(ctx context.Context, client *http.Client, url string, expectedSize int64, logger *logging.Logger, progress func(done, total int64)) (DownloadResult, error) {
 	if !strings.HasPrefix(strings.ToLower(url), "https://") {
 		return DownloadResult{}, wrapLauncherError(ErrPayloadDownloadFailed, "payload URL must use HTTPS", fmt.Errorf("unsupported payload URL: %s", url))

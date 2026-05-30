@@ -5,6 +5,8 @@ import (
 	"os"
 )
 
+// AppConfig is the product-facing configuration shipped inside the payload as
+// config/app-config.json. It is validated by the launcher before use.
 type AppConfig struct {
 	AppID              string   `json:"appId"`
 	ProductName        string   `json:"productName"`
@@ -19,6 +21,7 @@ type AppConfig struct {
 	ChromiumArgs       []string `json:"chromiumArgs"`
 }
 
+// Load reads and decodes an AppConfig from the JSON file at path.
 func Load(path string) (AppConfig, error) {
 	var cfg AppConfig
 	data, err := os.ReadFile(path)

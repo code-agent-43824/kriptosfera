@@ -1,6 +1,25 @@
 # Kriptosfera
 
+[![build-windows](https://github.com/code-agent-43824/kriptosfera/actions/workflows/build-windows.yml/badge.svg)](https://github.com/code-agent-43824/kriptosfera/actions/workflows/build-windows.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 Криптосфера — концепт и MVP-каркас для десктопного приложения, которое поставляет специализированную Chromium-оболочку и российский клиентский криптостек в режиме «скачал один файл → запустил → вставил токен → работаешь».
+
+## Содержание
+
+- [Что зафиксировано по документам](#что-зафиксировано-по-документам)
+- [MVP scope](#mvp-scope)
+- [Текущие выводы по CSP Lite / Mini CSP](#текущие-выводы-по-csp-lite--mini-csp)
+- [Репозиторий](#репозиторий)
+- [Локальная разработка](#локальная-разработка)
+- [Сборка на GitHub Actions](#сборка-на-github-actions)
+- [Документно подтверждённые этапы MVP](#документно-подтверждённые-этапы-mvp)
+- [Текущий следующий шаг](#текущий-следующий-шаг)
+- [Ближайшие инженерные задачи](#ближайшие-инженерные-задачи)
+- [Документация](#документация)
+- [Лицензия](#лицензия)
+
+Полный обзор архитектуры — в [`docs/architecture.md`](docs/architecture.md); индекс документации — в [`docs/README.md`](docs/README.md).
 
 ## Что зафиксировано по документам
 
@@ -175,3 +194,17 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.
 
 Пока `diagnosticsEnabled=true` и задан `diagnosticsUrl`, launcher открывает целевую страницу и публичную HTTPS-страницу диагностики рядом в обычном Chromium window-mode. Локальный diagnostics server в launcher не используется.
+
+## Документация
+
+- [`docs/README.md`](docs/README.md) — индекс всей документации.
+- [`docs/architecture.md`](docs/architecture.md) — архитектура launcher и runtime-раскладка.
+- [`docs/cryptopro-csp-lite-plan.md`](docs/cryptopro-csp-lite-plan.md) — текущий ключевой план (CSP Lite / Mini CSP).
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — локальная сборка, тесты, соглашения.
+- [`CHANGELOG.md`](CHANGELOG.md) — история изменений.
+
+## Лицензия
+
+Исходный код Kriptosfera распространяется под лицензией Apache 2.0 — см. [`LICENSE`](LICENSE).
+
+Сторонние компоненты, доставляемые в runtime (Chromium, CryptoPro CAdES Browser Plug-in, native messaging host, CryptoPro CSP / Mini CSP), **не покрываются** этой лицензией и регулируются собственными условиями правообладателей; в репозитории они не хранятся. Подробности — в [`NOTICE`](NOTICE).

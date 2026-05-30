@@ -11,14 +11,14 @@ import (
 )
 
 type RemotePayloadSource struct {
-	version string
-	url     string
-	sha256  string
-	size    int64
-	client  *http.Client
-	logger  *logging.Logger
+	version          string
+	url              string
+	sha256           string
+	size             int64
+	client           *http.Client
+	logger           *logging.Logger
 	progressReporter ProgressReporter
-	progress func(done, total int64)
+	progress         func(done, total int64)
 }
 
 func NewRemotePayloadSource(cfg config.RuntimeConfig, logger *logging.Logger) (*RemotePayloadSource, error) {
@@ -30,10 +30,10 @@ func NewRemotePayloadSource(cfg config.RuntimeConfig, logger *logging.Logger) (*
 	}
 	return &RemotePayloadSource{
 		version: cfg.Payload.Version,
-		url: cfg.Payload.URL,
-		sha256: cfg.Payload.SHA256,
-		size: cfg.Payload.Size,
-		logger: logger,
+		url:     cfg.Payload.URL,
+		sha256:  cfg.Payload.SHA256,
+		size:    cfg.Payload.Size,
+		logger:  logger,
 	}, nil
 }
 
