@@ -20,119 +20,119 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
-    cfg, err := DefaultConfig()
-    if err != nil {
-        t.Fatal(err)
-    }
-    if cfg.Version == "" {
-        t.Fatal("version must not be empty")
-    }
-    if cfg.Payload.Mode != config.PayloadModeEmbedded {
-        t.Fatalf("expected embedded mode, got %s", cfg.Payload.Mode)
-    }
+	cfg, err := DefaultConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Version == "" {
+		t.Fatal("version must not be empty")
+	}
+	if cfg.Payload.Mode != config.PayloadModeEmbedded {
+		t.Fatalf("expected embedded mode, got %s", cfg.Payload.Mode)
+	}
 }
 
 func TestAppRootNonEmpty(t *testing.T) {
-    root, err := appRoot()
-    if err != nil {
-        t.Fatal(err)
-    }
-    if root == "" {
-        t.Fatal("app root empty")
-    }
+	root, err := appRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root == "" {
+		t.Fatal("app root empty")
+	}
 }
 
 func TestEnsurePayloadExtractsAndReusesCurrentState(t *testing.T) {
-    rootDir := t.TempDir()
-    logger := testLogger(t)
-    cfg := testRuntimeConfig("0.1.0")
-    payload := testPayloadZip(t, "0.1.0")
-    appDir := testAppDir(rootDir, cfg.Version)
+	rootDir := t.TempDir()
+	logger := testLogger(t)
+	cfg := testRuntimeConfig("0.1.0")
+	payload := testPayloadZip(t, "0.1.0")
+	appDir := testAppDir(rootDir, cfg.Version)
 
-    reused, err := preparePayloadFromBytes(rootDir, cfg, logger, payload)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if reused {
-        t.Fatal("first extraction must not report reused state")
-    }
+	reused, err := preparePayloadFromBytes(rootDir, cfg, logger, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reused {
+		t.Fatal("first extraction must not report reused state")
+	}
 
-    stateBefore, err := os.ReadFile(filepath.Join(appDir, payloadStateFile))
-    if err != nil {
-        t.Fatal(err)
-    }
+	stateBefore, err := os.ReadFile(filepath.Join(appDir, payloadStateFile))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-    reused, err = preparePayloadFromBytes(rootDir, cfg, logger, payload)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if !reused {
-        t.Fatal("second extraction must reuse prepared payload")
-    }
+	reused, err = preparePayloadFromBytes(rootDir, cfg, logger, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reused {
+		t.Fatal("second extraction must reuse prepared payload")
+	}
 
-    stateAfter, err := os.ReadFile(filepath.Join(appDir, payloadStateFile))
-    if err != nil {
-        t.Fatal(err)
-    }
-    if string(stateBefore) != string(stateAfter) {
-        t.Fatal("state file changed on reused payload")
-    }
+	stateAfter, err := os.ReadFile(filepath.Join(appDir, payloadStateFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(stateBefore) != string(stateAfter) {
+		t.Fatal("state file changed on reused payload")
+	}
 }
 
 func TestEnsurePayloadRecoversMissingFile(t *testing.T) {
-    rootDir := t.TempDir()
-    logger := testLogger(t)
-    cfg := testRuntimeConfig("0.1.0")
-    payload := testPayloadZip(t, "0.1.0")
-    appDir := testAppDir(rootDir, cfg.Version)
+	rootDir := t.TempDir()
+	logger := testLogger(t)
+	cfg := testRuntimeConfig("0.1.0")
+	payload := testPayloadZip(t, "0.1.0")
+	appDir := testAppDir(rootDir, cfg.Version)
 
-    if _, err := preparePayloadFromBytes(rootDir, cfg, logger, payload); err != nil {
-        t.Fatal(err)
-    }
-    brokenFile := filepath.Join(appDir, "diagnostics", "diagnostics.html")
-    if err := os.Remove(brokenFile); err != nil {
-        t.Fatal(err)
-    }
+	if _, err := preparePayloadFromBytes(rootDir, cfg, logger, payload); err != nil {
+		t.Fatal(err)
+	}
+	brokenFile := filepath.Join(appDir, "diagnostics", "diagnostics.html")
+	if err := os.Remove(brokenFile); err != nil {
+		t.Fatal(err)
+	}
 
-    reused, err := preparePayloadFromBytes(rootDir, cfg, logger, payload)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if reused {
-        t.Fatal("broken payload must be re-extracted")
-    }
-    if _, err := os.Stat(brokenFile); err != nil {
-        t.Fatal(err)
-    }
+	reused, err := preparePayloadFromBytes(rootDir, cfg, logger, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reused {
+		t.Fatal("broken payload must be re-extracted")
+	}
+	if _, err := os.Stat(brokenFile); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestEnsurePayloadReextractsOnVersionChange(t *testing.T) {
-    rootDir := t.TempDir()
-    logger := testLogger(t)
+	rootDir := t.TempDir()
+	logger := testLogger(t)
 
-    if _, err := preparePayloadFromBytes(rootDir, testRuntimeConfig("0.1.0"), logger, testPayloadZip(t, "0.1.0")); err != nil {
-        t.Fatal(err)
-    }
-    if _, err := preparePayloadFromBytes(rootDir, testRuntimeConfig("0.2.0"), logger, testPayloadZip(t, "0.2.0")); err != nil {
-        t.Fatal(err)
-    }
+	if _, err := preparePayloadFromBytes(rootDir, testRuntimeConfig("0.1.0"), logger, testPayloadZip(t, "0.1.0")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := preparePayloadFromBytes(rootDir, testRuntimeConfig("0.2.0"), logger, testPayloadZip(t, "0.2.0")); err != nil {
+		t.Fatal(err)
+	}
 	appDir := testAppDir(rootDir, "0.2.0")
 
-    state, err := loadPayloadState(appDir)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if state.Version != "0.2.0" {
-        t.Fatalf("expected version 0.2.0, got %s", state.Version)
-    }
+	state, err := loadPayloadState(appDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Version != "0.2.0" {
+		t.Fatalf("expected version 0.2.0, got %s", state.Version)
+	}
 
-    manifest, err := loadManifest(filepath.Join(appDir, payloadManifest))
-    if err != nil {
-        t.Fatal(err)
-    }
-    if manifest.Version != "0.2.0" {
-        t.Fatalf("expected manifest version 0.2.0, got %s", manifest.Version)
-    }
+	manifest, err := loadManifest(filepath.Join(appDir, payloadManifest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if manifest.Version != "0.2.0" {
+		t.Fatalf("expected manifest version 0.2.0, got %s", manifest.Version)
+	}
 }
 
 func TestEmbeddedPayloadSourceExposesExpectedMetadata(t *testing.T) {
@@ -550,41 +550,41 @@ func TestPrepareCryptoProNativeMessagingRequiresExtensionID(t *testing.T) {
 }
 
 func TestWriteDryRunCreatesStubFile(t *testing.T) {
-    appDir := t.TempDir()
-    logger := testLogger(t)
-    if err := os.MkdirAll(filepath.Join(appDir, "diagnostics"), 0o755); err != nil {
-        t.Fatal(err)
-    }
+	appDir := t.TempDir()
+	logger := testLogger(t)
+	if err := os.MkdirAll(filepath.Join(appDir, "diagnostics"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 
-    err := writeDryRun(appDir, filepath.Join(appDir, "profile"), testAppConfig(), logger)
-    if err != nil {
-        t.Fatal(err)
-    }
+	err := writeDryRun(appDir, filepath.Join(appDir, "profile"), testAppConfig(), logger)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-    dryRunPath := filepath.Join(appDir, "diagnostics", "runtime-dry-run.txt")
-    data, err := os.ReadFile(dryRunPath)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if !strings.Contains(string(data), "startUrl=https://example.test") {
-        t.Fatal("dry-run file does not contain start URL")
-    }
+	dryRunPath := filepath.Join(appDir, "diagnostics", "runtime-dry-run.txt")
+	data, err := os.ReadFile(dryRunPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "startUrl=https://example.test") {
+		t.Fatal("dry-run file does not contain start URL")
+	}
 }
 
 func TestResolveChromiumExecutableFindsChrome(t *testing.T) {
-    dir := t.TempDir()
-    chromePath := filepath.Join(dir, "chrome.exe")
-    if err := os.WriteFile(chromePath, []byte("stub"), 0o644); err != nil {
-        t.Fatal(err)
-    }
+	dir := t.TempDir()
+	chromePath := filepath.Join(dir, "chrome.exe")
+	if err := os.WriteFile(chromePath, []byte("stub"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
-    resolved, err := resolveChromiumExecutable(dir)
-    if err != nil {
-        t.Fatal(err)
-    }
-    if resolved != chromePath {
-        t.Fatalf("expected %s, got %s", chromePath, resolved)
-    }
+	resolved, err := resolveChromiumExecutable(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resolved != chromePath {
+		t.Fatalf("expected %s, got %s", chromePath, resolved)
+	}
 }
 
 func TestBuildChromiumArgsAppMode(t *testing.T) {
@@ -737,32 +737,32 @@ func TestWriteDryRunSkipsFileWhenDiagnosticsDisabled(t *testing.T) {
 }
 
 func TestUnzipRejectsTraversal(t *testing.T) {
-    var buf bytes.Buffer
-    zw := zip.NewWriter(&buf)
-    w, err := zw.Create("../evil.txt")
-    if err != nil {
-        t.Fatal(err)
-    }
-    if _, err := w.Write([]byte("oops")); err != nil {
-        t.Fatal(err)
-    }
-    if err := zw.Close(); err != nil {
-        t.Fatal(err)
-    }
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, err := zw.Create("../evil.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := w.Write([]byte("oops")); err != nil {
+		t.Fatal(err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
 
-    if err := unzip(buf.Bytes(), t.TempDir()); err == nil {
-        t.Fatal("expected path traversal error")
-    }
+	if err := unzip(buf.Bytes(), t.TempDir()); err == nil {
+		t.Fatal("expected path traversal error")
+	}
 }
 
 func testLogger(t *testing.T) *logging.Logger {
-    t.Helper()
+	t.Helper()
 	logger, err := logging.New(filepath.Join(t.TempDir(), "launcher.log"))
-    if err != nil {
-        t.Fatal(err)
-    }
-    t.Cleanup(func() { _ = logger.Close() })
-    return logger
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = logger.Close() })
+	return logger
 }
 
 func stubNativeMessagingRegistrar(t *testing.T) {
@@ -862,36 +862,36 @@ func testRemoteRuntimeConfig(version, url, sha256 string, size int64) config.Run
 }
 
 func testPayloadZip(t *testing.T, version string) []byte {
-    t.Helper()
-    files := map[string]string{
-        "config/app-config.json": mustJSON(t, testAppConfigWithVersion(version)),
-        "diagnostics/diagnostics.html": "<html><body>ok</body></html>\n",
-    }
+	t.Helper()
+	files := map[string]string{
+		"config/app-config.json":       mustJSON(t, testAppConfigWithVersion(version)),
+		"diagnostics/diagnostics.html": "<html><body>ok</body></html>\n",
+	}
 
-    manifest := PayloadManifest{Version: version}
-    for _, path := range []string{"config/app-config.json", "diagnostics/diagnostics.html"} {
-        manifest.Files = append(manifest.Files, PayloadManifestFile{
-            Path:   path,
-            SHA256: checksumBytes([]byte(files[path])),
-        })
-    }
-    files[payloadManifest] = mustJSON(t, manifest)
+	manifest := PayloadManifest{Version: version}
+	for _, path := range []string{"config/app-config.json", "diagnostics/diagnostics.html"} {
+		manifest.Files = append(manifest.Files, PayloadManifestFile{
+			Path:   path,
+			SHA256: checksumBytes([]byte(files[path])),
+		})
+	}
+	files[payloadManifest] = mustJSON(t, manifest)
 
-    var buf bytes.Buffer
-    zw := zip.NewWriter(&buf)
-    for _, path := range []string{"config/app-config.json", "diagnostics/diagnostics.html", payloadManifest} {
-        w, err := zw.Create(path)
-        if err != nil {
-            t.Fatal(err)
-        }
-        if _, err := w.Write([]byte(files[path])); err != nil {
-            t.Fatal(err)
-        }
-    }
-    if err := zw.Close(); err != nil {
-        t.Fatal(err)
-    }
-    return buf.Bytes()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, path := range []string{"config/app-config.json", "diagnostics/diagnostics.html", payloadManifest} {
+		w, err := zw.Create(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := w.Write([]byte(files[path])); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
 }
 
 func testCryptoProPluginZip(t *testing.T) []byte {

@@ -10,13 +10,23 @@ import (
 	"github.com/code-agent-43824/kriptosfera/internal/logging"
 )
 
+// PrepareResult reports where the payload was made available and whether an
+// already-prepared copy was reused instead of re-extracted.
 type PrepareResult struct {
 	AppDir string
 	Reused bool
 }
 
+// PayloadManager prepares the payload under the per-app directory. It is safe
+// against concurrent launches via a bootstrap lock and reuses a previously
+// prepared payload when its version and SHA-256 still match.
 type PayloadManager struct{}
 
+// Prepare ensures the payload identified by source is extracted and verified
+// under root/apps/demo/<version>. It acquires a bootstrap lock, reuses a valid
+// existing copy when possible, and otherwise downloads/extracts into a staging
+// directory, verifies it against the manifest, and atomically renames it into
+// place.
 func (m PayloadManager) Prepare(ctx context.Context, source PayloadSource, root string, cfg config.RuntimeConfig, logger *logging.Logger, progress ProgressReporter) (PrepareResult, error) {
 	appDir := filepath.Join(root, "apps", "demo", cfg.Version)
 	parentDir := filepath.Dir(appDir)

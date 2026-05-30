@@ -12,78 +12,78 @@ import (
 )
 
 const (
-	wsOverlapped       = 0x00000000
-	wsCaption          = 0x00C00000
-	wsVisible          = 0x10000000
-	wsChild            = 0x40000000
-	wsTabStop          = 0x00010000
-	ssLeft             = 0x00000000
-	ssLeftNowordwrap   = 0x0000000c
-	wmDestroy          = 0x0002
-	wmClose            = 0x0010
-	wmSetFont          = 0x0030
-	wmCtlColorStatic   = 0x0138
-	wmProgressClose    = 0x8001
-	pbmSetRange32      = 0x0406
-	pbmSetPos          = 0x0402
-	swShow             = 5
-	cwUseDefault       = 0x80000000
-	cwUseDefaultCoord  = -2147483648
-	fwNormal           = 400
-	fwSemiBold         = 600
-	logPixelsY         = 90
-	defaultCharset     = 1
-	outDefaultPrecis   = 0
-	clipDefaultPrecis  = 0
-	clearTypeQuality   = 5
-	defaultPitchFamily = 0
+	wsOverlapped                         = 0x00000000
+	wsCaption                            = 0x00C00000
+	wsVisible                            = 0x10000000
+	wsChild                              = 0x40000000
+	wsTabStop                            = 0x00010000
+	ssLeft                               = 0x00000000
+	ssLeftNowordwrap                     = 0x0000000c
+	wmDestroy                            = 0x0002
+	wmClose                              = 0x0010
+	wmSetFont                            = 0x0030
+	wmCtlColorStatic                     = 0x0138
+	wmProgressClose                      = 0x8001
+	pbmSetRange32                        = 0x0406
+	pbmSetPos                            = 0x0402
+	swShow                               = 5
+	cwUseDefault                         = 0x80000000
+	cwUseDefaultCoord                    = -2147483648
+	fwNormal                             = 400
+	fwSemiBold                           = 600
+	logPixelsY                           = 90
+	defaultCharset                       = 1
+	outDefaultPrecis                     = 0
+	clipDefaultPrecis                    = 0
+	clearTypeQuality                     = 5
+	defaultPitchFamily                   = 0
 	dpiAwarenessContextPerMonitorAwareV2 = ^uintptr(3)
-	colorBtnFace       = 15
-	colorWindowText    = 8
-	colorGrayText      = 17
-	transparentBkMode  = 1
-	windowClassName    = "KriptosferaProgressWindow"
-	windowTitle        = "Kriptosfera"
-	progressClassName  = "msctls_progress32"
+	colorBtnFace                         = 15
+	colorWindowText                      = 8
+	colorGrayText                        = 17
+	transparentBkMode                    = 1
+	windowClassName                      = "KriptosferaProgressWindow"
+	windowTitle                          = "Kriptosfera"
+	progressClassName                    = "msctls_progress32"
 )
 
 var (
-	user32                  = syscall.NewLazyDLL("user32.dll")
-	kernel32                = syscall.NewLazyDLL("kernel32.dll")
-	gdi32                   = syscall.NewLazyDLL("gdi32.dll")
-	comctl32                = syscall.NewLazyDLL("comctl32.dll")
-	procBeginPaint          = user32.NewProc("BeginPaint")
-	procCreateWindowExW     = user32.NewProc("CreateWindowExW")
-	procDefWindowProcW      = user32.NewProc("DefWindowProcW")
-	procDestroyWindow       = user32.NewProc("DestroyWindow")
-	procDispatchMessageW    = user32.NewProc("DispatchMessageW")
-	procGetDC               = user32.NewProc("GetDC")
-	procGetMessageW         = user32.NewProc("GetMessageW")
-	procGetModuleHandleW    = kernel32.NewProc("GetModuleHandleW")
-	procGetSysColorBrush    = user32.NewProc("GetSysColorBrush")
-	procGetSystemMetrics    = user32.NewProc("GetSystemMetrics")
-	procGetSysColor         = user32.NewProc("GetSysColor")
-	procInitCommonControls  = comctl32.NewProc("InitCommonControls")
-	procMulDiv              = kernel32.NewProc("MulDiv")
-	procPostMessageW        = user32.NewProc("PostMessageW")
-	procPostQuitMessage     = user32.NewProc("PostQuitMessage")
-	procRegisterClassExW    = user32.NewProc("RegisterClassExW")
-	procReleaseDC           = user32.NewProc("ReleaseDC")
-	procSendMessageW        = user32.NewProc("SendMessageW")
-	procSetProcessDPIAware  = user32.NewProc("SetProcessDPIAware")
+	user32                            = syscall.NewLazyDLL("user32.dll")
+	kernel32                          = syscall.NewLazyDLL("kernel32.dll")
+	gdi32                             = syscall.NewLazyDLL("gdi32.dll")
+	comctl32                          = syscall.NewLazyDLL("comctl32.dll")
+	procBeginPaint                    = user32.NewProc("BeginPaint")
+	procCreateWindowExW               = user32.NewProc("CreateWindowExW")
+	procDefWindowProcW                = user32.NewProc("DefWindowProcW")
+	procDestroyWindow                 = user32.NewProc("DestroyWindow")
+	procDispatchMessageW              = user32.NewProc("DispatchMessageW")
+	procGetDC                         = user32.NewProc("GetDC")
+	procGetMessageW                   = user32.NewProc("GetMessageW")
+	procGetModuleHandleW              = kernel32.NewProc("GetModuleHandleW")
+	procGetSysColorBrush              = user32.NewProc("GetSysColorBrush")
+	procGetSystemMetrics              = user32.NewProc("GetSystemMetrics")
+	procGetSysColor                   = user32.NewProc("GetSysColor")
+	procInitCommonControls            = comctl32.NewProc("InitCommonControls")
+	procMulDiv                        = kernel32.NewProc("MulDiv")
+	procPostMessageW                  = user32.NewProc("PostMessageW")
+	procPostQuitMessage               = user32.NewProc("PostQuitMessage")
+	procRegisterClassExW              = user32.NewProc("RegisterClassExW")
+	procReleaseDC                     = user32.NewProc("ReleaseDC")
+	procSendMessageW                  = user32.NewProc("SendMessageW")
+	procSetProcessDPIAware            = user32.NewProc("SetProcessDPIAware")
 	procSetProcessDpiAwarenessContext = user32.NewProc("SetProcessDpiAwarenessContext")
-	procSetBkMode           = gdi32.NewProc("SetBkMode")
-	procSetTextColor        = gdi32.NewProc("SetTextColor")
-	procSetWindowTextW      = user32.NewProc("SetWindowTextW")
-	procShowWindow          = user32.NewProc("ShowWindow")
-	procDeleteObject        = gdi32.NewProc("DeleteObject")
-	procCreateFontW         = gdi32.NewProc("CreateFontW")
-	procGetDeviceCaps       = gdi32.NewProc("GetDeviceCaps")
-	procTranslateMessage    = user32.NewProc("TranslateMessage")
-	procUpdateWindow        = user32.NewProc("UpdateWindow")
-	progressWindowClassOnce sync.Once
-	progressWndProc         = syscall.NewCallback(progressWindowProc)
-	progressWindowStates    sync.Map
+	procSetBkMode                     = gdi32.NewProc("SetBkMode")
+	procSetTextColor                  = gdi32.NewProc("SetTextColor")
+	procSetWindowTextW                = user32.NewProc("SetWindowTextW")
+	procShowWindow                    = user32.NewProc("ShowWindow")
+	procDeleteObject                  = gdi32.NewProc("DeleteObject")
+	procCreateFontW                   = gdi32.NewProc("CreateFontW")
+	procGetDeviceCaps                 = gdi32.NewProc("GetDeviceCaps")
+	procTranslateMessage              = user32.NewProc("TranslateMessage")
+	procUpdateWindow                  = user32.NewProc("UpdateWindow")
+	progressWindowClassOnce           sync.Once
+	progressWndProc                   = syscall.NewCallback(progressWindowProc)
+	progressWindowStates              sync.Map
 )
 
 type point struct {
