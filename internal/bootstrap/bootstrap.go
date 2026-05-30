@@ -253,6 +253,9 @@ func validateAppConfig(appCfg config.AppConfig) error {
 			return fmt.Errorf("app config diagnosticsUrl must be an HTTPS URL: %s", appCfg.DiagnosticsURL)
 		}
 	}
+	if !isSafeProfileName(appCfg.ProfileName) {
+		return fmt.Errorf("app config profileName is invalid: %q", appCfg.ProfileName)
+	}
 	if len(appCfg.AllowedOrigins) == 0 {
 		return nil
 	}
@@ -272,6 +275,36 @@ func validateAppConfig(appCfg config.AppConfig) error {
 
 func originOf(u *url.URL) string {
 	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host)
+}
+
+// isSafeProfileName guards profileName before it is joined into the per-app
+// profiles directory. The value comes from the bundled payload config, but it
+// must never be able to escape the app root via path traversal or absolute
+// paths, so it has to be a single, plain path segment.
+func isSafeProfileName(name string) bool {
+	if name == "" {
+		return false
+	}
+	if name == "." || name == ".." {
+		return false
+	}
+	if strings.ContainsAny(name, `/\:`) {
+		return false
+	}
+	if strings.Contains(name, "..") {
+		return false
+	}
+	// Reject control characters and leading/trailing whitespace that some
+	// filesystems treat inconsistently.
+	if strings.TrimSpace(name) != name {
+		return false
+	}
+	for _, r := range name {
+		if r < 0x20 {
+			return false
+		}
+	}
+	return true
 }
 
 func verifyExtractedPayload(root string) error {

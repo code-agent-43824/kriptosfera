@@ -228,6 +228,24 @@ func TestRemotePayloadSourceRejectsHashMismatch(t *testing.T) {
 	}
 }
 
+func TestDownloadFileRejectsOversizedPayload(t *testing.T) {
+	expected := int64(1024)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Serve well beyond the pinned expected size.
+		_, _ = w.Write(make([]byte, expected*4))
+	}))
+	defer server.Close()
+
+	_, err := DownloadFile(context.Background(), server.Client(), server.URL+"/payload.zip", expected, testLogger(t), nil)
+	if err == nil {
+		t.Fatal("expected oversized payload error")
+	}
+	launcherErr := &LauncherError{}
+	if !errors.As(err, &launcherErr) || launcherErr.Code != ErrPayloadDownloadFailed {
+		t.Fatalf("expected %s, got %v", ErrPayloadDownloadFailed, err)
+	}
+}
+
 func TestPayloadManagerRemoteReusesCachedPayload(t *testing.T) {
 	rootDir := t.TempDir()
 	logger := testLogger(t)
@@ -666,6 +684,38 @@ func TestValidateAppConfigRejectsAllowedOriginWithPath(t *testing.T) {
 
 	if err := validateAppConfig(cfg); err == nil {
 		t.Fatal("expected allowed origin with path error")
+	}
+}
+
+func TestValidateAppConfigRejectsUnsafeProfileName(t *testing.T) {
+	unsafe := []string{
+		"",
+		".",
+		"..",
+		"../escape",
+		"..\\escape",
+		"sub/dir",
+		"sub\\dir",
+		"C:profile",
+		" demo",
+		"demo ",
+	}
+	for _, name := range unsafe {
+		cfg := testAppConfig()
+		cfg.ProfileName = name
+		if err := validateAppConfig(cfg); err == nil {
+			t.Fatalf("expected profileName validation error for %q", name)
+		}
+	}
+}
+
+func TestValidateAppConfigAcceptsPlainProfileName(t *testing.T) {
+	for _, name := range []string{"demo", "demo-1", "demo_profile", "Профиль1"} {
+		cfg := testAppConfig()
+		cfg.ProfileName = name
+		if err := validateAppConfig(cfg); err != nil {
+			t.Fatalf("expected profileName %q to be accepted: %v", name, err)
+		}
 	}
 }
 

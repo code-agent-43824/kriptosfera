@@ -35,7 +35,9 @@ Current implementation status:
 - launcher now extracts the embedded CryptoPro Browser Plugin bundle into the versioned AppData app directory and validates `nmcades.exe`, `nmcades.json`, and `npcades.dll` before reuse.
 - launcher now generates the Chrome native messaging manifest for `ru.cryptopro.nmcades` and registers it under HKCU for the current user before Chromium starts.
 - manual Windows validation showed that, when a normal system CryptoPro CSP is installed, Kriptosfera behaves like a configured Chrome: extension, Browser Plugin, plugin version, system CSP, standard access confirmation dialog, and certificate enumeration all work.
-- app config validation now checks that `startUrl` belongs to `allowedOrigins` when origins are configured;
+- app config validation now checks that `startUrl` belongs to `allowedOrigins` when origins are configured, requires `diagnosticsUrl` to be HTTPS, and rejects an unsafe `profileName` (must be a single path segment with no `..`, path separators, or `:`) so the per-app profile directory cannot escape the app root;
+- the remote downloader now caps how many bytes it will write (pinned expected size, or a 1 GiB absolute limit) and aborts early instead of streaming a runaway response to disk before the SHA-256 check;
+- the repository ships committed zero-byte placeholder `payload.zip`/`cryptopro-plugin.zip` (to satisfy `go:embed`) so the launcher compiles and `go test ./...` runs on a clean checkout; an empty embed is treated as "bundle not embedded", and Windows build scripts overwrite the placeholders with the real artifacts;
 - `diagnosticsUrl` controls whether Chromium opens a public HTTPS diagnostics page alongside the target page.
 
 Current implementation boundaries:

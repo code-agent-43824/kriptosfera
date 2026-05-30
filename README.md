@@ -20,7 +20,7 @@
 Сейчас есть:
 - каркас `launcher` на Go;
 - логика single-file bootstrapper с embedded `payload.zip`;
-- remote payload mode для thin launcher с HTTPS-загрузкой, SHA-256 проверкой и cache reuse;
+- remote payload mode для thin launcher с HTTPS-загрузкой, SHA-256 проверкой, ограничением размера загрузки (cap по pinned size / абсолютный предел) и cache reuse;
 - шаблон payload с pinned Chromium runtime и CryptoPro CAdES Browser Plug-in extension `1.3.17`;
 - hosted diagnostics page для проверки CryptoPro extension, Browser Plugin и CSP/provider state через официальный `cadesplugin_api.js`;
 - read-only Windows script `tools/windows/inspect-cryptopro-modules.ps1` для фиксации фактически загруженных модулей `nmcades.exe`;
@@ -42,7 +42,7 @@
 - launcher разворачивает встроенный CryptoPro Browser Plugin bundle в AppData рядом с Chromium, пропускает MSI pseudo-path entries с Windows-недопустимыми именами и проверяет наличие `nmcades.exe`, `nmcades.json`, `npcades.dll`;
 - launcher генерирует native messaging manifest `ru.cryptopro.nmcades.json` и регистрирует его в HKCU для текущего пользователя;
 - ручная проверка показала, что на машине с установленным обычным CryptoPro CSP приложение ведёт себя как настроенный Chrome: видит extension, Browser Plugin, plugin version, системный CSP, стандартное окно подтверждения доступа и сертификаты;
-- минимальная app-config validation: `startUrl` должен соответствовать `allowedOrigins`, если список задан;
+- минимальная app-config validation: `startUrl` должен быть валидным URL и соответствовать `allowedOrigins` (если список задан), `diagnosticsUrl` обязан быть HTTPS, а `profileName` проверяется как безопасный одиночный сегмент пути (без `..`, разделителей путей и `:`), чтобы каталог профиля не мог выйти за пределы app-root;
 - diagnostics остаётся включённой для MVP; `diagnosticsUrl` включает открытие публичной HTTPS-страницы диагностики рядом с целевой страницей.
 
 Полная доменная политика Chromium после старта — не часть текущего MVP. Это future product hardening для клиентских/брендированных сборок; сейчас `allowedOrigins` используется как guard от неправильного стартового URL в конфиге.
@@ -80,6 +80,18 @@ internal/logging/           launcher log
 payload-template/           шаблон payload
 build/                      PowerShell scripts для CI/локальной сборки
 .github/workflows/          GitHub Actions
+```
+
+## Локальная разработка
+
+Реальные `payload.zip` и `cryptopro-plugin.zip` собираются/скачиваются build-скриптами и в Git не хранятся. Чтобы launcher компилировался и `go test ./...` проходил на чистом checkout (в т.ч. на Linux/macOS dev-машинах), в репозиторий закоммичены **пустые placeholder-файлы нулевого размера** `internal/bootstrap/payload.zip` и `internal/bootstrap/cryptopro-plugin.zip`. Они нужны только для удовлетворения директив `go:embed`, не содержат бинарников CryptoPro (launcher трактует пустой embed как «bundle не встроен») и во время Windows-сборки перезаписываются настоящими артефактами (`build/embed-payload.ps1`, `build/fetch-cryptopro-plugin.ps1`).
+
+Базовая проверка кода:
+
+```sh
+go vet ./...
+go test ./...
+GOOS=windows GOARCH=amd64 go build ./...
 ```
 
 ## Сборка на GitHub Actions

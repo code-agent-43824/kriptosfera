@@ -20,6 +20,11 @@ type DownloadResult struct {
 	SHA256   string
 }
 
+// maxPayloadDownloadBytes is an absolute safety cap used when the runtime
+// config does not pin an expected payload size. It prevents a misbehaving or
+// hostile server from filling the disk before the SHA-256 check runs.
+const maxPayloadDownloadBytes = 1 << 30 // 1 GiB
+
 var defaultDownloadClient = &http.Client{Timeout: 5 * time.Minute}
 
 func DownloadFile(ctx context.Context, client *http.Client, url string, expectedSize int64, logger *logging.Logger, progress func(done, total int64)) (DownloadResult, error) {
@@ -67,6 +72,15 @@ func DownloadFile(ctx context.Context, client *http.Client, url string, expected
 		total = expectedSize
 	}
 
+	// Enforce an upper bound on how many bytes we are willing to write. When the
+	// config pins an expected size, anything beyond it is already a mismatch, so
+	// abort early instead of streaming a runaway response to disk. Otherwise fall
+	// back to an absolute safety cap.
+	sizeLimit := int64(maxPayloadDownloadBytes)
+	if expectedSize > 0 {
+		sizeLimit = expectedSize
+	}
+
 	hash := sha256.New()
 	writer := io.MultiWriter(tempFile, hash)
 	buf := make([]byte, 64*1024)
@@ -80,6 +94,10 @@ func DownloadFile(ctx context.Context, client *http.Client, url string, expected
 			if writeErr != nil {
 				cleanup()
 				return DownloadResult{}, wrapLauncherError(ErrPayloadDownloadFailed, "не удалось сохранить загруженный payload", writeErr)
+			}
+			if written > sizeLimit {
+				cleanup()
+				return DownloadResult{}, wrapLauncherError(ErrPayloadDownloadFailed, "размер payload превысил допустимый предел", fmt.Errorf("payload exceeds size limit %d bytes", sizeLimit))
 			}
 			if progress != nil {
 				progress(written, total)
