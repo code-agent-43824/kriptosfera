@@ -45,7 +45,7 @@
 - read-only Windows script `tools/windows/inspect-cryptopro-modules.ps1` для фиксации фактически загруженных модулей `nmcades.exe`;
 - PowerShell-скрипты сборки под GitHub Actions;
 - Windows CI workflow на бесплатных GitHub-hosted runners;
-- модель публикации артефактов без дополнительного ручного zip на release-тегах.
+- публикация Windows-сборок двумя раздельными артефактами (embedded и тонкий remote), чтобы тонкую версию можно было скачать отдельно, плюс отдельные release assets на тегах.
 
 Сейчас ещё нет:
 - активированного bundled CSP Lite / Mini CSP режима для чистой машины;
@@ -125,7 +125,7 @@ GOOS=windows GOARCH=amd64 go build ./...
 1. собирает payload package из текущего commit
 2. собирает `dist/KriptosferaDemo.exe` (embedded)
 3. собирает `dist/KriptosferaDemo-remote.exe` (remote)
-4. публикует один launcher artifact / release assets
+4. публикует **два отдельных** workflow artifact'а — embedded и remote — плюс release assets на тегах
 
 `build-payload.yml`:
 1. готовит payload (включая Chromium runtime)
@@ -143,10 +143,12 @@ GOOS=windows GOARCH=amd64 go build ./...
 
 GitHub Actions workflow artifacts технически скачиваются GitHub'ом как zip-контейнер — это ограничение самой платформы.
 
-Теперь модель проще:
-- обычный launcher CI-run публикует только **один** workflow artifact: `launchers`
-- payload workflow публикует только **один** workflow artifact: `payload`
-- tag build (`v*`) дополнительно прикрепляет сырые `.exe` и payload-файлы как **GitHub Release assets**
+Модель публикации:
+- обычный launcher CI-run публикует **два независимых** workflow artifact'а, чтобы каждую сборку можно было скачать отдельно (тонкую — без большого embedded-файла):
+  - `kriptosfera-windows-embedded` — `KriptosferaDemo.exe` (payload вшит, большой файл) + `README.txt` + диагностический скрипт;
+  - `kriptosfera-windows-remote` — `KriptosferaDemo-remote.exe` (тонкий launcher) + `README.txt` + диагностический скрипт;
+- payload workflow публикует только **один** workflow artifact: `payload`;
+- tag build (`v*`) дополнительно прикрепляет сырые `.exe` и payload-файлы как отдельные **GitHub Release assets** (каждый качается независимо).
 
 ## Документно подтверждённые этапы MVP
 

@@ -8,6 +8,12 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 
 ## [Unreleased]
 
+### Changed
+- `build-windows` CI now publishes two separate workflow artifacts
+  (`kriptosfera-windows-embedded` and `kriptosfera-windows-remote`) instead of
+  one combined archive, so the thin/remote launcher can be downloaded without
+  the large embedded build.
+
 ### Added
 - Apache-2.0 `LICENSE` and `NOTICE` clarifying that third-party runtime
   components (Chromium, CryptoPro plugin/CSP) keep their own terms.

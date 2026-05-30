@@ -60,12 +60,21 @@ jobs:
             throw "Unexpected CI diagnostics status: $($report.status)"
           }
 
-      - name: Upload launcher workflow artifact
+      - name: Upload embedded launcher artifact
         uses: actions/upload-artifact@v6
         with:
-          name: kriptosfera-windows-launchers
+          name: kriptosfera-windows-embedded
           path: |
             dist/KriptosferaDemo.exe
+            dist/README.txt
+            tools/windows/inspect-cryptopro-modules.ps1
+          if-no-files-found: error
+
+      - name: Upload remote launcher artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: kriptosfera-windows-remote
+          path: |
             dist/KriptosferaDemo-remote.exe
             dist/README.txt
             tools/windows/inspect-cryptopro-modules.ps1
