@@ -8,6 +8,13 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 
 ## [Unreleased]
 
+### Fixed
+- `TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths` is now Windows-portable:
+  it no longer relies on `os.IsNotExist` for a path containing `:` (which Windows
+  reports as a syntax error, not "not found"), so CI on Windows runners passes.
+- The embedded launcher build now fails when `go test` fails (previously a test
+  failure did not stop the PowerShell build step, so it slipped through CI).
+
 ### Changed
 - `build-windows` CI now publishes two separate workflow artifacts
   (`kriptosfera-windows-embedded` and `kriptosfera-windows-remote`) instead of

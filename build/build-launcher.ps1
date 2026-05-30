@@ -27,6 +27,9 @@ if ($PayloadMode -eq "embedded") {
   $buildTags = @()
   $exeName = "KriptosferaDemo.exe"
   go test ./...
+  if ($LASTEXITCODE -ne 0) {
+    throw "go test failed with exit code $LASTEXITCODE"
+  }
 } else {
   if ($UsePayloadLock) {
     if (-not (Test-Path $PayloadLockPath)) {
