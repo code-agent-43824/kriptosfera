@@ -128,9 +128,14 @@ install, the gap is in the internal-CSP activation mechanism itself, not in our
 repackaging. The early-flag test variant (`internal-csp-early`) is therefore not
 the fix.
 
-Next diagnostic step: check whether `Mini CSP\capi20.dll` is loaded into the live
-`nmcades.exe` (`tools/windows/inspect-cryptopro-modules.ps1`), then ProcMon
-`nmcades.exe` to separate a no-load (flag never reached native — see the version
-timeout) from a failed load (search path / dependency) or a silent self-test
-refusal. See `docs/cryptopro-csp-lite-plan.md` → "Diagnostics run result
-(2026-05-31)".
+A read-only module probe of the live `nmcades.exe`
+(`tools/windows/inspect-cryptopro-modules.ps1`) then settled the next layer:
+**`Mini CSP\capi20.dll` is loaded** (3 of 4 hosts) with its `asn1*`/`cpsuprt`
+deps, and one host also loaded `cpcspi.dll` (the `config.ini` `Image Path`). So
+the flag reached native, the search path is fine, and `config.ini` was read —
+**hypothesis B is refuted too** (evidence:
+`installed-addminicsp/files/nmcades-loaded-modules.txt`). The remaining
+candidates for `0x80090017` are (C) provider registration / self-test not
+completing, or `About.CSPName` not seeing an in-process internal CSP
+(false-negative); the decisive test is an actual sign with a GOST token. See
+`docs/cryptopro-csp-lite-plan.md` → "Diagnostics run result (2026-05-31)".

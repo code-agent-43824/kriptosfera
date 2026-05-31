@@ -102,7 +102,7 @@ The diagnostics page now sets `EnableInternalCSP` before the API loads, keeps
 re-asserting it, records a flag timeline, and prints an explicit A/B/C verdict,
 so a single clean-machine run distinguishes these without ProcMon.
 
-### Diagnostics run result (2026-05-31): hypothesis A refuted
+### Diagnostics run result (2026-05-31): hypotheses A and B refuted
 
 First run of the public `diagnostics.html` in regular Chrome against a fresh
 **system `ADDMINICSP=1` install** (the same install captured in
@@ -128,11 +128,24 @@ Secondary signal: the `extension version response` query **timed out after
 3000 ms** while `CreateObjectAsync` CAdES calls still worked — a possible sign the
 native bridge did not actually deliver the page-side flag to `npcades`.
 
-Next: confirm whether `Mini CSP\capi20.dll` is loaded into the live `nmcades.exe`
-(`tools/windows/inspect-cryptopro-modules.ps1`), then ProcMon `nmcades.exe`
-(`Load Image` on `Mini CSP\capi20.dll`/`cpcspi.dll`/`asn1*.dll`, `CreateFile` on
-`config.ini`) to separate B (search path) from C (self-test) — or a no-load (flag
-never reached native). Run evidence: `docs/minicsp-snapshots/CONCLUSIONS.md` §6.
+A read-only module probe of the live `nmcades.exe`
+(`tools/windows/inspect-cryptopro-modules.ps1`, no elevation) settled the next
+layer: **`Mini CSP\capi20.dll` is loaded** (3 of 4 hosts), with its
+`asn1*`/`cpsuprt` deps, and in one host `cpcspi.dll` (the `config.ini`
+`Image Path`) loaded too. So the flag reached native, the DLL search path is fine,
+and `config.ini` was read far enough to resolve the provider DLL — **hypothesis B
+is also refuted.** Evidence:
+`docs/minicsp-snapshots/installed-addminicsp/files/nmcades-loaded-modules.txt`.
+
+That leaves two candidates for `0x80090017`: (C) provider-type registration /
+self-test inside the loaded `capi20`/`cpcspi` not completing, or `About.CSPName`
+simply not enumerating an **in-process** internal CSP that is absent from the
+(empty) system provider table — a probe false-negative. The decisive test is an
+actual `CryptAcquireContext` / sign with a GOST token (`Certificates.Count` was 0
+here, so it could not run). A ProcMon trace of `config.ini` `ReadFile` + any
+self-test on `nmcades.exe` would separate (C) from the probe-semantics case, but
+needs elevation + GUI access. Run evidence: `docs/minicsp-snapshots/CONCLUSIONS.md`
+§6.
 
 ## Working hypothesis
 
