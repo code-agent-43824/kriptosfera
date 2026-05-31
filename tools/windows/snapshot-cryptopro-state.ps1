@@ -70,12 +70,19 @@ foreach ($name in $regKeys.Keys) {
   $key = $regKeys[$name]
   $regOut = Join-Path $regDir "$name.reg"
   $txtOut = Join-Path $regDir "$name.txt"
+  # reg.exe writes to stderr for absent keys; under $ErrorActionPreference=Stop
+  # that stderr is promoted to a terminating NativeCommandError, which would abort
+  # the clean-machine snapshot (where keys are expected to be absent). Relax the
+  # preference only around the native calls; Stop stays in force elsewhere.
+  $prevEAP = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
   # reg export (binary-accurate). Capture presence.
   & reg.exe export $key $regOut /y *> $null
   $exported = Test-Path $regOut
   # reg query /s (text, easy to diff). May fail if key missing.
   & reg.exe query $key /s *> $txtOut
   $present = ($LASTEXITCODE -eq 0)
+  $ErrorActionPreference = $prevEAP
   $summary.Add(("{0,-26} {1,-8} {2}" -f $name, ($(if ($present) {"EXISTS"} else {"absent"})), $key))
   if (-not $present -and (Test-Path $txtOut)) {
     Remove-Item $txtOut -ErrorAction SilentlyContinue
