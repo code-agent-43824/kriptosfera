@@ -102,6 +102,38 @@ The diagnostics page now sets `EnableInternalCSP` before the API loads, keeps
 re-asserting it, records a flag timeline, and prints an explicit A/B/C verdict,
 so a single clean-machine run distinguishes these without ProcMon.
 
+### Diagnostics run result (2026-05-31): hypothesis A refuted
+
+First run of the public `diagnostics.html` in regular Chrome against a fresh
+**system `ADDMINICSP=1` install** (the same install captured in
+`docs/minicsp-snapshots/installed-addminicsp/`):
+
+- Plugin works: `cadesplugin ready`, `CAdESCOM.About` → `PluginVersion` /
+  `Version` = `2.0.15700`; `CAdESCOM.Store` opens the `My` store
+  (`Certificates.Count = 0`, no token). Extension → native host → plugin is fine.
+- **Flag delivered early:** `EnableInternalCSP` is `true` *before*
+  `cadesplugin_api.js` (`after-set (pre-api inline)` → `true` at +0 ms) and stays
+  `true` (+82 ms after the API parses, and after `cadesplugin ready`).
+- **Providers still absent:** `About.CSPName` / `CSPVersion` for types **75 / 80 /
+  81** all return **`0x80090017` (`NTE_PROV_TYPE_NOT_DEF`)**.
+
+**Hypothesis A (flag timing) is refuted** — the flag is delivered correctly and
+early, yet Mini CSP providers never enumerate. The page's verdict is **B/C**:
+`npcades` did not load `Mini CSP\capi20.dll` (or its `asn1*.dll` / `config.ini`
+deps), or an integrity self-test failed. Note this is the **official** system
+`ADDMINICSP=1` install, so the gap is in the internal-CSP activation mechanism
+itself, not in our repackaging.
+
+Secondary signal: the `extension version response` query **timed out after
+3000 ms** while `CreateObjectAsync` CAdES calls still worked — a possible sign the
+native bridge did not actually deliver the page-side flag to `npcades`.
+
+Next: confirm whether `Mini CSP\capi20.dll` is loaded into the live `nmcades.exe`
+(`tools/windows/inspect-cryptopro-modules.ps1`), then ProcMon `nmcades.exe`
+(`Load Image` on `Mini CSP\capi20.dll`/`cpcspi.dll`/`asn1*.dll`, `CreateFile` on
+`config.ini`) to separate B (search path) from C (self-test) — or a no-load (flag
+never reached native). Run evidence: `docs/minicsp-snapshots/CONCLUSIONS.md` §6.
+
 ## Working hypothesis
 
 The current embedded `cadescom-x64.msi` extraction gives us the Browser Plugin/native bridge layer and includes a `Mini CSP` directory, but the extracted AppData-only layout does not yet activate that provider layer.

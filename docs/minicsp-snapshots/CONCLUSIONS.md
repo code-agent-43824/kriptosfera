@@ -103,3 +103,34 @@ extension/diagnostics. If both stay silent → ProcMon `nmcades.exe` for
 (look for `NAME NOT FOUND` / `PATH NOT FOUND`). The hosted
 `diagnostics/diagnostics.html` already sets the flag early and prints an A/B/C
 verdict.
+
+## 6. Diagnostics run (2026-05-31) — hypothesis A refuted
+
+Ran the public `diagnostics.html` in **regular Chrome** against this
+`ADDMINICSP=1` **system** install (not the bundled launcher). Observed:
+
+- **Plugin works:** `cadesplugin ready`; `CAdESCOM.About` →
+  `PluginVersion`/`Version` = `2.0.15700`; `CAdESCOM.Store` opens `My`
+  (`Certificates.Count = 0`, no token inserted).
+- **Flag delivered early:** `EnableInternalCSP` = `true` *before*
+  `cadesplugin_api.js` (`after-set (pre-api inline)` at +0 ms) and still `true`
+  at +82 ms / after `cadesplugin ready`.
+- **Providers absent:** `About.CSPName`/`CSPVersion` for **75 / 80 / 81** →
+  **`0x80090017` (`NTE_PROV_TYPE_NOT_DEF`)**.
+- **Anomaly:** `extension version response timed out after 3000 ms` although
+  CAdES `CreateObjectAsync` calls succeeded.
+
+**Result: hypothesis A (flag timing) is refuted** — the flag is delivered early
+and correctly, yet Mini CSP providers never enumerate. Verdict is **B/C**:
+`npcades` did not load `Mini CSP\capi20.dll` (or `asn1*.dll`/`config.ini` deps),
+or an integrity self-test failed. Because this is the *official* `ADDMINICSP=1`
+install, the gap is in the internal-CSP activation mechanism itself, not in our
+repackaging. The early-flag test variant (`internal-csp-early`) is therefore not
+the fix.
+
+Next diagnostic step: check whether `Mini CSP\capi20.dll` is loaded into the live
+`nmcades.exe` (`tools/windows/inspect-cryptopro-modules.ps1`), then ProcMon
+`nmcades.exe` to separate a no-load (flag never reached native — see the version
+timeout) from a failed load (search path / dependency) or a silent self-test
+refusal. See `docs/cryptopro-csp-lite-plan.md` → "Diagnostics run result
+(2026-05-31)".
