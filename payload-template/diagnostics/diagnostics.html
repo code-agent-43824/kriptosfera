@@ -48,8 +48,48 @@
   <button id="run-sign-probe" type="button" disabled>Run test signature</button>
   <div id="sign-status">Ожидание...</div>
 
-  <script>window.cadesplugin_load_timeout = 8000;</script>
+  <script>
+    // Internal CSP flag timeline. npcades may read cadesplugin.EnableInternalCSP
+    // very early (when the native host first asks the page for it), so we must
+    // set it BEFORE cadesplugin_api.js loads — not only on a button click — and
+    // record exactly when/what it was. This lets diagnostics tell "flag never
+    // delivered" (hypothesis A) apart from "Mini CSP loaded but enumerated
+    // nothing" (hypothesis B/C).
+    window.__KRIPTOSFERA_CSP_TIMELINE__ = [];
+    function kspMark(stage) {
+      let value = "(cadesplugin undefined)";
+      try {
+        if (typeof window.cadesplugin !== "undefined") value = window.cadesplugin.EnableInternalCSP;
+      } catch (e) { value = "(read error: " + e + ")"; }
+      window.__KRIPTOSFERA_CSP_TIMELINE__.push({ stage: stage, value: String(value), t: Date.now() });
+      return value;
+    }
+    // Pre-stub + set the flag before the API script runs. The stub is created
+    // only if cadesplugin does not exist yet; the real API merges/overrides.
+    window.cadesplugin = window.cadesplugin || {};
+    kspMark("before-set (pre-api inline)");
+    window.cadesplugin.EnableInternalCSP = true;
+    window.postMessage("EnableInternalCSP=true", "*");
+    kspMark("after-set (pre-api inline)");
+    window.cadesplugin_load_timeout = 8000;
+  </script>
   <script src="https://www.cryptopro.ru/sites/default/files/products/cades/cadesplugin_api.js?v=313061"></script>
+  <script>
+    // Re-assert right after the API script is parsed (before any async ready
+    // resolves) and keep re-posting for a few seconds so a late-loading
+    // content.js / nmcades_plugin_api.js still captures the flag.
+    try { window.cadesplugin.EnableInternalCSP = true; } catch (e) {}
+    window.postMessage("EnableInternalCSP=true", "*");
+    kspMark("after-api script parsed");
+    (function () {
+      var n = 0;
+      var id = setInterval(function () {
+        try { window.cadesplugin.EnableInternalCSP = true; } catch (e) {}
+        window.postMessage("EnableInternalCSP=true", "*");
+        if (++n >= 20) clearInterval(id); // ~20 * 250ms = 5s of re-assertion
+      }, 250);
+    }());
+  </script>
   <script>
     const knownExtension = {
       name: "cryptopro-cades",
@@ -244,7 +284,25 @@
       runSignButton.disabled = !runtimeHasAsyncApi || signingCertificates.length === 0;
     }
 
+    function renderCspTimeline(results) {
+      const timeline = window.__KRIPTOSFERA_CSP_TIMELINE__ || [];
+      if (timeline.length === 0) return;
+      const t0 = timeline[0].t;
+      for (const item of timeline) {
+        results.push({
+          name: "EnableInternalCSP @ " + item.stage,
+          state: item.value === "true" ? "ok" : "warn",
+          value: item.value + "  (+" + (item.t - t0) + "ms)"
+        });
+      }
+    }
+
     async function applyInternalCspMode(results) {
+      // Surface exactly what the flag was at each early stage. If these show
+      // "true" but provider enumeration is still empty, the flag IS reaching
+      // the page in time and the blocker is Mini CSP load/enumeration, not flag
+      // timing (hypothesis B/C rather than A).
+      renderCspTimeline(results);
       const enabled = Boolean(enableInternalCspCheckbox.checked);
       await runProbeStep(results, "EnableInternalCSP checkbox", async () => enabled);
       await runProbeStep(results, "EnableInternalCSP before", async () => {
@@ -380,14 +438,33 @@
 
       await runProbeStep(results, "About.PluginVersion", async () => readVersionObject(about.PluginVersion));
       await runProbeStep(results, "About.Version", async () => readVersionObject(about.Version));
+      let anyProviderEnumerated = false;
+      const providerErrors = [];
       for (const providerType of [75, 80, 81]) {
-        await runProbeStep(results, "About.CSPName(" + providerType + ")", async () => readValue(await about.CSPName(providerType)));
+        const name = await runProbeStep(results, "About.CSPName(" + providerType + ")", async () => readValue(await about.CSPName(providerType)));
+        if (typeof name === "string" && name.trim() !== "") anyProviderEnumerated = true;
+        const lastName = results[results.length - 1];
+        if (lastName.state !== "ok") providerErrors.push(providerType + ":" + lastName.value);
         await runProbeStep(results, "About.CSPVersion(\"\", " + providerType + ")", async () => readVersionObject(await about.CSPVersion("", providerType)));
       }
-      await runProbeStep(results, "cadesplugin.EnableInternalCSP after ready", async () => {
+      const flagAfter = await runProbeStep(results, "cadesplugin.EnableInternalCSP after ready", async () => {
         if (typeof window.cadesplugin === "undefined") return "(cadesplugin global undefined)";
         return window.cadesplugin.EnableInternalCSP;
       });
+
+      // Diagnose which hypothesis the evidence supports, so a clean-machine run
+      // is self-explanatory without ProcMon.
+      const flagReached = String(flagAfter) === "true" ||
+        (window.__KRIPTOSFERA_CSP_TIMELINE__ || []).some((m) => m.value === "true");
+      let verdict;
+      if (anyProviderEnumerated) {
+        verdict = "OK: внутренний провайдер перечислен (Mini CSP активен). Если подпись всё равно падает — смотреть ключ/токен и тип провайдера.";
+      } else if (!flagReached) {
+        verdict = "Гипотеза A: EnableInternalCSP не дошёл до native host вовремя — флаг не виден странице. Mini CSP не загружался. Проверять доставку/тайминг флага.";
+      } else {
+        verdict = "Гипотеза B/C: флаг доставлен (EnableInternalCSP=true), но провайдеры не перечислены. Значит npcades не смог загрузить Mini CSP\\capi20.dll или его зависимости (asn1*.dll/config.ini), либо самотест целостности. Снять ProcMon по nmcades.exe: Load Image Mini CSP\\capi20.dll и CreateFile config.ini. Ошибки CSPName: " + (providerErrors.join("; ") || "нет");
+      }
+      await runProbeStep(results, "ВЕРДИКТ", async () => verdict);
 
       const store = await runProbeStep(results, "CreateObjectAsync(\"CAdESCOM.Store\")", async () => {
         return await window.cadesplugin.CreateObjectAsync("CAdESCOM.Store");

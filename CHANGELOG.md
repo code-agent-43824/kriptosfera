@@ -8,6 +8,17 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 
 ## [Unreleased]
 
+### Diagnostics
+- The hosted diagnostics page now sets `cadesplugin.EnableInternalCSP = true`
+  before `cadesplugin_api.js` loads, re-asserts it for several seconds, records
+  a flag timeline, and prints an explicit A/B/C verdict (flag-timing vs Mini CSP
+  load/enumeration vs integrity). This distinguishes why the internal Mini CSP
+  is not activated on a clean machine without needing ProcMon.
+- Documented binary-analysis ground truth in `docs/cryptopro-csp-lite-plan.md`:
+  the bundle is file-complete, needs no registry/runtime/extra license, is
+  32-bit, and npcades loads `Mini CSP\capi20.dll` by a module-relative path
+  gated on `EnableInternalCSP`.
+
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing
   the entire payload (Chromium included) on every launch; full SHA-256

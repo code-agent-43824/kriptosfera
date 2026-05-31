@@ -55,6 +55,53 @@ Kriptosfera launcher:
 
 Conclusion: the bundled Browser Plugin layer is not self-contained. It starts, but without an active CSP/provider layer its `CAdESCOM.About` state is incomplete and the page cannot reach certificate/key operations.
 
+## Ground truth from binary analysis (2026-05-31)
+
+Static analysis of the actual bundled binaries (and a reference CryptoPro CSP
+Lite install on Linux) ruled out several earlier hypotheses by fact:
+
+- **Files/layout are complete.** Our bundle's plugin root and `Mini CSP` folder
+  match a real `addminicsp` install file-for-file. Nothing is missing.
+- **No registry needed.** `cpsuprt.dll` reads config through CryptoPro's own
+  `support_registry_*` abstraction; the `config.ini` sections ARE the
+  "registry". On a real `addminicsp` machine there is no `Crypto Pro` key under
+  `HKCU`/`HKLM\...\WOW6432Node`. So missing registry is NOT the blocker.
+- **License is bundled.** `Mini CSP\license.ini` carries a `ProductID`, and
+  `npcades.dll` reads it via `\local\license\ProductID\{50F91F80-...}`. License
+  is not a blocker for enumeration.
+- **No extra runtime.** Mini CSP DLLs import only `KERNEL32/ADVAPI32/msvcrt/
+  ntdll` — no MFC/VC++ redist required.
+- **Bitness is settled.** `nmcades.exe`/`npcades.dll` are 32-bit, so they load
+  the 32-bit `Mini CSP\capi20.dll` and read `config.ini` (not `config64.ini`).
+  `config.ini` already defines provider types 75/80/81 with `Image Path =
+  cpcspi.dll`.
+- **Activation mechanism (confirmed in `npcades.dll`):** the string
+  `result = cadesplugin.EnableInternalCSP` sits next to `Mini CSP\capi20.dll`,
+  with `GetModuleFileNameW`, `LoadLibraryExA(capi20.dll) failed.`,
+  `AddAvailableCsps`, and `Check containers for provider: %s, type: %d`. So
+  npcades asks the page for `EnableInternalCSP`; if true it builds a
+  module-relative `Mini CSP\capi20.dll` path and `LoadLibraryEx`-loads it, then
+  enumerates providers from `config.ini`. No registry, wrapper, or flattening
+  required.
+
+Remaining hypotheses for "providers not enumerated on a clean machine":
+
+- **A — flag timing.** npcades reads `EnableInternalCSP` early via a page
+  callback. If the page sets the flag only after the API loads (or too late),
+  npcades sees `false`/`undefined` and never loads Mini CSP. Symptom: no
+  `Load Image` for `Mini CSP\capi20.dll` at all.
+- **B — DLL search path.** `LoadLibraryEx(Mini CSP\capi20.dll)` can fail to
+  resolve capi20's own dependencies (`asn1*.dll`) if the process working
+  directory / search path is wrong. Symptom: `Load Image` for capi20 followed
+  by `NAME NOT FOUND` on `asn1*.dll` or `config.ini`.
+- **C — integrity self-test.** If repackaging changed a file, an integrity
+  check could refuse to initialize silently. Test by comparing SHA-256 of our
+  Mini CSP files against the official MSI.
+
+The diagnostics page now sets `EnableInternalCSP` before the API loads, keeps
+re-asserting it, records a flag timeline, and prints an explicit A/B/C verdict,
+so a single clean-machine run distinguishes these without ProcMon.
+
 ## Working hypothesis
 
 The current embedded `cadescom-x64.msi` extraction gives us the Browser Plugin/native bridge layer and includes a `Mini CSP` directory, but the extracted AppData-only layout does not yet activate that provider layer.
