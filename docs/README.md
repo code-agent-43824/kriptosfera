@@ -23,6 +23,11 @@ architecture overview for Kriptosfera. Start with the root
 - [`handoff-minicsp-test-pages.md`](handoff-minicsp-test-pages.md) — handoff for
   the server-managing agent: deploy the `internal-csp-early` test page and a
   summary of repo changes made out-of-band.
+- [`handoff-windows-minicsp-snapshots.md`](handoff-windows-minicsp-snapshots.md)
+  — handoff for a Windows session: capture registry + Program Files snapshots
+  across three CryptoPro install states (clean / no-flags / `ADDMINICSP=1`).
+- [`minicsp-snapshots/`](minicsp-snapshots/README.md) — the captured snapshots
+  and per-phase analysis produced by that handoff.
 
 ## Inventories and references
 
