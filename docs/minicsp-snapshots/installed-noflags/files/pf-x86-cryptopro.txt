@@ -1,0 +1,38 @@
+﻿### ROOT: C:\Program Files (x86)\Crypto Pro
+     2042608  CAdES Browser Plug-in\asn1.dll                                    2318c46a3aa8ece624f3da1093ed281310f28ebe91a9d1fb3c0f6946c6df176f
+       42240  CAdES Browser Plug-in\asn1bercpp.dll                              0f13a550a7a78e89bd9396787de9d84b0e1d53c9601713a02cab33b1ff23cde5
+       79944  CAdES Browser Plug-in\asn1rtcpp.dll                               c53a1287988ac1aabfdee1cb3295fc8b4ef1ecd2013e81ca46521d10d2de0bd8
+     2734736  CAdES Browser Plug-in\cades.dll                                   4cc8b0e268a7beea0dfe7a496afd2eb60690d7d7d271e31d22a3501d9a2c5b12
+       37077  CAdES Browser Plug-in\config.html                                 71f961433c024a92704fda03ee063c514baf2bbd7d05605487a42f2cca1e16db
+      401728  CAdES Browser Plug-in\cpasn1.dll                                  eb9df00a822bfb964520688a5f2b7f21aeb84b355039e76f04cc4268d024e42b
+      140384  CAdES Browser Plug-in\cplib.dll                                   e476818bb6d0238192499d57a09b7e8c8436e8850aac9cf12a70b6cebf30411f
+        2420  CAdES Browser Plug-in\CryptoPro.ASN1.cat                          527140931764f1187ab713c015c310b6079c21ac093b3c3ad54bb55da50b21ef
+        2494  CAdES Browser Plug-in\CryptoPro.ASN1.manifest                     b728ee7c12a4ae823720fa20e29f59e4de33eec9d2fe54bbca1b04e1810e471b
+        2422  CAdES Browser Plug-in\CryptoPro.CPLib.cat                         551e9a1556858a559f7d03752c29c0d4dfd454ae51e780269854ba85f020a1d0
+         776  CAdES Browser Plug-in\CryptoPro.CPLib.manifest                    4c8f88ba07cd618163cff5241f5651f81a8561d139054446f2a4eed5e0381889
+        2431  CAdES Browser Plug-in\CryptoPro.PKI.CAdES.cat                     a1903ec0fa4eda6a00b5247f03d84a2717b52c739d53e666e9bfde2550179b08
+         780  CAdES Browser Plug-in\CryptoPro.PKI.CAdES.manifest                a2c5db3062d01ce86495c4a1e66cf276c0aa18b5e4153f772ce822b215e3aa50
+        2429  CAdES Browser Plug-in\CryptoPro.PKI.OCSP.cat                      94460f923bae9eb8ae337e27a6b1e538a3a8999966a77a2cc0e12c2c044ca363
+        2443  CAdES Browser Plug-in\CryptoPro.PKI.OCSP.Client.cat               2ea2c875c7c613e5d15b31848e0e76d1eced7803644ca036c3cfd9c6d4205878
+         788  CAdES Browser Plug-in\CryptoPro.PKI.OCSP.Client.manifest          60a9ea1be91cfece59f3e74a38b118212f2cd2b0a1937ed96be654e6dde4a6a2
+        1209  CAdES Browser Plug-in\CryptoPro.PKI.OCSP.manifest                 b89200ddea38fcd9a48605ef69045268e0fd0f2557e3065c60b5be2fb731c198
+        2427  CAdES Browser Plug-in\CryptoPro.PKI.TSP.cat                       f1158c930a8ce5049232be5baadd7d9c1ea8e93cd8f5c5f3a8f8733f6640a28e
+        2441  CAdES Browser Plug-in\CryptoPro.PKI.TSP.Client.cat                36a456c0240915d962a3c09c27933903ba2e00e139a20a6d17971870081614fd
+         786  CAdES Browser Plug-in\CryptoPro.PKI.TSP.Client.manifest           88d9d4a7cffb0360a9cc32abc002346335bdc2b5b25be6a8bd95d431bf98d7b8
+        1207  CAdES Browser Plug-in\CryptoPro.PKI.TSP.manifest                  d9b82b24bfeaf023294821153a586e870025f12f47574a130141634192b926ee
+        2431  CAdES Browser Plug-in\CryptoPro.PKI.XAdES.cat                     38065b3646c923e45edef0df23269c32efb232ddd0df8546ca797941031487cc
+         780  CAdES Browser Plug-in\CryptoPro.PKI.XAdES.manifest                2d96d6d503763bc4a2ec7e30f84b2d8854f3c765d3d88d23eae6bf1482b67db0
+      587120  CAdES Browser Plug-in\mydss.dll                                   6479c534f70aa5188b7184e1b4a7c26577ee78a1dd90e12bd28d70bb4fc90127
+      275168  CAdES Browser Plug-in\nmcades.exe                                 362169e2535609c6b8d04e0f6f043748936f693e35b5482800b1fc6cd3f1fcaf
+         443  CAdES Browser Plug-in\nmcades.json                                c9ce26efb3ed1f1a6ce09f970dbb040bfd6f712e144bff9c0ed407db0febd826
+         296  CAdES Browser Plug-in\nmcades_firefox.json                        348f66e6816a6d05092401c5e85acfb981105f69da76f93e7bb27c95f9adc370
+     3009568  CAdES Browser Plug-in\npcades.dll                                 401f0b5f8734934bde66626a88b1904a2ac754a2f7a647360a0afd06e2e4f5eb
+      255024  CAdES Browser Plug-in\ocsp.dll                                    9129e72662ed16dc7c515d7683222b1f3246b14e3d5720d6354bc8d35a65f708
+      258640  CAdES Browser Plug-in\ocspcli.dll                                 05a4e70bb3447e99a5c5ba5531b77d5c8f87be72e4eb821f931efbd913f27081
+      142944  CAdES Browser Plug-in\tsp.dll                                     8c371e9753a67a11f3bade0a358dc086ea5fbd1a4ea9567934dec913c69c7abf
+      200792  CAdES Browser Plug-in\tspcli.dll                                  8a663e78740fb23b27df8f123dba06fa4ddd07eab0f264fbe4a9fb3cc035b9f3
+     4077632  CAdES Browser Plug-in\xades.dll                                   86fe1e9708b8b2226e17eb06471610d486d115565ed48f82f0f2d3e5cffbb183
+
+### ROOT: C:\Program Files\Crypto Pro
+(absent)
+
