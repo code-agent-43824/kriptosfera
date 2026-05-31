@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/code-agent-43824/kriptosfera/internal/config"
@@ -29,6 +30,9 @@ const (
 	payloadLockFile  = ".bootstrap.lock"
 	payloadManifest  = "manifest.json"
 	lockTTL          = 10 * time.Minute
+	lockWaitTimeout  = 3 * time.Minute
+	lockPollInterval = 200 * time.Millisecond
+	lockHeartbeat    = 2 * time.Minute
 )
 
 type PayloadManifest struct {
@@ -173,9 +177,8 @@ func Run(cfg config.RuntimeConfig) error {
 	cmd.Stdout = stdoutLog
 	cmd.Stderr = stderrLog
 
-	if err := progress.Close(); err != nil {
-		logger.Info("progress close failed: %v", err)
-	}
+	// The progress reporter is closed by the deferred progress.Close() at the top
+	// of Run; Close is idempotent and also covers every earlier error path.
 	return cmd.Start()
 }
 
@@ -314,6 +317,8 @@ func isSafeProfileName(name string) bool {
 	return true
 }
 
+// verifyExtractedPayload fully validates every manifest file by SHA-256. It is
+// used when a payload is first extracted, where integrity must be proven.
 func verifyExtractedPayload(root string) error {
 	manifest, err := loadManifest(filepath.Join(root, payloadManifest))
 	if err != nil {
@@ -334,6 +339,31 @@ func verifyExtractedPayload(root string) error {
 			return err
 		} else if checksum != item.SHA256 {
 			return fmt.Errorf("payload file checksum mismatch: %s", item.Path)
+		}
+	}
+	return nil
+}
+
+// payloadFilesPresent is the fast reuse check: it only confirms that every
+// manifest file still exists, without re-hashing the whole payload (which can
+// be hundreds of MB) on every launch. Full SHA-256 verification happens once at
+// extraction time via verifyExtractedPayload; the .payload-ready marker plus the
+// recorded version/SHA-256 in the state file already gate correctness for reuse.
+func payloadFilesPresent(root string) error {
+	manifest, err := loadManifest(filepath.Join(root, payloadManifest))
+	if err != nil {
+		return err
+	}
+	if manifest.Version == "" {
+		return errors.New("payload manifest version is empty")
+	}
+	for _, item := range manifest.Files {
+		if item.Path == "" {
+			return errors.New("payload manifest contains empty path")
+		}
+		target := filepath.Join(root, filepath.FromSlash(item.Path))
+		if _, err := os.Stat(target); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -398,25 +428,58 @@ func writeDryRun(appDir, profileDir string, appCfg config.AppConfig, logger *log
 
 func acquireLock(appDir string) (func(), error) {
 	lockPath := filepath.Join(filepath.Dir(appDir), filepath.Base(appDir)+payloadLockFile)
-	if info, err := os.Stat(lockPath); err == nil {
-		if time.Since(info.ModTime()) > lockTTL {
-			_ = os.Remove(lockPath)
+	deadline := time.Now().Add(lockWaitTimeout)
+	for {
+		// Treat a lock whose mtime has not advanced within lockTTL as stale (the
+		// holder crashed without releasing it) and reclaim it.
+		if info, err := os.Stat(lockPath); err == nil {
+			if time.Since(info.ModTime()) > lockTTL {
+				_ = os.Remove(lockPath)
+			}
 		}
-	}
 
-	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
-	if err != nil {
-		if errors.Is(err, os.ErrExist) {
+		file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			_, _ = file.WriteString(time.Now().UTC().Format(time.RFC3339) + "\n")
+			stop := startLockHeartbeat(lockPath)
+			return func() {
+				stop()
+				_ = file.Close()
+				_ = os.Remove(lockPath)
+			}, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, err
+		}
+		// Another launch holds the lock; wait and retry so a concurrent first run
+		// finishes (and we then reuse its result) instead of failing immediately.
+		if time.Now().After(deadline) {
 			return nil, fmt.Errorf("bootstrap already in progress: %s", lockPath)
 		}
-		return nil, err
+		time.Sleep(lockPollInterval)
 	}
-	_, _ = file.WriteString(time.Now().UTC().Format(time.RFC3339) + "\n")
+}
 
-	return func() {
-		_ = file.Close()
-		_ = os.Remove(lockPath)
-	}, nil
+// startLockHeartbeat keeps the lock file's mtime fresh while it is held, so a
+// long-running first-run (e.g. a large remote payload download) is not mistaken
+// for a stale lock by another launch. It returns a stop function.
+func startLockHeartbeat(lockPath string) func() {
+	done := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(lockHeartbeat)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				now := time.Now()
+				_ = os.Chtimes(lockPath, now, now)
+			}
+		}
+	}()
+	var once sync.Once
+	return func() { once.Do(func() { close(done) }) }
 }
 
 func unzip(data []byte, dest string) error {

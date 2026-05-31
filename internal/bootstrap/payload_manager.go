@@ -34,12 +34,24 @@ func (m PayloadManager) Prepare(ctx context.Context, source PayloadSource, root 
 		return PrepareResult{}, err
 	}
 
+	// Fast path: if the payload is already prepared, reuse it without taking the
+	// bootstrap lock, so a second launch of an already-installed app never
+	// contends with (or is blocked by) a concurrent first-run extraction.
+	if prepared, err := isPreparedPayload(appDir, source.Version(), source.Mode(), source.ExpectedSHA256()); err != nil {
+		return PrepareResult{}, err
+	} else if prepared {
+		logger.Info("payload already prepared path=%s mode=%s", appDir, source.Mode())
+		return PrepareResult{AppDir: appDir, Reused: true}, nil
+	}
+
 	unlock, err := acquireLock(appDir)
 	if err != nil {
 		return PrepareResult{}, err
 	}
 	defer unlock()
 
+	// Re-check under the lock: another instance may have finished preparing the
+	// payload while we were waiting to acquire it.
 	if prepared, err := isPreparedPayload(appDir, source.Version(), source.Mode(), source.ExpectedSHA256()); err != nil {
 		return PrepareResult{}, err
 	} else if prepared {
@@ -118,7 +130,7 @@ func isPreparedPayload(appDir, version, payloadMode, payloadSHA string) (bool, e
 		return false, nil
 	}
 
-	if err := verifyExtractedPayload(appDir); err != nil {
+	if err := payloadFilesPresent(appDir); err != nil {
 		return false, nil
 	}
 	return true, nil

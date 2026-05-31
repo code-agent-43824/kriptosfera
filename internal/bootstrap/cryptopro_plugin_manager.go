@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/code-agent-43824/kriptosfera/internal/logging"
@@ -84,12 +85,21 @@ func (m CryptoProPluginManager) Prepare(appDir string, logger *logging.Logger, p
 		return ComponentPrepareResult{}, errors.New("embedded CryptoPro plugin layout version is empty")
 	}
 
+	// Fast path: reuse an already-prepared bundle without taking the lock.
+	if prepared, err := m.isPrepared(appDir, targetDir); err != nil {
+		return ComponentPrepareResult{}, err
+	} else if prepared {
+		logger.Info("cryptopro plugin already prepared path=%s version=%s", targetDir, m.Version)
+		return ComponentPrepareResult{Path: targetDir, Reused: true}, nil
+	}
+
 	unlock, err := acquireLock(appDir)
 	if err != nil {
 		return ComponentPrepareResult{}, err
 	}
 	defer unlock()
 
+	// Re-check under the lock in case a concurrent launch just prepared it.
 	if prepared, err := m.isPrepared(appDir, targetDir); err != nil {
 		return ComponentPrepareResult{}, err
 	} else if prepared {
@@ -163,10 +173,45 @@ func (m CryptoProPluginManager) isPrepared(appDir, targetDir string) (bool, erro
 }
 
 func validateCryptoProPluginLayout(root string) error {
+	// Collect every required suffix and clear it as we find a matching file in a
+	// single directory walk, instead of walking the tree once per required file.
+	remaining := make(map[string]bool, len(requiredCryptoProPluginFiles))
 	for _, required := range requiredCryptoProPluginFiles {
-		if _, err := findFileBySlashSuffix(root, required); err != nil {
+		remaining[filepath.ToSlash(filepath.Clean(required))] = true
+	}
+
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
 			return err
 		}
+		if entry.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		relSlash := filepath.ToSlash(rel)
+		for suffix := range remaining {
+			if strings.HasSuffix(relSlash, suffix) {
+				delete(remaining, suffix)
+			}
+		}
+		if len(remaining) == 0 {
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(remaining) > 0 {
+		missing := make([]string, 0, len(remaining))
+		for suffix := range remaining {
+			missing = append(missing, suffix)
+		}
+		sort.Strings(missing)
+		return fmt.Errorf("cryptopro plugin required files not found: %s", strings.Join(missing, ", "))
 	}
 	return nil
 }

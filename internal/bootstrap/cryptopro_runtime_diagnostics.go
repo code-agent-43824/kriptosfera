@@ -104,7 +104,7 @@ func inspectCryptoProRuntimeFiles(pluginRoot string) []CryptoProRuntimeFile {
 }
 
 func bestCryptoProExtensionID(extensions []ExtensionSpec) string {
-	id, err := selectCryptoProExtensionID(extensions)
+	id, _, err := selectCryptoProExtensionID(extensions)
 	if err == nil {
 		return id
 	}

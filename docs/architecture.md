@@ -49,12 +49,16 @@ flowchart TD
 `PayloadManager.Prepare` is safe against concurrent launches and avoids partial
 state:
 
-1. acquire a bootstrap lock (TTL-based stale-lock recovery);
-2. reuse the existing payload when the ready marker, version, SHA-256, and
-   manifest all still match;
-3. otherwise open the source, extract into a staging directory, verify every
-   file against `manifest.json`, write the state + ready markers, then
-   atomically `rename` staging into the final per-version directory.
+1. fast-path reuse without locking when the ready marker, recorded
+   version/mode/SHA-256, and presence of every manifest file all still match
+   (full SHA-256 verification is not repeated on every launch — only file
+   existence is checked here);
+2. otherwise acquire a bootstrap lock (waits for a concurrent first run with a
+   bounded timeout; heartbeated so a slow run is not seen as stale) and
+   re-check reuse under the lock;
+3. open the source, extract into a staging directory, verify every file against
+   `manifest.json` by SHA-256, write the state + ready markers, then atomically
+   `rename` staging into the final per-version directory.
 
 Extraction rejects zip path traversal, and remote downloads must be HTTPS,
 match the pinned SHA-256, and stay within the size cap.

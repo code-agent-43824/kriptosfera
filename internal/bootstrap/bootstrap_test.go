@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/code-agent-43824/kriptosfera/internal/config"
 	"github.com/code-agent-43824/kriptosfera/internal/logging"
@@ -425,6 +426,96 @@ func TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(result.Path, "cryptopro-cades-plugin-2.0.15700", ".:Common")); err == nil {
 		t.Fatal("MSI pseudo-path entry should not be extracted")
 	}
+}
+
+func TestEmbeddedCryptoProBundleContainsRequiredFiles(t *testing.T) {
+	if len(embeddedCryptoProPlugin) == 0 {
+		t.Skip("embedded CryptoPro bundle not present (placeholder/dev build)")
+	}
+	reader, err := zip.NewReader(bytes.NewReader(embeddedCryptoProPlugin), int64(len(embeddedCryptoProPlugin)))
+	if err != nil {
+		t.Fatalf("open embedded bundle: %v", err)
+	}
+	has := func(suffix string) bool {
+		want := filepath.ToSlash(filepath.Clean(suffix))
+		for _, f := range reader.File {
+			if f.FileInfo().IsDir() || shouldSkipCryptoProPluginZipEntry(f.Name) {
+				continue
+			}
+			if strings.HasSuffix(filepath.ToSlash(filepath.Clean(f.Name)), want) {
+				return true
+			}
+		}
+		return false
+	}
+	for _, required := range requiredCryptoProPluginFiles {
+		if !has(required) {
+			t.Errorf("embedded CryptoPro bundle is missing required file: %s", required)
+		}
+	}
+}
+
+func TestPrepareCryptoProNativeMessagingReusesRegistration(t *testing.T) {
+	appDir := t.TempDir()
+	logger := testLogger(t)
+
+	var registrations int
+	original := registerNativeMessagingHost
+	registerNativeMessagingHost = func(string) error { registrations++; return nil }
+	t.Cleanup(func() { registerNativeMessagingHost = original })
+
+	bundle := testCryptoProPluginZip(t)
+	manager := CryptoProPluginManager{Bundle: bundle, Version: "2.0.15700", SHA256: checksumBytes(bundle), LayoutVersion: 1}
+	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	extensions := []ExtensionSpec{{Name: "cryptopro-cades", ExtensionID: "pfhgbfnnjiafkhfdkmpiflachepdcjod"}}
+
+	first, err := PrepareCryptoProNativeMessaging(appDir, pluginResult.Path, extensions, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Reused {
+		t.Fatal("first native messaging preparation must not be reused")
+	}
+	second, err := PrepareCryptoProNativeMessaging(appDir, pluginResult.Path, extensions, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !second.Reused {
+		t.Fatal("second native messaging preparation must reuse existing registration")
+	}
+	if registrations != 1 {
+		t.Fatalf("expected exactly one registry registration, got %d", registrations)
+	}
+}
+
+func TestAcquireLockWaitsThenSucceedsAfterRelease(t *testing.T) {
+	appDir := filepath.Join(t.TempDir(), "apps", "demo", "0.1.0")
+	if err := os.MkdirAll(filepath.Dir(appDir), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	unlock, err := acquireLock(appDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	released := make(chan struct{})
+	go func() {
+		time.Sleep(150 * time.Millisecond)
+		unlock()
+		close(released)
+	}()
+
+	// Should block until the first holder releases, then succeed (not error).
+	unlock2, err := acquireLock(appDir)
+	if err != nil {
+		t.Fatalf("expected lock acquisition to succeed after release, got %v", err)
+	}
+	defer unlock2()
+	<-released
 }
 
 func TestPrepareCryptoProNativeMessagingWritesManifest(t *testing.T) {

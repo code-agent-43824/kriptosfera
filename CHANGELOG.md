@@ -8,18 +8,38 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 
 ## [Unreleased]
 
+### Performance
+- Payload reuse now only checks that manifest files exist instead of re-hashing
+  the entire payload (Chromium included) on every launch; full SHA-256
+  verification still runs once at extraction time. Startup no longer pays a
+  hundreds-of-MB hashing cost on each run.
+- `validateCryptoProPluginLayout` walks the plugin directory once (matching all
+  required suffixes in a single pass) instead of once per required file.
+- Native messaging skips re-writing the manifest and re-registering the HKCU
+  host when nothing changed since the last run (gated by a state file).
+
+### Changed
+- A second launch of an already-prepared app no longer fails with "bootstrap
+  already in progress": preparation now checks for an existing payload/plugin
+  before taking the lock, the lock waits (with a bounded timeout) for a
+  concurrent first run instead of erroring immediately, and the lock is
+  heartbeated so a slow first run is not mistaken for a stale lock.
+- `selectCryptoProExtensionID` now signals when it falls back to a non-canonical
+  extension, and the launcher logs a warning in that case.
+- `build-windows` CI now publishes two separate workflow artifacts
+  (`kriptosfera-windows-embedded` and `kriptosfera-windows-remote`) instead of
+  one combined archive, so the thin/remote launcher can be downloaded without
+  the large embedded build.
+
 ### Fixed
 - `TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths` is now Windows-portable:
   it no longer relies on `os.IsNotExist` for a path containing `:` (which Windows
   reports as a syntax error, not "not found"), so CI on Windows runners passes.
 - The embedded launcher build now fails when `go test` fails (previously a test
   failure did not stop the PowerShell build step, so it slipped through CI).
-
-### Changed
-- `build-windows` CI now publishes two separate workflow artifacts
-  (`kriptosfera-windows-embedded` and `kriptosfera-windows-remote`) instead of
-  one combined archive, so the thin/remote launcher can be downloaded without
-  the large embedded build.
+- CI now verifies the embedded CryptoPro bundle contains every required file
+  (`TestEmbeddedCryptoProBundleContainsRequiredFiles`), so a bad bundle pin is
+  caught at build time instead of failing on a user's machine.
 
 ### Added
 - Apache-2.0 `LICENSE` and `NOTICE` clarifying that third-party runtime
