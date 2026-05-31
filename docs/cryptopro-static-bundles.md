@@ -32,6 +32,26 @@ csp-lite/
     <sha256>/
       cryptopro-csp-lite.zip
       cryptopro-csp-lite.json
+
+csp/
+  linux/
+    <csp-version>/
+      <source-sha256>/
+        manifest.json
+        SHA256SUMS
+        amd64/
+          deb/
+          rpm/
+        arm64/
+          deb/
+          rpm/
+        archives/
+
+sources/
+  linux/
+    <csp-version>-<cades-version>/
+      <source-sha256>/
+        <source-archive>
 ```
 
 Current scaffold URLs:
@@ -62,12 +82,34 @@ https://mescheryakov.pro/kriptosfera/cryptopro/sources/2.0.15700/8b4b1bfbe801c45
 https://mescheryakov.pro/kriptosfera/cryptopro/sources/2.0.15700/8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4/cryptopro-cades-official.json
 ```
 
+Current CryptoPro CSP Linux installer assets for cross-platform experiments:
+
+```text
+https://mescheryakov.pro/kriptosfera/cryptopro/sources/linux/5.0.13800-2.0.15700/6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5/linux-amd64_all.zip
+https://mescheryakov.pro/kriptosfera/cryptopro/csp/linux/5.0.13800/6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5/manifest.json
+https://mescheryakov.pro/kriptosfera/cryptopro/csp/linux/5.0.13800/6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5/SHA256SUMS
+```
+
+Expanded Linux layout:
+
+```text
+cryptopro/csp/linux/5.0.13800/6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5/
+  amd64/deb/
+  amd64/rpm/
+  arm64/deb/
+  arm64/rpm/
+  archives/
+  manifest.json
+  SHA256SUMS
+```
+
 ## Publication rules
 
 - Publish each binary bundle under a directory containing its version and SHA-256.
 - Treat published version/sha256 directories as immutable.
 - Do not overwrite an existing archive in place.
 - Do not commit CryptoPro binary archives to GitHub.
+- Do not commit extracted CryptoPro installer packages to GitHub.
 - Do not put CryptoPro binary archives into `payload.zip`.
 - Keep only lock files, checksums, source notes, and build scripts in GitHub.
 - The build must verify the archive checksum and size from a pinned lock file.
@@ -101,5 +143,10 @@ Known bundle values:
 - source installer mirror size: `38472470`
 - source installer mirror SHA-256: `8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4`
 - official `cadescom-x64.msi` SHA-256: `9f73456b6db5d793947f31bf2faabae742cf80fe161b9a21e97035067dd8cf5e`
+- Linux source archive: `linux-amd64_all.zip`
+- Linux source archive size: `144025183`
+- Linux source archive SHA-256: `6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5`
+- Linux CSP version: `5.0.13800`
+- Linux CAdES/package source version marker: `2.0.15700`
 
 The binary archives stay on the static server only. GitHub stores this documentation and the pinned lock file, not the CryptoPro binaries.

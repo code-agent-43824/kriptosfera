@@ -9,6 +9,11 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 ## [Unreleased]
 
 ### Diagnostics
+- Deployed a fourth public CryptoPro CAdES test mirror,
+  `internal-csp-early`, that sets `EnableInternalCSP` before
+  `cadesplugin_api.js` and keeps re-asserting it for the clean-machine Mini CSP
+  experiment. The hosted diagnostics page on `mescheryakov.pro` was refreshed
+  from the repository version with the same early-flag verdict logic.
 - The hosted diagnostics page now sets `cadesplugin.EnableInternalCSP = true`
   before `cadesplugin_api.js` loads, re-asserts it for several seconds, records
   a flag timeline, and prints an explicit A/B/C verdict (flag-timing vs Mini CSP
@@ -53,6 +58,9 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   caught at build time instead of failing on a user's machine.
 
 ### Added
+- Documented the Linux CryptoPro CSP/CAdES installer archive and extracted
+  package layout published on project static storage for experiments. The
+  archives and packages stay on the server only and are not committed to Git.
 - Apache-2.0 `LICENSE` and `NOTICE` clarifying that third-party runtime
   components (Chromium, CryptoPro plugin/CSP) keep their own terms.
 - Repository documentation: `CONTRIBUTING.md`, `docs/README.md` index,

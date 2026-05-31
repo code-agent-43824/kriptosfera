@@ -9,6 +9,10 @@
 
 Дата: 2026-05-31.
 
+Update from Watson, 2026-05-31: `internal-csp-early` has been deployed to the
+project static server, and the hosted diagnostics page has been refreshed from
+`payload-template/diagnostics/diagnostics.html`.
+
 ---
 
 ## Часть 1. Что изменилось в репозитории без твоего участия
@@ -108,18 +112,19 @@ binary analysis»).
 https://mescheryakov.pro/kriptosfera/cryptopro-cades-test/vanilla/demopage/cades_bes_sample.html
 https://mescheryakov.pro/kriptosfera/cryptopro-cades-test/internal-csp/demopage/cades_bes_sample.html
 https://mescheryakov.pro/kriptosfera/cryptopro-cades-test/internal-csp-aggressive/demopage/cades_bes_sample.html
+https://mescheryakov.pro/kriptosfera/cryptopro-cades-test/internal-csp-early/demopage/cades_bes_sample.html
 ```
 
-Нужен **четвёртый** вариант `internal-csp-early`, идентичный `internal-csp`, но
-с флагом, выставленным **до** `../cadesplugin_api.js` и переутверждаемым ~5 сек.
+Четвёртый вариант `internal-csp-early` идентичен `internal-csp`, но выставляет
+флаг **до** `../cadesplugin_api.js` и переутверждает его ~5 сек.
 
 ### Шаги
 
-1. Скопируй каталог `internal-csp` в `internal-csp-early` (вся `demopage/` со
+1. Done: скопирован каталог `internal-csp` в `internal-csp-early` (вся `demopage/` со
    всеми относительными скриптами `Code.js`, `lights.js`, `load_extension.js`,
    `../cadesplugin_api.js`, `../es6-promise.min.js` и т.д. — структура та же).
 
-2. В `internal-csp-early/demopage/cades_bes_sample.html` сделай два изменения.
+2. Done: в `internal-csp-early/demopage/cades_bes_sample.html` внесены два изменения.
 
    **(a) Убери** старый поздний блок (он стоит сразу ПОСЛЕ строки с
    `../cadesplugin_api.js`):
@@ -166,12 +171,15 @@ https://mescheryakov.pro/kriptosfera/cryptopro-cades-test/internal-csp-aggressiv
    Порядок в итоге: `... lights.js` → **блок (b)** → `../cadesplugin_api.js` →
    **блок (c)** → `if (ShowMoreListener) ShowMoreListener();` → `load_extension.js`.
 
-3. Выложи каталог по тому же базовому пути:
+3. Done: каталог выложен по тому же базовому пути:
    ```
    https://mescheryakov.pro/kriptosfera/cryptopro-cades-test/internal-csp-early/demopage/cades_bes_sample.html
    ```
    Права/владелец — как у соседних `cryptopro-cades-test/*` (тот же web-root).
    Иначе ничего настраивать не нужно: все скрипты относительные.
+
+Verified: the page returns HTTP 200 and the public HTML shows the early
+pre-`cadesplugin_api.js` flag block followed by the post-load reassertion loop.
 
 ### Как проверить (на чистой Windows-машине без системного CSP)
 
@@ -193,10 +201,16 @@ https://mescheryakov.pro/kriptosfera/cryptopro-cades-test/internal-csp-aggressiv
 
 ### Опционально, но полезно
 
-Заодно можешь обновить deployed `diagnostics.html` из репозитория
+Done: обновлён deployed `diagnostics.html` из репозитория
 (`payload-template/diagnostics/diagnostics.html`) — там уже есть ранний флаг,
 таймлайн значения и автоматический вердикт A/B/C. Это удобнее для отладки, чем
 ручное сравнение страниц.
+
+Verified URL:
+
+```text
+https://mescheryakov.pro/kriptosfera/diagnostics/diagnostics.html
+```
 
 ---
 

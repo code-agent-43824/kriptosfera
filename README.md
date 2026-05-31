@@ -42,6 +42,9 @@
 - remote payload mode для thin launcher с HTTPS-загрузкой, SHA-256 проверкой, ограничением размера загрузки (cap по pinned size / абсолютный предел) и cache reuse;
 - шаблон payload с pinned Chromium runtime и CryptoPro CAdES Browser Plug-in extension `1.3.17`;
 - hosted diagnostics page для проверки CryptoPro extension, Browser Plugin и CSP/provider state через официальный `cadesplugin_api.js`;
+- deployed Mini CSP test mirrors on `mescheryakov.pro`, including
+  `internal-csp-early`, where `EnableInternalCSP` is set before
+  `cadesplugin_api.js` and then re-asserted for clean-machine experiments;
 - read-only Windows script `tools/windows/inspect-cryptopro-modules.ps1` для фиксации фактически загруженных модулей `nmcades.exe`;
 - PowerShell-скрипты сборки под GitHub Actions;
 - Windows CI workflow на бесплатных GitHub-hosted runners;
@@ -183,7 +186,10 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - ProcMon на чистой машине подтвердил загрузку `npcades.dll` и `cplib.dll` из bundled Browser Plug-in каталога; значит следующий пробел — не native messaging и не CAdES plugin bootstrap, а переход от `cplib.dll` к CAPI/MiniCSP runtime.
 
 Что дальше:
-- снять расширенный ProcMon-трейс на чистой машине во время `Store.Open` и `SignCades`, с фокусом на `capi`, `csp`, `cpcsp`, `cplib`, `config`, `Crypto Pro`, `NAME NOT FOUND`;
+- на чистой машине без системного CSP открыть свежий
+  `internal-csp-early` mirror и/или hosted diagnostics page из текущей сборки,
+  чтобы проверить гипотезу раннего `EnableInternalCSP`;
+- если ранний флаг не активирует провайдеры, снять расширенный ProcMon-трейс на чистой машине во время `Store.Open` и `SignCades`, с фокусом на `capi`, `csp`, `cpcsp`, `cplib`, `config`, `Crypto Pro`, `NAME NOT FOUND`;
 - собрать такой же ProcMon-трейс на машине с системным CSP для сравнения successful path;
 - проверить состав bundled MiniCSP/CSP Lite, особенно наличие 32-bit `capi10.dll`, `capi20.dll`, `cpcspi.dll`, `cpsuprt.dll`, `cpui.dll`, `csp*.dll` и config/layout files;
 - попробовать app-local/PATH activation так, чтобы MiniCSP DLL лежали в search path процесса `nmcades.exe`, и фиксировать, меняется ли `0x80090017` / `0x80090014`.
