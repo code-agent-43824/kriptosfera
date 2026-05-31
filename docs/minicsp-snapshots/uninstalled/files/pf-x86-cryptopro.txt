@@ -1,0 +1,6 @@
+﻿### ROOT: C:\Program Files (x86)\Crypto Pro
+(absent)
+
+### ROOT: C:\Program Files\Crypto Pro
+(absent)
+

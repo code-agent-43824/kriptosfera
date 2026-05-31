@@ -1,0 +1,21 @@
+﻿Phase: uninstalled
+Timestamp (UTC): 2026-05-31T17:02:18Z
+Machine: VIRTUALPC
+
+== Registry keys ==
+hklm-cryptopro             absent   HKLM\SOFTWARE\Crypto Pro
+hklm-wow64-cryptopro       absent   HKLM\SOFTWARE\WOW6432Node\Crypto Pro
+hkcu-cryptopro             absent   HKCU\SOFTWARE\Crypto Pro
+hkcu-wow64-cryptopro       absent   HKCU\SOFTWARE\WOW6432Node\Crypto Pro
+hklm-capi-defaults         EXISTS   HKLM\SOFTWARE\Microsoft\Cryptography\Defaults\Provider
+hklm-capi-defaults-types   EXISTS   HKLM\SOFTWARE\Microsoft\Cryptography\Defaults\Provider Types
+hklm-wow64-capi-defaults   EXISTS   HKLM\SOFTWARE\WOW6432Node\Microsoft\Cryptography\Defaults\Provider
+hklm-wow64-capi-types      EXISTS   HKLM\SOFTWARE\WOW6432Node\Microsoft\Cryptography\Defaults\Provider Types
+hkcu-nmhost                absent   HKCU\Software\Google\Chrome\NativeMessagingHosts\ru.cryptopro.nmcades
+hklm-nmhost                absent   HKLM\Software\Google\Chrome\NativeMessagingHosts\ru.cryptopro.nmcades
+
+== Program Files layout ==
+absent  C:\Program Files (x86)\Crypto Pro
+absent  C:\Program Files\Crypto Pro
+
+== Binary bitness ==
