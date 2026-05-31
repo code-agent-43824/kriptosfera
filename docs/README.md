@@ -20,6 +20,9 @@ architecture overview for Kriptosfera. Start with the root
 - [`cryptopro-csp-lite-plan.md`](cryptopro-csp-lite-plan.md) — the current focus:
   activating bundled CSP Lite / Mini CSP on a clean machine (the main MVP
   blocker).
+- [`handoff-minicsp-test-pages.md`](handoff-minicsp-test-pages.md) — handoff for
+  the server-managing agent: deploy the `internal-csp-early` test page and a
+  summary of repo changes made out-of-band.
 
 ## Inventories and references
 
