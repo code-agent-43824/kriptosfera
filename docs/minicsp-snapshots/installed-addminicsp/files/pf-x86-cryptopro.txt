@@ -1,0 +1,77 @@
+﻿### ROOT: C:\Program Files (x86)\Crypto Pro
+     2042608  CAdES Browser Plug-in\asn1.dll                                    2318c46a3aa8ece624f3da1093ed281310f28ebe91a9d1fb3c0f6946c6df176f
+       42240  CAdES Browser Plug-in\asn1bercpp.dll                              0f13a550a7a78e89bd9396787de9d84b0e1d53c9601713a02cab33b1ff23cde5
+       79944  CAdES Browser Plug-in\asn1rtcpp.dll                               c53a1287988ac1aabfdee1cb3295fc8b4ef1ecd2013e81ca46521d10d2de0bd8
+     2734736  CAdES Browser Plug-in\cades.dll                                   4cc8b0e268a7beea0dfe7a496afd2eb60690d7d7d271e31d22a3501d9a2c5b12
+       37077  CAdES Browser Plug-in\config.html                                 71f961433c024a92704fda03ee063c514baf2bbd7d05605487a42f2cca1e16db
+      401728  CAdES Browser Plug-in\cpasn1.dll                                  eb9df00a822bfb964520688a5f2b7f21aeb84b355039e76f04cc4268d024e42b
+      140384  CAdES Browser Plug-in\cplib.dll                                   e476818bb6d0238192499d57a09b7e8c8436e8850aac9cf12a70b6cebf30411f
+        2420  CAdES Browser Plug-in\CryptoPro.ASN1.cat                          527140931764f1187ab713c015c310b6079c21ac093b3c3ad54bb55da50b21ef
+        2494  CAdES Browser Plug-in\CryptoPro.ASN1.manifest                     b728ee7c12a4ae823720fa20e29f59e4de33eec9d2fe54bbca1b04e1810e471b
+        2422  CAdES Browser Plug-in\CryptoPro.CPLib.cat                         551e9a1556858a559f7d03752c29c0d4dfd454ae51e780269854ba85f020a1d0
+         776  CAdES Browser Plug-in\CryptoPro.CPLib.manifest                    4c8f88ba07cd618163cff5241f5651f81a8561d139054446f2a4eed5e0381889
+        2431  CAdES Browser Plug-in\CryptoPro.PKI.CAdES.cat                     a1903ec0fa4eda6a00b5247f03d84a2717b52c739d53e666e9bfde2550179b08
+         780  CAdES Browser Plug-in\CryptoPro.PKI.CAdES.manifest                a2c5db3062d01ce86495c4a1e66cf276c0aa18b5e4153f772ce822b215e3aa50
+        2429  CAdES Browser Plug-in\CryptoPro.PKI.OCSP.cat                      94460f923bae9eb8ae337e27a6b1e538a3a8999966a77a2cc0e12c2c044ca363
+        2443  CAdES Browser Plug-in\CryptoPro.PKI.OCSP.Client.cat               2ea2c875c7c613e5d15b31848e0e76d1eced7803644ca036c3cfd9c6d4205878
+         788  CAdES Browser Plug-in\CryptoPro.PKI.OCSP.Client.manifest          60a9ea1be91cfece59f3e74a38b118212f2cd2b0a1937ed96be654e6dde4a6a2
+        1209  CAdES Browser Plug-in\CryptoPro.PKI.OCSP.manifest                 b89200ddea38fcd9a48605ef69045268e0fd0f2557e3065c60b5be2fb731c198
+        2427  CAdES Browser Plug-in\CryptoPro.PKI.TSP.cat                       f1158c930a8ce5049232be5baadd7d9c1ea8e93cd8f5c5f3a8f8733f6640a28e
+        2441  CAdES Browser Plug-in\CryptoPro.PKI.TSP.Client.cat                36a456c0240915d962a3c09c27933903ba2e00e139a20a6d17971870081614fd
+         786  CAdES Browser Plug-in\CryptoPro.PKI.TSP.Client.manifest           88d9d4a7cffb0360a9cc32abc002346335bdc2b5b25be6a8bd95d431bf98d7b8
+        1207  CAdES Browser Plug-in\CryptoPro.PKI.TSP.manifest                  d9b82b24bfeaf023294821153a586e870025f12f47574a130141634192b926ee
+        2431  CAdES Browser Plug-in\CryptoPro.PKI.XAdES.cat                     38065b3646c923e45edef0df23269c32efb232ddd0df8546ca797941031487cc
+         780  CAdES Browser Plug-in\CryptoPro.PKI.XAdES.manifest                2d96d6d503763bc4a2ec7e30f84b2d8854f3c765d3d88d23eae6bf1482b67db0
+      587120  CAdES Browser Plug-in\mydss.dll                                   6479c534f70aa5188b7184e1b4a7c26577ee78a1dd90e12bd28d70bb4fc90127
+      275168  CAdES Browser Plug-in\nmcades.exe                                 362169e2535609c6b8d04e0f6f043748936f693e35b5482800b1fc6cd3f1fcaf
+         443  CAdES Browser Plug-in\nmcades.json                                c9ce26efb3ed1f1a6ce09f970dbb040bfd6f712e144bff9c0ed407db0febd826
+         296  CAdES Browser Plug-in\nmcades_firefox.json                        348f66e6816a6d05092401c5e85acfb981105f69da76f93e7bb27c95f9adc370
+     3009568  CAdES Browser Plug-in\npcades.dll                                 401f0b5f8734934bde66626a88b1904a2ac754a2f7a647360a0afd06e2e4f5eb
+      255024  CAdES Browser Plug-in\ocsp.dll                                    9129e72662ed16dc7c515d7683222b1f3246b14e3d5720d6354bc8d35a65f708
+      258640  CAdES Browser Plug-in\ocspcli.dll                                 05a4e70bb3447e99a5c5ba5531b77d5c8f87be72e4eb821f931efbd913f27081
+      142944  CAdES Browser Plug-in\tsp.dll                                     8c371e9753a67a11f3bade0a358dc086ea5fbd1a4ea9567934dec913c69c7abf
+      200792  CAdES Browser Plug-in\tspcli.dll                                  8a663e78740fb23b27df8f123dba06fa4ddd07eab0f264fbe4a9fb3cc035b9f3
+     4077632  CAdES Browser Plug-in\xades.dll                                   86fe1e9708b8b2226e17eb06471610d486d115565ed48f82f0f2d3e5cffbb183
+     2042608  CAdES Browser Plug-in\Mini CSP\asn1.dll                           2318c46a3aa8ece624f3da1093ed281310f28ebe91a9d1fb3c0f6946c6df176f
+       42240  CAdES Browser Plug-in\Mini CSP\asn1bercpp.dll                     0f13a550a7a78e89bd9396787de9d84b0e1d53c9601713a02cab33b1ff23cde5
+       79944  CAdES Browser Plug-in\Mini CSP\asn1rtcpp.dll                      c53a1287988ac1aabfdee1cb3295fc8b4ef1ecd2013e81ca46521d10d2de0bd8
+       49832  CAdES Browser Plug-in\Mini CSP\bio.dll                            107cb4f843193b074d70bffa4adc7dd4849ca6d63c472ee65b10915f4cc58319
+       71168  CAdES Browser Plug-in\Mini CSP\capi10.dll                         700b36660d2d6cc5897cc92689d14ebd214c47f4a893b45d1a98dba852101d50
+      961120  CAdES Browser Plug-in\Mini CSP\capi20.dll                         c22fa51eb32fc7ab27dd05bf774b1299d157510a0120625109eecb4ffe1a3925
+       34695  CAdES Browser Plug-in\Mini CSP\config.ini                         405a209ab4076da017765eb8fb845174c84c8467ffd42770d37b862afe7cec50
+      401728  CAdES Browser Plug-in\Mini CSP\cpasn1.dll                         eb9df00a822bfb964520688a5f2b7f21aeb84b355039e76f04cc4268d024e42b
+      224048  CAdES Browser Plug-in\Mini CSP\cpconfig.exe                       30408a43c022f737156d3f518a3bdb27083755dac20f973a837f6a65879ed8c6
+     2263008  CAdES Browser Plug-in\Mini CSP\cpcspi.dll                         e7d6c024a545fbc9d851de7c3e9e83914cde82f2a078f38dc522a3290889322c
+      140384  CAdES Browser Plug-in\Mini CSP\cplib.dll                          e476818bb6d0238192499d57a09b7e8c8436e8850aac9cf12a70b6cebf30411f
+      528112  CAdES Browser Plug-in\Mini CSP\cpsuprt.dll                        10fc8cd2ff9a1c3b9c4e6e1d4b47a6dfb43995a6051534c5009a79d64a52cf9c
+      248128  CAdES Browser Plug-in\Mini CSP\cpui.dll                           19dd15f8e98dce064aedc103ac885ac1ffa7f10b6518e5e993c46762f1f4d4ec
+       53408  CAdES Browser Plug-in\Mini CSP\dsrf.dll                           71963bceccf383ad6ce5d31e96f095b101cd333701c7f2be66cf70a2a6dbd7b9
+      139192  CAdES Browser Plug-in\Mini CSP\fat12.dll                          8f57e1475aea0ee33041322f55c7f712b724d03b244305c82eb5553a98b7d84c
+      610168  CAdES Browser Plug-in\Mini CSP\jacarta.dll                        2e1ecadd164b666317f4767a3dfc24ccb09807d8eb86b43abfc00006b275f791
+          98  CAdES Browser Plug-in\Mini CSP\license.ini                        771d551b9bf2c90effef18d994c94b4b6de2705e6550af4fb532cd9338eab169
+      104056  CAdES Browser Plug-in\Mini CSP\pcsc.dll                           259c0aaf2f6526042cb112f7cc5144ad79961f83424de0e6efd318217873aab3
+      456336  CAdES Browser Plug-in\Mini CSP\rutoken.dll                        bec61e435755c3005ed93497fa18534e425333030e133dfa89ed7c17fd3c919e
+      383848  CAdES Browser Plug-in\Mini CSP\safenet.dll                        85f67aeed9e04683d0eb5b0f8eeee480407814e1cf57503cbeb7907a9d758871
+
+### ROOT: C:\Program Files\Crypto Pro
+     2376824  CAdES Browser Plug-in\Mini CSP\asn1.dll                           50c1b1de5023ce44059f3a3432352b50a33e82e04cfc60aa97a74058d3034b17
+       48496  CAdES Browser Plug-in\Mini CSP\asn1bercpp.dll                     c8d7295d5e1628c245103336faa6a771bbdf570231d3d14fc7911458955c8ab9
+       95448  CAdES Browser Plug-in\Mini CSP\asn1rtcpp.dll                      0cd35a58f27a92be8ffbd269c939c6e45d70777b88c5d15200bceb191cd00f2a
+       53960  CAdES Browser Plug-in\Mini CSP\bio.dll                            484bc55e0ad75726e8c4fdb65547a1a8c84e6263cdccc1ad4b3b35dfd26c691e
+       88240  CAdES Browser Plug-in\Mini CSP\capi10.dll                         3a99a8a9ddd0febb6fff601d65d505ca29d1ef6c8ab1e1f79580760558c642d8
+     1222456  CAdES Browser Plug-in\Mini CSP\capi20.dll                         f3795583298136533a1212fd5b60b35ac0f092617f71c599d2111314aeabee59
+       34695  CAdES Browser Plug-in\Mini CSP\config64.ini                       405a209ab4076da017765eb8fb845174c84c8467ffd42770d37b862afe7cec50
+      502432  CAdES Browser Plug-in\Mini CSP\cpasn1.dll                         5cc4d726af985ed9a8fa7d79140e79b9bfe91fec7a2f5c21ef82535eb979061c
+      276232  CAdES Browser Plug-in\Mini CSP\cpconfig.exe                       f0f3029f1e7d885c296597dc7669b8e7a2323a100ab42eaf54f55eae25241707
+     2382832  CAdES Browser Plug-in\Mini CSP\cpcspi.dll                         b5ccf8ccf311ee8d5419bf81999e15849fb8702ccdac1c3940308273a1b7e76b
+      186864  CAdES Browser Plug-in\Mini CSP\cplib.dll                          b19aaccbc341eb93bb026730137ce9c2b7e5719ff92730ae0564680ec6dc6aa6
+      640232  CAdES Browser Plug-in\Mini CSP\cpsuprt.dll                        eedbad160efe18376e3d2f287d1a8ff5194d3f3eb5584f6e8208e91726163229
+      267248  CAdES Browser Plug-in\Mini CSP\cpui.dll                           e7e4ba620be5d3ffd054a8827f4f21e0f6c6f4d037bf58f113e5f79c59e53049
+       57104  CAdES Browser Plug-in\Mini CSP\dsrf.dll                           662eb846d56c853ba0af87eb08250d1ac4e407bb39a2d8af44c439cc96ff62b0
+      144896  CAdES Browser Plug-in\Mini CSP\fat12.dll                          7d04212a2fd364c0aca6ca7f2c39812affbd2ba9096a6e0fa00273a3eca20760
+      865912  CAdES Browser Plug-in\Mini CSP\jacarta.dll                        c81260f53ffcb86e0c54be1db03ac81d05295aa963b97de6434ba9e3220e5bff
+          98  CAdES Browser Plug-in\Mini CSP\license.ini                        771d551b9bf2c90effef18d994c94b4b6de2705e6550af4fb532cd9338eab169
+      118536  CAdES Browser Plug-in\Mini CSP\pcsc.dll                           20359fc7acc8ccd617d1afaaba72bd5f9400d1f76413b218f971454fb9aab25f
+      494032  CAdES Browser Plug-in\Mini CSP\rutoken.dll                        1e8720d1ff53aa649fda171aa2e8fbd0f0eaf567bf680f134aef153ed020edd0
+      480616  CAdES Browser Plug-in\Mini CSP\safenet.dll                        6dd65260df8cf536987375957b647b3ba7a51989eac4fa4860d8544bcdf3808d
+
