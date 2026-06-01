@@ -147,6 +147,43 @@ self-test on `nmcades.exe` would separate (C) from the probe-semantics case, but
 needs elevation + GUI access. Run evidence: `docs/minicsp-snapshots/CONCLUSIONS.md`
 §6.
 
+### Linux enumeration control + Windows architecture difference (2026-06-01)
+
+Direct experiment on a clean Linux CryptoPro CSP Lite install (no registry on
+Linux at all): the very CryptoAPI calls the plugin uses —
+`CryptEnumProviderTypes` / `CryptEnumProviders` / `CryptGetDefaultProvider` —
+enumerate GOST 75/80/81 straight from `config64.ini` (strace-confirmed: the only
+file opened is `/etc/opt/cprocsp/config64.ini`). Removing the config reproduces
+**`0x80090017`** exactly. So the owner's thesis holds *on Linux*: enumeration is
+a registry-free `config.ini` operation. Evidence:
+`docs/minicsp-snapshots/linux-enum-control/`.
+
+But the Windows binaries differ architecturally, which is the likely real reason
+the Linux behavior does not transfer:
+
+- `Mini CSP\cpcspi.dll` exports the CSP engine (`CPAcquireContext`, `CPSignHash`…).
+- `Mini CSP\capi20.dll` exports only the high-level `Cert*`/`CryptMsg*` surface
+  and **does not export** the base `CryptAcquireContext`/`CryptEnumProviderTypes`/
+  `CryptGetDefaultProvider`. On Windows those base calls are **Microsoft's
+  `advapi32.dll`** (registry-based). On Linux there is no OS CryptoAPI, so the
+  same calls are CryptoPro's own `libcapi20` and read `config.ini`.
+
+Implication: on Windows `About.CSPName(80)` ultimately calls
+`CryptGetDefaultProvider`/`CryptEnumProviderTypes` via advapi32 → registry →
+empty (Mini CSP is unregistered) → **`0x80090017` by design**, even on the
+official `ADDMINICSP=1` install (matches observed diagnostics). The Mini CSP is
+still usable **in-process** (npcades → `Mini CSP\capi20.dll` → `cpcspi.dll`
+CSP SPI directly), which is what actual signing would use.
+
+**Consequence for the plan:** stop treating `About.CSPName(80)` enumeration as
+the success signal — it is architecturally empty for an unregistered Mini CSP on
+Windows. The decisive signal is the in-process operation (open a Mini CSP
+container + `SignCades`), which needs a GOST token. A Windows reverse-test
+(`tools/windows/reverse-enum-test.ps1`, handoff
+`docs/handoff-windows-reverse-enum.md`) confirms the split by showing CryptoPro's
+own `cpconfig.exe` enumerates the providers from `config.ini` while `certutil`/
+`advapi32` (registry) do not.
+
 ## Working hypothesis
 
 The current embedded `cadescom-x64.msi` extraction gives us the Browser Plugin/native bridge layer and includes a `Mini CSP` directory, but the extracted AppData-only layout does not yet activate that provider layer.

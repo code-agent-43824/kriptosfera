@@ -1,0 +1,9 @@
+# enumprov — WITHOUT config64.ini (control: config removed)
+=== CryptEnumProviderTypes (the call the plugin uses) ===
+  stop at index 0, GetLastError=0x80090020
+
+=== CryptEnumProviders ===
+  stop at index 0, GetLastError=0x80090020
+
+=== CryptGetDefaultProvider(type 80) ===
+  type80 FAILED GetLastError=0x80090017

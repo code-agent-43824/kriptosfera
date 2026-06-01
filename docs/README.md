@@ -26,6 +26,9 @@ architecture overview for Kriptosfera. Start with the root
 - [`handoff-windows-minicsp-snapshots.md`](handoff-windows-minicsp-snapshots.md)
   — handoff for a Windows session: capture registry + Program Files snapshots
   across three CryptoPro install states (clean / no-flags / `ADDMINICSP=1`).
+- [`handoff-windows-reverse-enum.md`](handoff-windows-reverse-enum.md) —
+  handoff for the Windows session: reverse enumeration test (CryptoPro config
+  view vs Microsoft registry view) settling why `About.CSPName(80)` is empty.
 - [`minicsp-snapshots/`](minicsp-snapshots/README.md) — the captured snapshots
   and per-phase analysis produced by that handoff.
 
