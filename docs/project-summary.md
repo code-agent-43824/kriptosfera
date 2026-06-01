@@ -38,15 +38,12 @@ Current implementation status:
 - app config validation now checks that `startUrl` belongs to `allowedOrigins` when origins are configured, requires `diagnosticsUrl` to be HTTPS, and rejects an unsafe `profileName` (must be a single path segment with no `..`, path separators, or `:`) so the per-app profile directory cannot escape the app root;
 - the remote downloader now caps how many bytes it will write (pinned expected size, or a 1 GiB absolute limit) and aborts early instead of streaming a runaway response to disk before the SHA-256 check;
 - the repository ships committed zero-byte placeholder `payload.zip`/`cryptopro-plugin.zip` (to satisfy `go:embed`) so the launcher compiles and `go test ./...` runs on a clean checkout; an empty embed is treated as "bundle not embedded", and Windows build scripts overwrite the placeholders with the real artifacts;
-- `diagnosticsUrl` controls whether Chromium opens a public HTTPS diagnostics page alongside the target page.
+- the launcher starts Chromium as a standalone app window (`--app=<startUrl>` when `windowMode` is `app`); diagnostics is off in the demo config.
 
 Current implementation boundaries:
 - `allowedOrigins` is a startup/config guard, not a full Chromium navigation sandbox;
 - full post-start navigation/domain policy is future product hardening, not an MVP blocker;
-- diagnostics remains enabled for the MVP because it is needed to verify launcher/runtime/extension wiring;
-- while diagnostics is enabled and `diagnosticsUrl` is configured, launcher opens both the configured start URL and the public HTTPS diagnostics page in Chromium window mode so test machines can capture the CSP matrix without manual file navigation;
-- bundled CSP Lite / Mini CSP activation on clean machines, Rutoken discovery, certificate selection, and signing remain the next MVP layers.
-- on clean machines without system CryptoPro CSP, the current embedded Browser Plugin layer loads but reports plugin version `0.0.0000` and does not load CSP/provider state; treat this as missing provider activation, not an extension/native messaging failure.
+- the clean-machine Mini CSP blocker was root-caused to a broken plug-in build (`2.0.15700`); the working combination is plug-in `2.0.15000` + a Manifest V2 extension (`1.2.13`) + a Manifest V2-capable Chromium (Chrome 138). Wiring this into the launcher (re-pin plug-in/extension) and the Rutoken signing check are the remaining MVP layers — see `docs/cryptopro-csp-lite-plan.md`.
 
 ## Explicit non-goals for first MVP
 

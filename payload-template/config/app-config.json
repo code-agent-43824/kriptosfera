@@ -9,8 +9,7 @@
   ],
   "profileName": "demo",
   "windowMode": "app",
-  "diagnosticsEnabled": true,
-  "diagnosticsUrl": "https://mescheryakov.pro/kriptosfera/diagnostics/diagnostics.html",
+  "diagnosticsEnabled": false,
   "chromiumArgs": [
     "--no-first-run",
     "--no-default-browser-check",

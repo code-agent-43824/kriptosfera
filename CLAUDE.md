@@ -12,9 +12,12 @@ test signature with a Rutoken on the CryptoPro CAdES demo page **without** a
 system-installed CryptoPro CSP. The launcher is the only compiled code; everything
 else is payload assets and PowerShell build scripts.
 
-The current hard blocker (MVP stage 6) is activating the bundled **Mini CSP /
-CSP Lite** on a clean machine. See `docs/cryptopro-csp-lite-plan.md` for the live
-investigation state and `docs/architecture.md` for the runtime design.
+MVP stage 6 (bundled **Mini CSP / CSP Lite** on a clean machine) is root-caused
+and unblocked: the previously pinned plug-in build `2.0.15700` was broken; the
+working combination is plug-in `2.0.15000` + a Manifest V2 extension (`1.2.13`)
++ a Manifest V2-capable Chromium (Chrome 138). Wiring that into the launcher and
+the Rutoken signing check are the remaining integration steps. See
+`docs/cryptopro-csp-lite-plan.md` (status + plan) and `docs/architecture.md`.
 
 ## Build, test, and develop
 
@@ -91,23 +94,24 @@ state and conventions, not just function calls.
   gated by a state file so it is not rewritten unnecessarily. Extension id is
   derived deterministically from `manifest.key` (SHA-256 → a–p mapping).
 
-## Mini CSP / CSP Lite domain knowledge (current focus)
+## Mini CSP / CSP Lite domain knowledge
 
-Established by binary analysis of the real bundle and a reference CSP Lite install
-(details in `docs/cryptopro-csp-lite-plan.md`):
+Resolution (details in `docs/cryptopro-csp-lite-plan.md`):
 
-- Activation is **module-relative and flag-gated**: `npcades.dll` reads
-  `cadesplugin.EnableInternalCSP` from the page (via a callback) early; if true it
-  `LoadLibraryEx`-loads `Mini CSP\capi20.dll` (relative to its own path) and
-  enumerates providers from `Mini CSP\config.ini`.
-- Ruled out by fact: registry keys (CryptoPro uses its own `config.ini` as the
-  "registry"), an extra license (ProductID is in `Mini CSP\license.ini`), extra
-  runtime (only KERNEL32/ADVAPI32/msvcrt/ntdll), and incomplete files. The native
-  host is 32-bit, so it reads `config.ini` (not `config64.ini`).
-- Do NOT pursue: writing to the Windows registry, flattening the `Mini CSP` folder,
-  a wrapper host process, or hunting for missing files/license. Focus is flag
-  delivery timing and (if that is not it) the `Mini CSP\capi20.dll` load and its
-  dependency search path (ProcMon on `nmcades.exe`).
+- The clean-machine "provider not loaded / `0x80090017`" symptom was a **broken
+  CAdES plug-in build (`2.0.15700`)**, confirmed by CryptoPro. Plug-in
+  `2.0.15000` activates the bundled Mini CSP with no system CSP.
+- The working combination is plug-in **`2.0.15000`** + the **Manifest V2**
+  extension (`1.2.13`) + a Manifest V2-capable Chromium (**Chrome 138**, the last
+  milestone honoring `ExtensionManifestV2Availability`). `build/chromium-runtime.json`
+  is pinned to 138.x for this reason.
+- The bundled Mini CSP needs no Windows registry, no extra license (ProductID is
+  in `Mini CSP\license.ini`), and no extra runtime; the 32-bit native host reads
+  `Mini CSP\config.ini`.
+- Remaining integration: re-pin plug-in to `2.0.15000`, ship the MV2 extension,
+  apply `ExtensionManifestV2Availability=2`, verify Rutoken signing.
+- FUTURE: return to the latest Chromium + a Manifest V3 extension once CryptoPro
+  ships a fixed MV3-compatible plug-in build (MV2 + Chrome 138 is temporary).
 
 ## Conventions
 

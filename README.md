@@ -42,17 +42,13 @@
 - remote payload mode для thin launcher с HTTPS-загрузкой, SHA-256 проверкой, ограничением размера загрузки (cap по pinned size / абсолютный предел) и cache reuse;
 - шаблон payload с pinned Chromium runtime и CryptoPro CAdES Browser Plug-in extension `1.3.17`;
 - hosted diagnostics page для проверки CryptoPro extension, Browser Plugin и CSP/provider state через официальный `cadesplugin_api.js`;
-- deployed Mini CSP test mirrors on `mescheryakov.pro`, including
-  `internal-csp-early`, where `EnableInternalCSP` is set before
-  `cadesplugin_api.js` and then re-asserted for clean-machine experiments;
-- read-only Windows script `tools/windows/inspect-cryptopro-modules.ps1` для фиксации фактически загруженных модулей `nmcades.exe`;
 - PowerShell-скрипты сборки под GitHub Actions;
 - Windows CI workflow на бесплатных GitHub-hosted runners;
 - публикация Windows-сборок двумя раздельными артефактами (embedded и тонкий remote), чтобы тонкую версию можно было скачать отдельно, плюс отдельные release assets на тегах.
 
-Сейчас ещё нет:
-- активированного bundled CSP Lite / Mini CSP режима для чистой машины;
-- рабочего сценария подписи без установленного системного CryptoPro CSP.
+Сейчас в процессе интеграции:
+- сборка рабочей связки в launcher. Причина блокера найдена: пиннутая сборка плагина `2.0.15700` была битой; рабочая — `2.0.15000` + extension Manifest V2 `1.2.13` + Chromium с поддержкой MV2 (Chrome 138). Mini CSP при этом активируется без системного CSP. Остаётся перепинить плагин/extension в payload — см. `docs/cryptopro-csp-lite-plan.md`;
+- сквозная проверка подписи с Рутокеном через нашу сборку.
 
 Сейчас уже есть:
 - foundation launcher первого этапа;
@@ -65,32 +61,24 @@
 - launcher генерирует native messaging manifest `ru.cryptopro.nmcades.json` и регистрирует его в HKCU для текущего пользователя;
 - ручная проверка показала, что на машине с установленным обычным CryptoPro CSP приложение ведёт себя как настроенный Chrome: видит extension, Browser Plugin, plugin version, системный CSP, стандартное окно подтверждения доступа и сертификаты;
 - минимальная app-config validation: `startUrl` должен быть валидным URL и соответствовать `allowedOrigins` (если список задан), `diagnosticsUrl` обязан быть HTTPS, а `profileName` проверяется как безопасный одиночный сегмент пути (без `..`, разделителей путей и `:`), чтобы каталог профиля не мог выйти за пределы app-root;
-- diagnostics остаётся включённой для MVP; `diagnosticsUrl` включает открытие публичной HTTPS-страницы диагностики рядом с целевой страницей.
+- launcher запускает Chromium как отдельное приложение (`--app=startUrl`) при `windowMode: "app"`; диагностика в demo-конфиге выключена.
 
 Полная доменная политика Chromium после старта — не часть текущего MVP. Это future product hardening для клиентских/брендированных сборок; сейчас `allowedOrigins` используется как guard от неправильного стартового URL в конфиге.
 
-Текущая точка:
-- двухмашинная diagnostics matrix по `CAdESCOM.About` / CSP state снята;
-- extension + native Browser Plugin delivery подтверждены;
-- ProcMon на чистой машине показал, что `nmcades.exe` реально загружает bundled `npcades.dll` и `cplib.dll` из AppData;
-- следующий этап — аккуратная активация bundled CSP Lite / Mini CSP через CryptoPro runtime/CAPI layer, а не через замену CAdES-плагина.
-
 ## Текущие выводы по CSP Lite / Mini CSP
 
-Исследование на 2026-05-24:
+Блокер «провайдер не грузится на чистой машине» **решён по первопричине**: пиннутая
+сборка CAdES-плагина `2.0.15700` оказалась **битой** (подтверждено CryptoPro), и
+её внутренний Mini CSP не активировался. Откат на плагин **`2.0.15000`** поднимает
+Mini CSP **без системного CSP**: страница диагностики показывает «Криптопровайдер
+загружен», провайдер `Crypto-Pro GOST R 34.10-2012 …`, CSP `5.0.13001`. Наш подход
+был верным.
 
-- На машине без системного CSP запускаются extension, native host и `CAdESCOM.About`; `About.CSPName(80)` / `CSPVersion("", 80)` падают с `0x80090017` («Тип поставщика не определен»).
-- На чистой машине `CAdESCOM.Store` может открыть `MY` и увидеть сертификат с приватным ключом через `Microsoft Smart Card Key Storage Provider`, но `SignCades` падает с `0x80090014` (`wrong provider type`). Одна видимость CNG/KSP-ключа не равна совместимости с CAdESCOM-подписью.
-- Ранний `cryptopro-modules.json` был недостаточен: он не показал `npcades.dll` / `cplib.dll`, хотя ProcMon позже подтвердил их загрузку. Для DLL-загрузки и failed lookup основным инструментом теперь считается ProcMon.
-- Linux/Unix-модель CryptoPro указывает на собственный runtime/config слой CryptoPro: `cpconfig`, `capi10`, `capi20`, `csp`, `pcsc`, `cng`. Поэтому MiniCSP/CSP Lite может не регистрировать полноценный Windows provider напрямую, а ожидать вызова через CryptoPro CAPI/CSP libraries.
-- Рабочая гипотеза: цепочка должна быть `nmcades.exe -> npcades.dll -> cplib.dll -> capi10/capi20/cpcspi/Mini CSP runtime -> token/container`. Сейчас подтверждена только первая часть до `cplib.dll`.
-
-Скорректированное направление:
-
-- Не начинать с ручной записи в системный Windows CSP registry.
-- Сначала выяснить, какие DLL/config/registry paths `cplib.dll` и CAdES runtime пытаются открыть при `Store.Open` и `SignCades`.
-- Проверять именно 32-bit слой: текущий `nmcades.exe` работает под WOW64, значит x64-only MiniCSP DLL не подцепятся.
-- Подключение MiniCSP делать маленькими обратимыми шагами: сначала DLL search path / app-local layout / environment, затем только при необходимости HKCU/HKLM config or registry.
+Рабочая связка: плагин **2.0.15000** + extension **Manifest V2 `1.2.13`** +
+Chromium с поддержкой MV2 (**Chrome 138**, последняя версия с
+`ExtensionManifestV2Availability`). Что осталось интегрировать в launcher и какие
+дальнейшие цели (возврат к свежему Chromium + Manifest V3, когда CryptoPro выпустит
+исправленную сборку плагина) — в [`docs/cryptopro-csp-lite-plan.md`](docs/cryptopro-csp-lite-plan.md).
 
 ## Репозиторий
 
@@ -179,29 +167,24 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - native messaging manifest генерируется и регистрируется в HKCU;
 - Browser Plugin на машине с системным CryptoPro CSP подтверждён ручной проверкой через CryptoPro demo page.
 
-Что закрыто диагностикой:
-- на машине с системным CSP diagnostics показывает plugin `2.0.15700`, CSP `5.0.13455`, provider name и целевая страница видит сертификаты;
-- на чистой машине extension/API и `CAdESCOM.About` доступны, но plugin/CSP state остаётся `0.0.0` / `0x80090017`.
-- launcher пишет `cryptopro-runtime.json`, а отдельный read-only script может записать `cryptopro-modules.json` со списком загруженных CryptoPro/CAdES/Mini CSP модулей.
-- ProcMon на чистой машине подтвердил загрузку `npcades.dll` и `cplib.dll` из bundled Browser Plug-in каталога; значит следующий пробел — не native messaging и не CAdES plugin bootstrap, а переход от `cplib.dll` к CAPI/MiniCSP runtime.
+Что выяснено по первопричине:
+- блокер был в **битой сборке плагина `2.0.15700`**; рабочая — `2.0.15000`, и с ней Mini CSP активируется на чистой машине без системного CSP (провайдер `Crypto-Pro GOST R 34.10-2012 …`, CSP `5.0.13001`).
+- рабочая связка требует extension **Manifest V2 `1.2.13`** и Chromium с поддержкой MV2 (**Chrome 138**).
 
-Что дальше:
-- на чистой машине без системного CSP открыть свежий
-  `internal-csp-early` mirror и/или hosted diagnostics page из текущей сборки,
-  чтобы проверить гипотезу раннего `EnableInternalCSP`;
-- если ранний флаг не активирует провайдеры, снять расширенный ProcMon-трейс на чистой машине во время `Store.Open` и `SignCades`, с фокусом на `capi`, `csp`, `cpcsp`, `cplib`, `config`, `Crypto Pro`, `NAME NOT FOUND`;
-- собрать такой же ProcMon-трейс на машине с системным CSP для сравнения successful path;
-- проверить состав bundled MiniCSP/CSP Lite, особенно наличие 32-bit `capi10.dll`, `capi20.dll`, `cpcspi.dll`, `cpsuprt.dll`, `cpui.dll`, `csp*.dll` и config/layout files;
-- попробовать app-local/PATH activation так, чтобы MiniCSP DLL лежали в search path процесса `nmcades.exe`, и фиксировать, меняется ли `0x80090017` / `0x80090014`.
+Что дальше (интеграция рабочей связки в launcher):
+- перепинить плагин на `2.0.15000` (lock + версия + required-files + bump layout);
+- заменить bundled extension на Manifest V2 `1.2.13`;
+- Chromium уже запиннут на 138.x; при доставке MV2-расширения выставлять политику `ExtensionManifestV2Availability=2`;
+- сквозная проверка подписи с Рутокеном через нашу сборку.
+
+Детальный план и будущие цели — в [`docs/cryptopro-csp-lite-plan.md`](docs/cryptopro-csp-lite-plan.md).
 
 ## Ближайшие инженерные задачи
 
-- расширить диагностику/скрипты так, чтобы они фиксировали не только loaded modules, но и ProcMon-derived failed DLL/config lookups;
-- после подтверждения нужного DLL/config layout реализовать минимальный обратимый activation step для bundled CSP Lite / Mini CSP;
-- затем вернуться к reference signing flow с Рутокеном;
-- при необходимости позже вернуться к UX-polish progress окна и richer diagnostics.
+- собрать рабочую связку (плагин 2.0.15000 + extension MV2 1.2.13 + Chromium 138) в payload и проверить подпись с Рутокеном;
+- в будущем — вернуться к свежему Chromium + Manifest V3, когда CryptoPro выпустит исправленную сборку плагина.
 
-Пока `diagnosticsEnabled=true` и задан `diagnosticsUrl`, launcher открывает целевую страницу и публичную HTTPS-страницу диагностики рядом в обычном Chromium window-mode. Локальный diagnostics server в launcher не используется.
+Launcher запускает встроенный Chromium как отдельное приложение (`--app=startUrl`) при `windowMode: "app"`; диагностика в demo-конфиге выключена, локальный diagnostics server не используется.
 
 ## Документация
 

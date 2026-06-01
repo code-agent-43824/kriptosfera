@@ -51,15 +51,6 @@ jobs:
         run: |
           ./build/build-launcher.ps1 -PayloadMode remote -UsePayloadLock -PayloadLockPath build/payload-lock.json
 
-      - name: Validate CryptoPro module diagnostics script
-        shell: pwsh
-        run: |
-          ./tools/windows/inspect-cryptopro-modules.ps1 -OutputPath dist/cryptopro-modules-ci.json
-          $report = Get-Content dist/cryptopro-modules-ci.json -Raw | ConvertFrom-Json
-          if ($report.status -ne 'process_not_found') {
-            throw "Unexpected CI diagnostics status: $($report.status)"
-          }
-
       - name: Upload embedded launcher artifact
         uses: actions/upload-artifact@v6
         with:
@@ -67,7 +58,6 @@ jobs:
           path: |
             dist/KriptosferaDemo.exe
             dist/README.txt
-            tools/windows/inspect-cryptopro-modules.ps1
           if-no-files-found: error
 
       - name: Upload remote launcher artifact
@@ -77,7 +67,6 @@ jobs:
           path: |
             dist/KriptosferaDemo-remote.exe
             dist/README.txt
-            tools/windows/inspect-cryptopro-modules.ps1
           if-no-files-found: error
 
       - name: Attach launcher files to GitHub release
@@ -91,4 +80,4 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag --title $tag --notes "Automated build for $tag"
           }
-          gh release upload $tag dist/KriptosferaDemo.exe dist/KriptosferaDemo-remote.exe dist/README.txt tools/windows/inspect-cryptopro-modules.ps1 --clobber
+          gh release upload $tag dist/KriptosferaDemo.exe dist/KriptosferaDemo-remote.exe dist/README.txt --clobber

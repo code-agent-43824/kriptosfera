@@ -237,9 +237,7 @@ func buildChromiumArgs(profileDir string, appCfg config.AppConfig, extensionArgs
 
 	args = append(args, extensionArgs...)
 
-	if appCfg.DiagnosticsEnabled && appCfg.DiagnosticsURL != "" {
-		args = append(args, appCfg.StartURL, appCfg.DiagnosticsURL)
-	} else if appCfg.WindowMode == "app" {
+	if appCfg.WindowMode == "app" {
 		args = append(args, "--app="+appCfg.StartURL)
 	} else {
 		args = append(args, appCfg.StartURL)

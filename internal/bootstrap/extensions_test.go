@@ -83,8 +83,7 @@ func TestBuildChromiumArgsPlacesExtensionFlagsBeforeURL(t *testing.T) {
 	want := []string{
 		`--user-data-dir=C:\profile`,
 		`--load-extension=C:\ext`,
-		`https://example.test`,
-		`https://mescheryakov.pro/kriptosfera/diagnostics/diagnostics.html`,
+		`--app=https://example.test`,
 		`--enable-logging`,
 	}
 	if !reflect.DeepEqual(got, want) {

@@ -1,3 +1,0 @@
-openat(AT_FDCWD, "/opt/cprocsp/lib/amd64/libcapi10.so.4", O_RDONLY|O_CLOEXEC) = 3
-openat(AT_FDCWD, "/opt/cprocsp/lib/amd64/librdrsup.so.4", O_RDONLY|O_CLOEXEC) = 3
-openat(AT_FDCWD, "/etc/opt/cprocsp/config64.ini", O_RDONLY) = 3

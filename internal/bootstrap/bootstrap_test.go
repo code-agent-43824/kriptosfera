@@ -706,35 +706,6 @@ func TestBuildChromiumArgsWindowModeBrowser(t *testing.T) {
 	}
 }
 
-func TestBuildChromiumArgsDiagnosticsOpensConfiguredURL(t *testing.T) {
-	cfg := testAppConfig()
-	args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil)
-	want := []string{
-		`--user-data-dir=C:\Profiles\demo`,
-		"https://example.test",
-		"https://mescheryakov.pro/kriptosfera/diagnostics/diagnostics.html",
-		"--no-first-run",
-	}
-	if strings.Join(args, "\n") != strings.Join(want, "\n") {
-		t.Fatalf("unexpected diagnostics args: %#v", args)
-	}
-	for _, arg := range args {
-		if strings.HasPrefix(arg, "--app=") {
-			t.Fatalf("diagnostics mode must not use app window args: %#v", args)
-		}
-	}
-}
-
-func TestBuildChromiumArgsDiagnosticsFallsBackToAppModeWithoutURL(t *testing.T) {
-	cfg := testAppConfig()
-	cfg.DiagnosticsURL = ""
-	args := buildChromiumArgs(`C:\Profiles\demo`, cfg, nil)
-	joined := strings.Join(args, " ")
-	if !strings.Contains(joined, "--app=https://example.test") {
-		t.Fatalf("expected app mode without diagnostics URL, got %#v", args)
-	}
-}
-
 func TestValidateAppConfigAcceptsStartURLAllowedOrigin(t *testing.T) {
 	cfg := testAppConfig()
 	cfg.StartURL = "https://www.cryptopro.ru/sites/default/files/products/cades/demopage/cades_bes_sample.html"

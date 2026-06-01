@@ -1,7 +1,8 @@
 {
-  "version": "148.0.7778.97",
+  "version": "138.0.7204.183",
   "platform": "win64",
   "archiveName": "chrome-win64.zip",
-  "url": "https://storage.googleapis.com/chrome-for-testing-public/148.0.7778.97/win64/chrome-win64.zip",
-  "extractRoot": "chrome-win64"
+  "url": "https://storage.googleapis.com/chrome-for-testing-public/138.0.7204.183/win64/chrome-win64.zip",
+  "extractRoot": "chrome-win64",
+  "note": "Pinned to the last Chrome for Testing milestone (138) that can still run Manifest V2 extensions via the ExtensionManifestV2Availability enterprise policy; Chrome 139+ removed it. The CryptoPro CAdES extension paired with the working plugin build is Manifest V2. FUTURE: return to the latest Chromium + a Manifest V3 extension once CryptoPro ships a fixed MV3-compatible plugin build (see docs/cryptopro-csp-lite-plan.md)."
 }

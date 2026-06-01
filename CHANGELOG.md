@@ -8,21 +8,16 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 
 ## [Unreleased]
 
-### Diagnostics
-- Deployed a fourth public CryptoPro CAdES test mirror,
-  `internal-csp-early`, that sets `EnableInternalCSP` before
-  `cadesplugin_api.js` and keeps re-asserting it for the clean-machine Mini CSP
-  experiment. The hosted diagnostics page on `mescheryakov.pro` was refreshed
-  from the repository version with the same early-flag verdict logic.
-- The hosted diagnostics page now sets `cadesplugin.EnableInternalCSP = true`
-  before `cadesplugin_api.js` loads, re-asserts it for several seconds, records
-  a flag timeline, and prints an explicit A/B/C verdict (flag-timing vs Mini CSP
-  load/enumeration vs integrity). This distinguishes why the internal Mini CSP
-  is not activated on a clean machine without needing ProcMon.
-- Documented binary-analysis ground truth in `docs/cryptopro-csp-lite-plan.md`:
-  the bundle is file-complete, needs no registry/runtime/extra license, is
-  32-bit, and npcades loads `Mini CSP\capi20.dll` by a module-relative path
-  gated on `EnableInternalCSP`.
+### Mini CSP / CSP Lite
+- Identified the clean-machine blocker: the pinned CAdES plug-in build
+  `2.0.15700` was broken (per CryptoPro); plug-in `2.0.15000` activates the
+  bundled Mini CSP with no system CSP. The working combination requires the
+  Manifest V2 extension (`1.2.13`) and a Manifest V2-capable Chromium. See
+  `docs/cryptopro-csp-lite-plan.md`.
+- Pinned the bundled Chromium to the last Manifest V2-capable Chrome for Testing
+  milestone (`138.0.7204.183`); Chrome 139+ removed `ExtensionManifestV2Availability`.
+  Future goal: return to the latest Chromium + Manifest V3 once CryptoPro ships a
+  fixed plug-in build.
 
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing
@@ -35,6 +30,11 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   host when nothing changed since the last run (gated by a state file).
 
 ### Changed
+- The launcher again starts Chromium as a standalone app window (`--app=<startUrl>`
+  in `windowMode: "app"`); the diagnostics behavior that opened the target page
+  and a diagnostics page as two tabs was removed.
+- Removed the Windows investigation scripts and snapshot/handoff material used
+  while diagnosing the Mini CSP issue (payload assets and build scripts kept).
 - A second launch of an already-prepared app no longer fails with "bootstrap
   already in progress": preparation now checks for an existing payload/plugin
   before taking the lock, the lock waits (with a bounded timeout) for a
