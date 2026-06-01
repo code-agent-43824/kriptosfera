@@ -29,6 +29,9 @@ architecture overview for Kriptosfera. Start with the root
 - [`handoff-windows-reverse-enum.md`](handoff-windows-reverse-enum.md) —
   handoff for the Windows session: reverse enumeration test (CryptoPro config
   view vs Microsoft registry view) settling why `About.CSPName(80)` is empty.
+- [`handoff-windows-config-trace.md`](handoff-windows-config-trace.md) —
+  handoff (Windows): diagnose where the plugin reads `config.ini` from, with a
+  careful legitimate-troubleshooting framing.
 - [`minicsp-snapshots/`](minicsp-snapshots/README.md) — the captured snapshots
   and per-phase analysis produced by that handoff.
 

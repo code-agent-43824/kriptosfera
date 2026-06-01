@@ -139,3 +139,14 @@ candidates for `0x80090017` are (C) provider registration / self-test not
 completing, or `About.CSPName` not seeing an in-process internal CSP
 (false-negative); the decisive test is an actual sign with a GOST token. See
 `docs/cryptopro-csp-lite-plan.md` → "Diagnostics run result (2026-05-31)".
+
+## 7. Token sign attempt (2026-06-01) — no change
+
+With a Rutoken inserted carrying a CryptoPro-format certificate, on the same
+`ADDMINICSP=1` machine in regular Chrome, the result was unchanged: provider
+still not loaded, operations still fail. This rules out the "in-process sign
+with an existing token key" path as a workaround — even a real GOST key does not
+make the addminicsp Mini CSP activate for the browser plugin. The live remaining
+hypothesis is that `capi20`/`cpcspi` does not load its `config.ini` on Windows
+(wrong path), reproducing the Linux "no config -> 0x80090017" exactly. Next:
+`docs/handoff-windows-config-trace.md`.
