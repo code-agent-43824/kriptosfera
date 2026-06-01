@@ -2,24 +2,23 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <title>Настройки ЭЦП Browser Plugin</title>
+    <title>Настройки КриптоПро ЭЦП Browser Plug-in</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <link rel="shortcut icon" href="/icons/favicon.png">
     <script type="text/javascript" src="trusted_sites.js"></script>
     <script type="text/javascript" src="nmcades_plugin_api.js"></script>
     <script type="text/javascript" src="content.js"></script>
     <style type="text/css">
         object.hiddenObject {
             visibility: hidden;
-            width: 0;
-            height: 0;
-            margin: 0;
-            padding: 0;
+            width: 0px;
+            height: 0px;
+            margin: 0px;
+            padding: 0px;
             border-style: none;
-            border-width: 0;
-            max-width: 0;
-            max-height: 0;
+            border-width: 0px;
+            max-width: 0px;
+            max-height: 0px;
         }
 
         html {
@@ -31,9 +30,9 @@
         body {
             display: block;
             box-sizing: border-box;
-            margin: 0;
+            margin: 0px;
             height: 100%;
-            font: 13px/1.7em Arial, 'Liberation Sans', Arimo, Roboto, sans-serif;
+            font: 13px/1.7em "Helvetica", "arial", sans-serif;
             color: #444444;
             background-color: white;
         }
@@ -98,10 +97,11 @@
             color: #252525;
             font-size: 24px;
             margin-bottom: 10px;
+            font-family: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
             font-weight: 500;
             line-height: 1.1;
-            margin-left: 0;
-            margin-right: 0;
+            margin-left: 0px;
+            margin-right: 0px;
             box-sizing: border-box;
         }
 
@@ -111,12 +111,12 @@
             transition-duration: 0.15s;
             transition-property: opacity;
             transition-timing-function: cubic-bezier(0, 0, 1, 1);
-            background-color: #f03c280f;
+            background-color: #F2DEDE;
             border-bottom-color: #EED3D7;
             border-left-color: #EED3D7;
             border-right-color: #EED3D7;
             border-top-color: #EED3D7;
-            color: #f03c28;
+            color: #B94A48;
             border-bottom-left-radius: 4px;
             border-bottom-right-radius: 4px;
             border-bottom-style: solid;
@@ -176,20 +176,21 @@
             button.close {
                 border-style: none;
                 border-color: currentColor;
-                border-width: 0;
-                margin: 0;
-                padding: 0;
+                border-width: 0px;
+                margin: 0px;
+                padding: 0px;
                 float: right;
                 text-align: center;
-                text-indent: 0;
+                text-indent: 0px;
                 white-space: nowrap;
                 font-size: 21px;
                 font-weight: 700;
                 line-height: 1;
                 text-transform: none;
+                font-family: inherit;
                 color: #000000;
                 opacity: 0.2;
-                text-shadow: 0 1px 0 #FFFFFF;
+                text-shadow: 0px 1px 0px #FFFFFF;
                 background-clip: border-box;
                 background-origin: padding-box;
                 background-size: auto;
@@ -209,9 +210,9 @@
             list-style-image: none;
             list-style-position: outside;
             list-style-type: none;
-            padding-left: 0;
+            padding-left: 0px;
             margin-bottom: 10px;
-            margin-top: 0;
+            margin-top: 0px;
             box-sizing: border-box;
         }
 
@@ -230,7 +231,7 @@
 
         .close:focus {
             opacity: 1;
-            color: #f03c28;
+            color: #B94A48;
         }
 
         div.add-new {
@@ -254,7 +255,7 @@
             background-color: #FFFFFF;
             border-bottom-color: #CCCCCC;
             border-bottom-left-radius: 4px;
-            border-bottom-right-radius: 0;
+            border-bottom-right-radius: 0px;
             border-bottom-style: solid;
             border-bottom-width: 1px;
             border-left-color: #CCCCCC;
@@ -265,11 +266,11 @@
             border-right-width: 1px;
             border-top-color: #CCCCCC;
             border-top-left-radius: 4px;
-            border-top-right-radius: 0;
+            border-top-right-radius: 0px;
             border-top-style: solid;
             border-top-width: 1px;
             border-collapse: separate;
-            box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.071);
+            box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.071);
             color: #555555;
             display: table-cell;
             font-size: 14px;
@@ -285,7 +286,7 @@
             transition-timing-function: cubic-bezier(0.42, 0, 0.58, 1), cubic-bezier(0.42, 0, 0.58, 1);
             vertical-align: middle;
             width: 100%;
-            margin-bottom: 0;
+            margin-bottom: 0px;
             box-sizing: border-box;
         }
 
@@ -307,6 +308,7 @@
 
         button.add {
             display: inline-block;
+            font-family: "Helvetica Neue", "Helvetica", "Arial", sans-serif;
             font-style: normal;
             font-weight: 400;
             border-bottom-color: transparent;
@@ -409,17 +411,17 @@
             </div>
             <div class="centralBlock" id="centralBlock">
                 <h1 id="centralBlockHeader">
-                    Настройки расширения для CAdES Browser Plugin
+                    Настройки КриптоПро ЭЦП Browser Plug-in
                 </h1>
                 <p>
                     Список надежных узлов, которые не причинят вред вашему компьютеру и данным. Для
-                    заданных веб-узлов расширения CAdES Browser Plugin не будет требовать подтверждения
+                    заданных веб-узлов КриптоПро ЭЦП Browser Plug-in не будет требовать подтверждения
                     пользователя при открытии хранилища сертификатов, создании подписи или расшифровании
                     сообщения. При добавлении веб-узлов в надежные можно использовать символ "*" для
                     указания всех субдоменов данного узла.
                 </p>
                 <div class="alert">
-                    <button id="btn_trust_note" type="button" class="close">×</button>
+                    <button type="button" class="close" onclick="deleteAlertNode()">×</button>
                     <b>Важно!</b> При добавлении веб-узла в список надежных, вы должны быть уверены,
                     что веб-скрипты, загруженные или запущенные с данного веб-узла, не могут нанести
                     вред компьютеру или данным.

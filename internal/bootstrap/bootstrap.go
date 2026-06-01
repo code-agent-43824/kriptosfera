@@ -126,11 +126,15 @@ func Run(cfg config.RuntimeConfig) error {
 			}
 		}
 	}
-	extensionArgs := buildExtensionArgs(loadableExtensions(extensions))
+	loadableExts := loadableExtensions(extensions)
+	if err := ApplyChromeCompatibilityPolicies(loadableExts, logger); err != nil {
+		return err
+	}
+	extensionArgs := buildExtensionArgs(loadableExts)
 	if len(extensionArgs) == 0 {
 		logger.Info("extensions load count=0")
 	} else {
-		logger.Info("extensions load count=%d", len(loadableExtensions(extensions)))
+		logger.Info("extensions load count=%d", len(loadableExts))
 	}
 	if !cryptoProResult.Skipped {
 		logger.Info("cryptopro plugin ready reused=%t path=%s", cryptoProResult.Reused, cryptoProResult.Path)

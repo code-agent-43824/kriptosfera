@@ -7,27 +7,14 @@ var LOG_LEVEL_ERROR = 1;
 var current_log_level = LOG_LEVEL_ERROR;
 var g_user_approved_sites = {};
 
-function getFormattedTime() {
-    const now = new Date();
-    const year = now.getFullYear().toString();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    const milliseconds = now.getMilliseconds().toString().padStart(3, '0');
-    return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
-}
-
-function cpcsp_console_log(level, msg) {
-    if (level <= current_log_level) {
-        const time = getFormattedTime();
+function cpcsp_console_log(level, msg){
+    if (level <= current_log_level){
         if (level == LOG_LEVEL_DEBUG)
-            console.log("[%s] DEBUG: %s", time, msg);
+            console.log("DEBUG: %s", msg);
         if (level == LOG_LEVEL_INFO)
-            console.info("[%s] INFO: %s", time, msg);
+            console.info("INFO: %s", msg);
         if (level == LOG_LEVEL_ERROR)
-            console.error("[%s] ERROR: %s", time, msg);
+            console.error("ERROR: %s", msg);
         return;
     }
 }
@@ -126,7 +113,7 @@ function onNativeMessage(message) {
             else {
                 cpcsp_console_log(LOG_LEVEL_ERROR, "background.js: Received incorrect approved_site native message:" + JSON.stringify(message));
                 return;
-            } 
+            }
 
             var isApproved = isValidApprovedSite(site);
             args = new Array();
@@ -148,16 +135,16 @@ function onNativeMessage(message) {
 function connect(_content_port) {
     var hostName = "ru.cryptopro.nmcades";
     cpcsp_console_log(LOG_LEVEL_INFO, "background.js: Connecting to native messaging host" + hostName);
-    g_native_ports[_content_port.name] = browserInstance.runtime.connectNative(hostName);    
+    g_native_ports[_content_port.name] = browserInstance.runtime.connectNative(hostName);
     g_native_ports[_content_port.name].onMessage.addListener(onNativeMessage);
     g_native_ports[_content_port.name].onDisconnect.addListener(function () {
         cpcsp_console_log(LOG_LEVEL_INFO, "background.js: Disconnect Event: " + " tabid " + _content_port.name);
         g_native_ports[_content_port.name] = null;
         if(g_content_ports[_content_port.name])
-            g_content_ports[_content_port.name].disconnect(); 
+            g_content_ports[_content_port.name].disconnect();
         g_content_ports[_content_port.name] = null;
-        browserInstance.action.setIcon({tabId: _content_port.sender.tab.id, path:"icons/status/icon_error_128.png"});
-        browserInstance.action.setPopup({tabId: _content_port.sender.tab.id, popup:"popup_error.html"});
+        browserInstance.pageAction.setIcon({tabId: _content_port.sender.tab.id, path:"icons/plugin_load_error.png"});
+        browserInstance.pageAction.setPopup({tabId: _content_port.sender.tab.id, popup:"error_on_plugin_load/error_on_plugin_load.html"});
     });
     return true;
 }
@@ -177,8 +164,8 @@ browserInstance.runtime.onConnect.addListener(function(_content_port) {
         });
         if(!g_native_ports[_content_port.name])
             connect(_content_port);
-        browserInstance.action.setIcon({tabId: _content_port.sender.tab.id, path:"icons/status/icon_active_128.png"});
-        browserInstance.action.setPopup({tabId: _content_port.sender.tab.id, popup:"popup_ok.html"});
+        browserInstance.pageAction.show(_content_port.sender.tab.id);
+        browserInstance.pageAction.setPopup({tabId: _content_port.sender.tab.id, popup:"plugin_load_ok/plugin_load_ok.html"});
 });
 
 browserInstance.runtime.onMessage.addListener(function (request, sender){
@@ -194,3 +181,17 @@ browserInstance.runtime.onMessage.addListener(function (request, sender){
     }
 });
 
+if (browserInstance.declarativeContent) {
+    browserInstance.declarativeContent.onPageChanged.removeRules(undefined, function() {
+      browserInstance.declarativeContent.onPageChanged.addRules([{
+        conditions: [new chrome.declarativeContent.PageStateMatcher()],
+            actions: [new chrome.declarativeContent.ShowPageAction()]
+      }]);
+    });
+}
+
+browserInstance.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
+    if (changeInfo.url && browserInstance.declarativeContent) {
+        chrome.pageAction.show(tabId);
+    }
+});

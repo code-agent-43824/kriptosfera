@@ -16,8 +16,8 @@ import (
 
 const (
 	cryptoProPluginComponent = "cryptopro-browser-plugin"
-	cryptoProPluginVersion   = "2.0.15700"
-	cryptoProPluginLayout    = 1
+	cryptoProPluginVersion   = "2.0.15000"
+	cryptoProPluginLayout    = 2
 	cryptoProPluginStateFile = ".cryptopro-plugin-state.json"
 	cryptoProPluginReadyFile = ".cryptopro-plugin-ready"
 )

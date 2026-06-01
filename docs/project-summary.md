@@ -28,10 +28,10 @@ Current implementation status:
 - CI now builds both embedded and remote launcher variants;
 - payload artifacts are produced in immutable version/sha-based layout for delivery.
 - remote first-run now has minimal visible progress UX on Windows.
-- canonical unpacked CryptoPro extension `1.3.17` is now committed into `payload-template/extensions/cryptopro-cades/`;
+- temporary legacy CryptoPro extension `1.2.13` / Manifest V2 is now committed into `payload-template/extensions/cryptopro-cades/` for the Mini CSP compatibility profile;
 - launcher now derives stable extension wiring from payload layout and computes the expected extension id from `manifest.json`;
 - hosted diagnostics now uses CryptoPro's official `cadesplugin_api.js` path and targeted `CAdESCOM.About` calls, so extension delivery, Browser Plugin version, and CSP/provider state are observable before CSP Lite activation starts.
-- CryptoPro Browser Plugin `2.0.15700` is pinned in `build/cryptopro-plugin-lock.json`, downloaded from project static storage, verified by SHA-256/size, and embedded into both launcher variants during Windows builds.
+- CryptoPro Browser Plugin `2.0.15000` is pinned in `build/cryptopro-plugin-lock.json`, downloaded from project static storage, verified by SHA-256/size, and embedded into both launcher variants during Windows builds. This is a temporary legacy pin until a fixed modern CryptoPro plug-in / MV3 extension / latest-Chromium stack is available.
 - launcher now extracts the embedded CryptoPro Browser Plugin bundle into the versioned AppData app directory and validates `nmcades.exe`, `nmcades.json`, and `npcades.dll` before reuse.
 - launcher now generates the Chrome native messaging manifest for `ru.cryptopro.nmcades` and registers it under HKCU for the current user before Chromium starts.
 - manual Windows validation showed that, when a normal system CryptoPro CSP is installed, Kriptosfera behaves like a configured Chrome: extension, Browser Plugin, plugin version, system CSP, standard access confirmation dialog, and certificate enumeration all work.
@@ -43,7 +43,7 @@ Current implementation status:
 Current implementation boundaries:
 - `allowedOrigins` is a startup/config guard, not a full Chromium navigation sandbox;
 - full post-start navigation/domain policy is future product hardening, not an MVP blocker;
-- the clean-machine Mini CSP blocker was root-caused to a broken plug-in build (`2.0.15700`); the working combination is plug-in `2.0.15000` + a Manifest V2 extension (`1.2.13`) + a Manifest V2-capable Chromium (Chrome 138). Wiring this into the launcher (re-pin plug-in/extension) and the Rutoken signing check are the remaining MVP layers — see `docs/cryptopro-csp-lite-plan.md`.
+- the clean-machine Mini CSP blocker was root-caused to a broken plug-in build (`2.0.15700`); the working combination is plug-in `2.0.15000` + a Manifest V2 extension (`1.2.13`) + a Manifest V2-capable Chromium (Chrome 138). The repo is now pinned to that temporary legacy profile and applies the MV2 Chrome policy only when an MV2 extension is present; the Rutoken signing check is the remaining MVP layer — see `docs/cryptopro-csp-lite-plan.md`.
 
 ## Explicit non-goals for first MVP
 

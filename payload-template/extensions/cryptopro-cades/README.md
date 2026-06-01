@@ -1,15 +1,14 @@
-# CryptoPro CAdES extension payload
+# CryptoPro CAdES extension compatibility pin
 
-Канонический unpacked payload для этапа `v0.4`.
+This directory currently contains the legacy CryptoPro CAdES extension
+`1.2.13` with `manifest_version: 2`.
 
-Источник:
-- Chrome Web Store: `Extension for CAdES Browser Plugin`
-- Extension id: `pfhgbfnnjiafkhfdkmpiflachepdcjod`
-- Version: `1.3.17`
-- Web Store URL: `https://chromewebstore.google.com/detail/extension-for-cades-brows/pfhgbfnnjiafkhfdkmpiflachepdcjod`
-- CRX download URL pattern: `https://clients2.google.com/service/update2/crx?...id=pfhgbfnnjiafkhfdkmpiflachepdcjod...`
+It is a temporary compatibility pin for the clean-machine Mini CSP path:
 
-Примечания:
-- В payload кладём unpacked extension целиком, чтобы launcher мог загружать его через `--disable-extensions-except` и `--load-extension`.
-- `manifest.json` содержит `key`, поэтому extension id стабилен и может использоваться в diagnostics probe.
-- Этот слой проверяет только доставку и загрузку browser extension. Native messaging, CryptoPro plugin/CSP и реальная подпись идут следующими этапами.
+- CAdES Browser Plug-in `2.0.15000`
+- CryptoPro extension `1.2.13` / Manifest V2
+- Chrome for Testing `138.x` with `ExtensionManifestV2Availability=2`
+
+Do not treat this as the long-term extension baseline. When CryptoPro provides a
+fixed modern plug-in / extension combination, migrate this directory back to a
+Manifest V3 extension and remove the Chrome 138 MV2 policy wiring.

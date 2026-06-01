@@ -40,7 +40,7 @@ func TestDetectExtensionsReadsManifestAndExtensionID(t *testing.T) {
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	manifest := `{"manifest_version":3,"version":"1.3.17","key":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5mbPcCXE+y3R5iCmWSTHYQzsRm3BYBHYMAK8gmiK4Y3jn8wh3xTjNM6qcWJXr7bCmy+bGfNjJW1Hpr4tVPnVKv45hxZ/7dfzsRUHWxMD/ErWy6UyVYGIR+rUlS8AXSVjx/9rFKqUuaepZ0N1TgvUODaHUWpmNSKkY9o8hI3MV95WQ8FSpmCxVu9iWBjlREtSOWM+8pmvPUccFi38Y9/rvF0OR2h7zbGTMfwZFyTJuVhPL7tKO1rcbO//XM+eIGmYyWlBraEkLpmDHnDcaHjxiB95lBRpW38agTOzL0wTM8UKEA5dZdRDJWqsF8M5cyS3Wmmjmk8TenuAdImhGcU6dwIDAQAB"}`
+	manifest := `{"manifest_version":2,"version":"1.2.13","key":"MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsePKp3waq5KKtMV6DGvvY706kmxCCvsaVCoHylp2xlNuAlIXZtuRv+0l425qAqXJuMOx0CCniDQFB8LUqPw8W8C3tlZNhLh9RTayAsHMhgjeVJOO1BsX/UYsyt2WM2ZNU93M/VFl8lLpwPUwTx0O+ThLZGWyryUJtOfNJm0aZNCSgviM3Go6kanqBEe5H4SlItMd+96F0oYjh4y71ZfiUruqTPyKv9IfZbg6BWCf6Et5K6gyJtGG2DZ0oyZruub/OfxcJbOIGYBilQmbUIvX9tyzVhlVjgdKRIZxtn+P+xI38MMtKIgvp8giSLyHnUQYTjaw/TcBxVYoJknqUijK1QIDAQAB"}`
 	if err := os.WriteFile(filepath.Join(path, "manifest.json"), []byte(manifest), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -52,10 +52,10 @@ func TestDetectExtensionsReadsManifestAndExtensionID(t *testing.T) {
 	if len(exts) != 1 {
 		t.Fatalf("expected 1 extension, got %d", len(exts))
 	}
-	if exts[0].ExtensionID != "pfhgbfnnjiafkhfdkmpiflachepdcjod" {
+	if exts[0].ExtensionID != "iifchhfnnmpdbibifmljnfjhpififfog" {
 		t.Fatalf("unexpected extension id: %s", exts[0].ExtensionID)
 	}
-	if exts[0].Version != "1.3.17" {
+	if exts[0].Version != "1.2.13" {
 		t.Fatalf("unexpected extension version: %s", exts[0].Version)
 	}
 	if exts[0].ManifestError != "" {
@@ -72,6 +72,26 @@ func TestBuildExtensionArgs(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected args: %#v", got)
+	}
+}
+
+func TestRequiresExtensionManifestV2Policy(t *testing.T) {
+	exts := []ExtensionSpec{
+		{Name: "legacy", ManifestVersion: 2},
+		{Name: "modern", ManifestVersion: 3},
+	}
+	if !requiresExtensionManifestV2Policy(exts) {
+		t.Fatal("manifest v2 extension must request the compatibility policy")
+	}
+}
+
+func TestRequiresExtensionManifestV2PolicySkipsModernOrBrokenExtensions(t *testing.T) {
+	exts := []ExtensionSpec{
+		{Name: "modern", ManifestVersion: 3},
+		{Name: "broken", ManifestVersion: 2, ManifestError: "parse error"},
+	}
+	if requiresExtensionManifestV2Policy(exts) {
+		t.Fatal("manifest v2 policy must be skipped for modern or broken extensions")
 	}
 }
 

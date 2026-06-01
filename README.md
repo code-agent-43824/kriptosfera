@@ -40,14 +40,14 @@
 - каркас `launcher` на Go;
 - логика single-file bootstrapper с embedded `payload.zip`;
 - remote payload mode для thin launcher с HTTPS-загрузкой, SHA-256 проверкой, ограничением размера загрузки (cap по pinned size / абсолютный предел) и cache reuse;
-- шаблон payload с pinned Chromium runtime и CryptoPro CAdES Browser Plug-in extension `1.3.17`;
+- шаблон payload с pinned Chromium runtime и временно откатанным CryptoPro CAdES Browser Plug-in extension Manifest V2 `1.2.13`;
 - hosted diagnostics page для проверки CryptoPro extension, Browser Plugin и CSP/provider state через официальный `cadesplugin_api.js`;
 - PowerShell-скрипты сборки под GitHub Actions;
 - Windows CI workflow на бесплатных GitHub-hosted runners;
 - публикация Windows-сборок двумя раздельными артефактами (embedded и тонкий remote), чтобы тонкую версию можно было скачать отдельно, плюс отдельные release assets на тегах.
 
 Сейчас в процессе интеграции:
-- сборка рабочей связки в launcher. Причина блокера найдена: пиннутая сборка плагина `2.0.15700` была битой; рабочая — `2.0.15000` + extension Manifest V2 `1.2.13` + Chromium с поддержкой MV2 (Chrome 138). Mini CSP при этом активируется без системного CSP. Остаётся перепинить плагин/extension в payload — см. `docs/cryptopro-csp-lite-plan.md`;
+- сборка рабочей связки в launcher. Причина блокера найдена: пиннутая сборка плагина `2.0.15700` была битой; рабочая — `2.0.15000` + extension Manifest V2 `1.2.13` + Chromium с поддержкой MV2 (Chrome 138). Mini CSP при этом активируется без системного CSP. Плагин, extension и MV2 policy уже перепиннуты как временный legacy compatibility profile; остаётся проверить подпись с Рутокеном — см. `docs/cryptopro-csp-lite-plan.md`;
 - сквозная проверка подписи с Рутокеном через нашу сборку.
 
 Сейчас уже есть:
@@ -172,9 +172,9 @@ GitHub Actions workflow artifacts технически скачиваются Gi
 - рабочая связка требует extension **Manifest V2 `1.2.13`** и Chromium с поддержкой MV2 (**Chrome 138**).
 
 Что дальше (интеграция рабочей связки в launcher):
-- перепинить плагин на `2.0.15000` (lock + версия + required-files + bump layout);
-- заменить bundled extension на Manifest V2 `1.2.13`;
-- Chromium уже запиннут на 138.x; при доставке MV2-расширения выставлять политику `ExtensionManifestV2Availability=2`;
+- плагин перепиннут на `2.0.15000` (lock + версия + required-files + bump layout);
+- bundled extension заменён на Manifest V2 `1.2.13`;
+- Chromium уже запиннут на 138.x; launcher выставляет `ExtensionManifestV2Availability=2` только когда в payload найдено loadable MV2-расширение;
 - сквозная проверка подписи с Рутокеном через нашу сборку.
 
 Детальный план и будущие цели — в [`docs/cryptopro-csp-lite-plan.md`](docs/cryptopro-csp-lite-plan.md).

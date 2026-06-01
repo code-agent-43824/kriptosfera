@@ -63,11 +63,15 @@ function deleteAlertNode(event) {
     var alertToRemove = target.parentNode;
     alertToRemove.parentNode.removeChild(alertToRemove);
 }
+function appendMessage(text) {
+}
 
 function deleteSiteByName(siteName) {
+
     async_spawn(function *(arg) {
         try {
             var sitesCnt = yield g_oSites.Count;
+
             for (var i = 0; i < sitesCnt; i++) {
                 var curr_siteName = yield g_oSites.Item(i);
                 if (arg[0] == curr_siteName) {
@@ -110,13 +114,14 @@ function saveNodes() {
             addSuccessMessage("Список доверенных узлов успешно сохранен.");
         }
         catch (e) {
-            addErrorMessage("Не удалось сохранить настройки.", GetErrorMessage(e));
+            addErrorMessage("Не удалось сохранить настойки.", GetErrorMessage(e));
         }
     }); //async_spawn
 }
 
 function loadNodes() {
     try {
+
         async_spawn(function *() {
             try {
                 var PluginObject = yield cpcsp_chrome_nmcades.CreatePluginObject();
@@ -126,7 +131,7 @@ function loadNodes() {
                 // try/catch just works, rejected promises are thrown here
                 alert("Exception: " + err.message);
             }
-            
+
             isDisabledSites = yield g_oCfg.IsUntrustedSitesDisabled;
             if (isDisabledSites == true) {
                 var tmpElem = document.getElementById("new_node_name");
@@ -137,10 +142,10 @@ function loadNodes() {
                 tmpElem.parentNode.removeChild(tmpElem);
                 tmpElem = document.getElementById("btn_save");
                 tmpElem.parentNode.removeChild(tmpElem);
-                
+
                 var newLi = document.createElement('div');
-                newLi.textContent = "Групповая политика блокирует список доверенных узлов. Обратитесь к системному администратору.";
-                
+                newLi.textContent = "Групповая политика болкирует список доверенных узлов. Обратитесь к системному администратору.";
+
                 document.getElementById("untrustedSitesDisabledMsg").appendChild(newLi);
                 document.getElementById("untrustedSitesDisabledMsg").style.display = "block";
             } else {
@@ -159,7 +164,7 @@ function loadNodes() {
                     }
                 }
             }
-            
+
             sitesGP = yield g_oCfg.TrustedSitesGroupPolicy;
             if (sitesGP.length > 0) {
                 sitesGP = sitesGP.replace(/;/g, ", ");
@@ -174,7 +179,7 @@ function loadNodes() {
                 tmpElem = document.getElementById("groupPolicySitesLine2");
                 tmpElem.parentNode.removeChild(tmpElem);
             }
-            
+
         }); //async_spawn
     }
     catch (e) {
@@ -296,8 +301,8 @@ function addExample() {
         exampleDiv.setAttribute("id", "example");
         exampleDiv.innerHTML = "<div>Введена неправильная последовательность подстановочных знаков, некорректный адрес, или добавляемый адрес уже существует.<br>\
                 Примеры правильных последовательностей:<br>\
-                https://*.cadescompany.ru<br>\
-                http://*.cpdn.cadescompany.ru<br>\
+                https://*.cryptopro.ru<br>\
+                http://*.cpdn.cryptopro.ru<br>\
                 ftp://157.54.23.41/<br>\
                 Примеры неправильных последовательностей:<br>\
                 http://www.*.com<br>\
@@ -351,17 +356,13 @@ function addGroupPolicySites(newSites) {
         addErrorMessage("Не удалось добавить доверенные узлы групповой политики на страницу. ", newSites, GetErrorMessage(e));
     }
 }
-
-var bNodesLoaded = false;
-window.addEventListener("message", function (event) {
-    if (typeof (event.data) === 'string' && event.data.match("cadesplugin_loaded") && !bNodesLoaded) {
-        bNodesLoaded = true;
+window.addEventListener("message", function (event){
+    if (typeof (event.data) === 'string' && event.data.match("cadesplugin_loaded"))
         loadNodes();
-    }
-}, false);
+},
+false);
 
 document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('add_button').addEventListener('click', addNewNode);
-    document.getElementById('btn_save').addEventListener('click', saveNodes);
-    document.getElementById('btn_trust_note').addEventListener('click', deleteAlertNode);
+      document.getElementById('add_button').addEventListener('click', addNewNode);
+      document.getElementById('btn_save').addEventListener('click', saveNodes);
 });

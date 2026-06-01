@@ -297,9 +297,9 @@ func TestCryptoProPluginManagerExtractsAndReusesCurrentState(t *testing.T) {
 	bundle := testCryptoProPluginZip(t)
 	manager := CryptoProPluginManager{
 		Bundle:        bundle,
-		Version:       "2.0.15700",
+		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 1,
+		LayoutVersion: 2,
 	}
 
 	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
@@ -339,9 +339,9 @@ func TestCryptoProPluginManagerRecoversMissingFile(t *testing.T) {
 	bundle := testCryptoProPluginZip(t)
 	manager := CryptoProPluginManager{
 		Bundle:        bundle,
-		Version:       "2.0.15700",
+		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 1,
+		LayoutVersion: 2,
 	}
 
 	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
@@ -372,15 +372,15 @@ func TestCryptoProPluginManagerRequiresCadesAndMiniCSPFiles(t *testing.T) {
 	appDir := t.TempDir()
 	logger := testLogger(t)
 	bundle := testCryptoProPluginZipWithPaths(t, []string{
-		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
-		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
-		"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
+		"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
+		"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
+		"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
 	})
 	manager := CryptoProPluginManager{
 		Bundle:        bundle,
-		Version:       "2.0.15700",
+		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 1,
+		LayoutVersion: 2,
 	}
 
 	_, err := manager.Prepare(appDir, logger, noopProgressReporter{})
@@ -393,10 +393,10 @@ func TestCryptoProPluginManagerRequiresCadesAndMiniCSPFiles(t *testing.T) {
 }
 
 func TestCryptoProPluginZipSkipsMSIPseudoPaths(t *testing.T) {
-	if !shouldSkipCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15700/.:Common/Crypto Pro/Shared/cadescom.dll") {
+	if !shouldSkipCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15000/.:Common/Crypto Pro/Shared/cadescom.dll") {
 		t.Fatal("MSI pseudo-path entry must be skipped")
 	}
-	if shouldSkipCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe") {
+	if shouldSkipCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe") {
 		t.Fatal("required native host file must not be skipped")
 	}
 }
@@ -407,9 +407,9 @@ func TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths(t *testing.T) {
 	bundle := testCryptoProPluginZipWithMSIPseudoPath(t)
 	manager := CryptoProPluginManager{
 		Bundle:        bundle,
-		Version:       "2.0.15700",
+		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 1,
+		LayoutVersion: 2,
 	}
 
 	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
@@ -423,7 +423,7 @@ func TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths(t *testing.T) {
 	// must not exist. We only treat a successful stat (err == nil) as a failure:
 	// on Windows os.Stat of a path containing ':' returns a syntax error rather
 	// than fs.ErrNotExist, so checking os.IsNotExist would be non-portable.
-	if _, err := os.Stat(filepath.Join(result.Path, "cryptopro-cades-plugin-2.0.15700", ".:Common")); err == nil {
+	if _, err := os.Stat(filepath.Join(result.Path, "cryptopro-cades-plugin-2.0.15000", ".:Common")); err == nil {
 		t.Fatal("MSI pseudo-path entry should not be extracted")
 	}
 }
@@ -465,12 +465,12 @@ func TestPrepareCryptoProNativeMessagingReusesRegistration(t *testing.T) {
 	t.Cleanup(func() { registerNativeMessagingHost = original })
 
 	bundle := testCryptoProPluginZip(t)
-	manager := CryptoProPluginManager{Bundle: bundle, Version: "2.0.15700", SHA256: checksumBytes(bundle), LayoutVersion: 1}
+	manager := CryptoProPluginManager{Bundle: bundle, Version: "2.0.15000", SHA256: checksumBytes(bundle), LayoutVersion: 2}
 	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	extensions := []ExtensionSpec{{Name: "cryptopro-cades", ExtensionID: "pfhgbfnnjiafkhfdkmpiflachepdcjod"}}
+	extensions := []ExtensionSpec{{Name: "cryptopro-cades", ExtensionID: "iifchhfnnmpdbibifmljnfjhpififfog"}}
 
 	first, err := PrepareCryptoProNativeMessaging(appDir, pluginResult.Path, extensions, logger)
 	if err != nil {
@@ -525,9 +525,9 @@ func TestPrepareCryptoProNativeMessagingWritesManifest(t *testing.T) {
 	bundle := testCryptoProPluginZip(t)
 	manager := CryptoProPluginManager{
 		Bundle:        bundle,
-		Version:       "2.0.15700",
+		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 1,
+		LayoutVersion: 2,
 	}
 	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
@@ -536,7 +536,7 @@ func TestPrepareCryptoProNativeMessagingWritesManifest(t *testing.T) {
 
 	result, err := PrepareCryptoProNativeMessaging(appDir, pluginResult.Path, []ExtensionSpec{{
 		Name:        "cryptopro-cades",
-		ExtensionID: "pfhgbfnnjiafkhfdkmpiflachepdcjod",
+		ExtensionID: "iifchhfnnmpdbibifmljnfjhpififfog",
 	}}, logger)
 	if err != nil {
 		t.Fatal(err)
@@ -554,7 +554,7 @@ func TestPrepareCryptoProNativeMessagingWritesManifest(t *testing.T) {
 	if manifest.Type != "stdio" {
 		t.Fatalf("unexpected native host type: %s", manifest.Type)
 	}
-	if manifest.AllowedOrigins[0] != "chrome-extension://pfhgbfnnjiafkhfdkmpiflachepdcjod/" {
+	if manifest.AllowedOrigins[0] != "chrome-extension://iifchhfnnmpdbibifmljnfjhpififfog/" {
 		t.Fatalf("unexpected allowed origin: %v", manifest.AllowedOrigins)
 	}
 	if _, err := os.Stat(manifest.Path); err != nil {
@@ -569,9 +569,9 @@ func TestWriteCryptoProRuntimeDiagnostics(t *testing.T) {
 	bundle := testCryptoProPluginZip(t)
 	manager := CryptoProPluginManager{
 		Bundle:        bundle,
-		Version:       "2.0.15700",
+		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 1,
+		LayoutVersion: 2,
 	}
 	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
@@ -579,7 +579,7 @@ func TestWriteCryptoProRuntimeDiagnostics(t *testing.T) {
 	}
 	extensions := []ExtensionSpec{{
 		Name:        "cryptopro-cades",
-		ExtensionID: "pfhgbfnnjiafkhfdkmpiflachepdcjod",
+		ExtensionID: "iifchhfnnmpdbibifmljnfjhpififfog",
 	}}
 	nativeResult, err := PrepareCryptoProNativeMessaging(appDir, pluginResult.Path, extensions, logger)
 	if err != nil {
@@ -604,10 +604,10 @@ func TestWriteCryptoProRuntimeDiagnostics(t *testing.T) {
 	if report.PluginRoot != pluginResult.Path {
 		t.Fatalf("unexpected pluginRoot: %s", report.PluginRoot)
 	}
-	if report.ExtensionID != "pfhgbfnnjiafkhfdkmpiflachepdcjod" {
+	if report.ExtensionID != "iifchhfnnmpdbibifmljnfjhpififfog" {
 		t.Fatalf("unexpected extension id: %s", report.ExtensionID)
 	}
-	if report.Bundle.Version != "2.0.15700" || report.Bundle.SHA256 == "" {
+	if report.Bundle.Version != "2.0.15000" || report.Bundle.SHA256 == "" {
 		t.Fatalf("unexpected bundle info: %#v", report.Bundle)
 	}
 	if report.NativeMessaging.ManifestPath == "" || report.NativeMessaging.HostPath == "" || !report.NativeMessaging.Registered {
@@ -630,9 +630,9 @@ func TestPrepareCryptoProNativeMessagingRequiresExtensionID(t *testing.T) {
 	bundle := testCryptoProPluginZip(t)
 	manager := CryptoProPluginManager{
 		Bundle:        bundle,
-		Version:       "2.0.15700",
+		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 1,
+		LayoutVersion: 2,
 	}
 	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
@@ -968,7 +968,7 @@ func testCryptoProPluginZip(t *testing.T) []byte {
 func testCryptoProPluginZipWithMSIPseudoPath(t *testing.T) []byte {
 	t.Helper()
 	return testCryptoProPluginZipWithExtraPaths(t, []string{
-		"cryptopro-cades-plugin-2.0.15700/.:Common/Crypto Pro/Shared/cadescom.dll",
+		"cryptopro-cades-plugin-2.0.15000/.:Common/Crypto Pro/Shared/cadescom.dll",
 	})
 }
 
@@ -999,17 +999,17 @@ func testCryptoProPluginZipWithPaths(t *testing.T, paths []string) []byte {
 }
 
 var requiredTestCryptoProPluginPaths = []string{
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/cades.dll",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/xades.dll",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/cplib.dll",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi10.dll",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpcspi.dll",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpsuprt.dll",
-	"cryptopro-cades-plugin-2.0.15700/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/cades.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/xades.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/cplib.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi10.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpcspi.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpsuprt.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll",
 }
 
 func mustJSON(t *testing.T, value any) string {

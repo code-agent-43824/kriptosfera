@@ -65,21 +65,22 @@ https://mescheryakov.pro/kriptosfera/cryptopro/csp-lite/README.txt
 Current CryptoPro CAdES Browser Plugin bundle:
 
 ```text
-https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.zip
-https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.json
+https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15000/4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a/cryptopro-plugin.zip
+https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15000/4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a/cryptopro-plugin.json
 ```
 
-The bundle was extracted from the official signed CryptoPro CADESCOM MSI:
+This is a temporary legacy compatibility bundle extracted from the supplied
+CryptoPro CAdES Browser Plug-in installer:
 
 ```text
-https://cryptopro.ru/sites/default/files/products/cades/current_release_2_0/cadescom-x64.msi
+https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2/cadesplugin_2_0_1500.exe
 ```
 
 Source installer mirror for audit/rebuild:
 
 ```text
-https://mescheryakov.pro/kriptosfera/cryptopro/sources/2.0.15700/8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4/cryptopro-cades-official-2.0.15700.zip
-https://mescheryakov.pro/kriptosfera/cryptopro/sources/2.0.15700/8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4/cryptopro-cades-official.json
+https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2/cadesplugin_2_0_1500.exe
+https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2/extension_1.2.13.crx
 ```
 
 Current CryptoPro CSP Linux installer assets for cross-platform experiments:
@@ -133,16 +134,16 @@ cryptopro/csp/linux/5.0.13800/6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab
 
 ## Current status
 
-The static storage scaffold exists and is reachable over HTTPS. CryptoPro CAdES Browser Plugin 2.0.15700 has been uploaded as an immutable, checksum-addressed archive.
+The static storage scaffold exists and is reachable over HTTPS. CryptoPro CAdES Browser Plugin 2.0.15000 has been uploaded as an immutable, checksum-addressed archive for the legacy MV2 / Chrome 138 compatibility profile. The previous 2.0.15700 archive remains published for audit/history, but the launcher lock no longer points to it.
 
 Known bundle values:
 
 - plugin archive: `cryptopro-plugin.zip`
-- plugin archive size: `21699162`
-- plugin archive SHA-256: `c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe`
-- source installer mirror size: `38472470`
-- source installer mirror SHA-256: `8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4`
-- official `cadescom-x64.msi` SHA-256: `9f73456b6db5d793947f31bf2faabae742cf80fe161b9a21e97035067dd8cf5e`
+- plugin archive size: `24052329`
+- plugin archive SHA-256: `4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a`
+- source installer mirror size: `11781256`
+- source installer mirror SHA-256: `7c43d41482684ff3d98fe45c741c6a14b63055c88721f0207ab2b605dbc28cb2`
+- source installer bootstrapper file version: `2.0.15002.0`
 - Linux source archive: `linux-amd64_all.zip`
 - Linux source archive size: `144025183`
 - Linux source archive SHA-256: `6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5`

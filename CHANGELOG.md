@@ -18,6 +18,13 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   milestone (`138.0.7204.183`); Chrome 139+ removed `ExtensionManifestV2Availability`.
   Future goal: return to the latest Chromium + Manifest V3 once CryptoPro ships a
   fixed plug-in build.
+- Re-pinned the embedded CryptoPro plug-in bundle to the legacy `2.0.15000`
+  archive and switched the payload extension to CryptoPro Manifest V2 `1.2.13`.
+  This is a temporary compatibility profile, not the long-term Chromium/extension
+  baseline.
+- The launcher now applies the per-user Chrome policy
+  `ExtensionManifestV2Availability=2` only when a loadable Manifest V2 extension
+  is present, keeping the future Manifest V3/latest-Chromium path reversible.
 
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing

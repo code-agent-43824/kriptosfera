@@ -1,15 +1,17 @@
 {
   "component": "cryptopro-browser-plugin",
-  "version": "2.0.15700",
+  "version": "2.0.15000",
   "platform": "windows-amd64",
-  "url": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.zip",
-  "metadataUrl": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15700/c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe/cryptopro-plugin.json",
-  "sha256": "c35327b079022f123a8c31e5656891d61a7e493312010a0893b76a25f15feebe",
-  "size": 21699162,
+  "url": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15000/4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a/cryptopro-plugin.zip",
+  "metadataUrl": "https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15000/4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a/cryptopro-plugin.json",
+  "sha256": "4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a",
+  "size": 24052329,
   "source": {
-    "officialUrl": "https://cryptopro.ru/sites/default/files/products/cades/current_release_2_0/cadescom-x64.msi",
-    "officialSha256": "9f73456b6db5d793947f31bf2faabae742cf80fe161b9a21e97035067dd8cf5e",
-    "mirrorUrl": "https://mescheryakov.pro/kriptosfera/cryptopro/sources/2.0.15700/8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4/cryptopro-cades-official-2.0.15700.zip",
-    "mirrorSha256": "8b4b1bfbe801c4569c3bf23107110263a344a9b1bce30c575b9b92ff77f2c2d4"
-  }
+    "officialUrl": null,
+    "officialSha256": null,
+    "mirrorUrl": "https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2/cadesplugin_2_0_1500.exe",
+    "mirrorSha256": "7c43d41482684ff3d98fe45c741c6a14b63055c88721f0207ab2b605dbc28cb2",
+    "note": "Temporary legacy compatibility pin: use 2.0.15000 only with the MV2 extension and Chrome 138 until CryptoPro provides a fixed modern MV3/latest-Chromium stack."
+  },
+  "layoutVersion": 2
 }

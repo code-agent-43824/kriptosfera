@@ -8,8 +8,8 @@
   profileName, windowMode, diagnostics).
 - `diagnostics/diagnostics.html` — hosted diagnostics page на официальном
   `cadesplugin_api.js`.
-- `extensions/cryptopro-cades/` — canonical unpacked CryptoPro CAdES Browser
-  extension (`1.3.17`) со стабильным id из `manifest.key`.
+- `extensions/cryptopro-cades/` — временный legacy unpacked CryptoPro CAdES
+  Browser extension Manifest V2 (`1.2.13`) со стабильным id из `manifest.key`.
 
 ## Добавляется на этапе Windows-сборки (в Git не хранится)
 

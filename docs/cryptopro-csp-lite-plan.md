@@ -40,20 +40,23 @@ CryptoPro, the plugin build we had pinned (**2.0.15700**) was **broken**.
 ## Remaining integration work (to ship the clean-machine path)
 
 These are the concrete steps to wire the working combination into the launcher
-(pending artifacts from the project owner where noted):
+as a **temporary legacy compatibility profile**:
 
-1. **Re-pin the plug-in to 2.0.15000.** Update `build/cryptopro-plugin-lock.json`
-   (URL / SHA-256 / size / version), `cryptoProPluginVersion` and a bumped
-   `cryptoProPluginLayout` in `internal/bootstrap/cryptopro_plugin_manager.go`,
-   and re-verify `requiredCryptoProPluginFiles` against the 2.0.15000 file set.
-   *(Needs the 2.0.15000 bundle mirror URL + SHA-256.)*
-2. **Switch the bundled extension to MV2 `1.2.13`** in
-   `payload-template/extensions/cryptopro-cades/`. The launcher derives the
-   extension id from `manifest.key`, so the native-messaging `allowed_origins`
-   adapts automatically.
-3. **Chromium 138 pin** — done in `build/chromium-runtime.json`. When the MV2
-   extension is shipped, also apply the `ExtensionManifestV2Availability=2`
-   Chrome policy (per-user) so Chrome 138 loads the unpacked MV2 extension.
+1. **Re-pin the plug-in to 2.0.15000.** `build/cryptopro-plugin-lock.json`
+   now points at the immutable 2.0.15000 bundle on project static storage,
+   `cryptoProPluginVersion` is `2.0.15000`, and `cryptoProPluginLayout` is
+   bumped to `2` so stale 2.0.15700 extractions are not reused. This is a
+   deliberate rollback pin, not the long-term target stack.
+2. **Switch the bundled extension to MV2 `1.2.13`.**
+   `payload-template/extensions/cryptopro-cades/` now contains the legacy MV2
+   extension, with extension id `iifchhfnnmpdbibifmljnfjhpififfog` derived from
+   `manifest.key`. The native-messaging `allowed_origins` continue to be
+   generated from the detected extension id.
+3. **Chromium 138 pin and MV2 policy.** `build/chromium-runtime.json` pins
+   Chrome for Testing `138.0.7204.183`. The launcher now applies the per-user
+   Chrome policy `ExtensionManifestV2Availability=2` only when the payload
+   contains a loadable Manifest V2 extension, keeping the future MV3/latest
+   Chromium path reversible.
 4. **End-to-end check** with a Rutoken: certificate enumeration + `SignCades`
    through the bundled stack.
 
