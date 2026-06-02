@@ -42,6 +42,18 @@ back to `Program Files`. Pass the actual `HINSTANCE` (from `DllMain`) or
 our `nmcades.exe` and runs the launcher; if the provider loads with NO Program Files
 install present, hypothesis confirmed and PoC achieved.
 
+**Update:** owner confirmed the patched `npcades.dll` (sha `4c52c39b…`) is in the
+right dir (`…\Program Files\Crypto Pro\CAdES Browser Plug-in\`, next to
+`nmcades.exe`) on a clean machine — **still no provider.** So clearing the header
+ASLR bit alone wasn't enough: system-wide ASLR (mandatory/bottom-up) still relocates
+npcades off `0x10000000`. Plan: (1) verify load base (`Get-Process nmcades`→ module
+base ≠ 0x10000000 confirms relocation); (2) disable system ASLR
+(`MoveImages=0` in `…\Session Manager\Memory Management` + reboot) to test the
+hypothesis cleanly; (3) if still failing, the provider path isn't resolved via that
+module-relative function — use ProcMon to see the actual `capi20.dll` open path, or a
+Frida hook of `GetModuleFileNameA/W` (return our path when hModule==0x10000000),
+which is ASLR-independent.
+
 ---
 
 ## 2026-06-02 — PoC plan: redirect npcades.dll's provider base to %LOCALAPPDATA% (owner machine, not for release)
