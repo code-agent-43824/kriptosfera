@@ -40,6 +40,10 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 - The demo `startUrl` now points at the internal-csp test page
   (`mescheryakov.pro/.../internal-csp/...`), which sets `EnableInternalCSP`, so a
   launcher run exercises the bundled Mini CSP; `allowedOrigins` updated to match.
+- Re-pinned `build/payload-lock.json` to the republished payload built from the
+  internal-csp config, so the **remote** launcher serves the same internal-csp
+  start page as the embedded launcher (previously the remote pin still served the
+  old official-demo start page).
 - Added `docs/worklog.md` as a per-chunk handoff log for the multi-agent workflow.
 - The launcher again starts Chromium as a standalone app window (`--app=<startUrl>`
   in `windowMode: "app"`); the diagnostics behavior that opened the target page

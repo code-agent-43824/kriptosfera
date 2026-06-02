@@ -6,6 +6,32 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-02 — Re-pin the remote payload to the internal-csp build
+
+**Context:** the previous chunk changed `app-config.json` `startUrl` to the
+internal-csp page and pushed it (`23a3b8c`). CI went green: `build-windows`
+(run 26815886534) and `build-payload` (run 26815886446) both succeeded. The
+**embedded** launcher bakes the config from the commit, so it already opens the
+internal-csp page. The **remote** launcher, however, downloads the payload pinned
+by `build/payload-lock.json`, which still pointed at the *old* payload
+(`9575882…`, official-demo startUrl). So a remote launcher would still open the
+old page.
+
+**Planned:** re-pin `build/payload-lock.json` to the payload that `build-payload`
+just published from `23a3b8c`
+(SHA `9b2a00bb8ba09f59f973691c9a26cdb0bd757795f75533ff3bb971cb83501c48`,
+size `173037165`).
+
+**Done:** verified the new payload is live on the server (HTTP 200, content-length
+and `payload.json` SHA/size match the build log), then updated `payload-lock.json`
+`sha256`, `size`, `url`, and `metadataUrl` to the new artifact. Updated CHANGELOG.
+Embedded and remote launchers now both open the internal-csp page.
+
+**Next:** same as below — E2E on a clean Windows machine with a Rutoken. The
+remote launcher can now be used for that check too (not just embedded).
+
+---
+
 ## 2026-06-02 — Point launcher startUrl at the internal-csp test page
 
 **Context:** the legacy MV2 stack is integrated and CI-green (plug-in `2.0.15000`
