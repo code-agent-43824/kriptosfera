@@ -6,6 +6,52 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-02 — PoC plan: redirect npcades.dll's provider base to %LOCALAPPDATA% (owner machine, not for release)
+
+**Goal:** owner wants to *prove* the path hypothesis on his own machine/licence
+(not a release; awaiting a fixed vendor build that also moves to MV3). Legit
+interop PoC.
+
+**Static recon of `npcades.dll` (Linux, objdump):**
+- **No self-integrity strings** (`integrity/tamper/crc/self-test` absent; the only
+  "signature" strings are about *document* signing: `CryptVerifySignature`,
+  `SignatureMethod`). So a patched `npcades.dll` will very likely load — `LoadLibrary`
+  doesn't check Authenticode without WDAC. (Do NOT touch `capi20.dll`/`cpcspi.dll`
+  — those are the certified CSP and almost certainly self-verify.)
+- Provider base is built as `SHGetFolderPathW(CSIDL_PROGRAM_FILES* )` +
+  `\Crypto Pro\CAdES Browser Plug-in\Mini CSP\capi20.dll` (and `mydss.dll` in the
+  plug-in root). CSIDL immediates: `6a 2a` = `CSIDL_PROGRAM_FILESX86 (0x2a)`,
+  `6a 26` = `CSIDL_PROGRAM_FILES (0x26)`.
+- **Caution:** blind static localisation of the exact callsite is unreliable — a
+  frequency heuristic flagged `0x1020a7f0`, but that is a C++ `__thiscall` method
+  (args via `ecx`), NOT `SHGetFolderPathW`. Do the final localisation dynamically
+  or in Ghidra (xref on the import), not by guessing offsets.
+
+**Minimal-patch idea (one byte):** change the CSIDL constant feeding
+`SHGetFolderPathW` from `0x2a`/`0x26` to `0x1c` (`CSIDL_LOCAL_APPDATA`) [or `0x1a`
+`CSIDL_APPDATA`]. Base becomes `%LOCALAPPDATA%`, so the provider is sought in
+`%LOCALAPPDATA%\Crypto Pro\CAdES Browser Plug-in\Mini CSP\…` — a no-admin,
+user-writable dir (where our launcher already writes). Cleaner than rewriting the
+`SHGetFolderPath→GetModuleFileName` logic.
+
+**Recommended PoC routes (pick one):**
+1. **Junction (no binary change, proves hypothesis 100%):**
+   `mklink /J "C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in" <our dir>`.
+2. **Frida runtime hook (no file change, signature intact):** hook
+   `shell32!SHGetFolderPathW`; if `nFolder ∈ {0x2a,0x26}` force `0x1c` (or rewrite
+   the returned path to our dir). Attach to `nmcades.exe`.
+3. **Ghidra file patch:** import `npcades.dll`, find import `SHGetFolderPathW`,
+   follow each XREF, find the one whose decompile concatenates
+   `Crypto Pro\CAdES Browser Plug-in` / `Mini CSP`, patch that `PUSH 0x2a/0x26`
+   immediate → `0x1c`. Then drop our `Crypto Pro\CAdES Browser Plug-in\Mini CSP`
+   (+ `mydss.dll`) under `%LOCALAPPDATA%`.
+
+**Next:** owner runs route 1 (or 2) to confirm; vendor change (resolve relative to
+`GetModuleFileName(npcades)` or honor a CSIDL_LOCAL_APPDATA/env override) remains
+the only release-grade fix.
+
+---
+
 ## 2026-06-02 — Root cause: npcades.dll resolves Mini CSP via SHGetFolderPath(Program Files), not relative to itself
 
 **Owner registry check (decisive):** on the working machine there is **no**
