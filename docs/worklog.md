@@ -6,6 +6,62 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-02 — Root cause: npcades.dll resolves Mini CSP via SHGetFolderPath(Program Files), not relative to itself
+
+**Owner registry check (decisive):** on the working machine there is **no**
+`Crypto Pro\Cryptography\CurrentVersion` / `AppPath` anywhere — not HKCU
+(no `Crypto Pro` key at all), not `HKLM\SOFTWARE\Crypto Pro` (only `cpoids1`),
+not `HKLM\SOFTWARE\WOW6432Node\Crypto Pro` (only `OCSPAPI`/`TSPAPI`,
+`cpoids1`, `pkimgmt.ru`). So `AppPath` is **not** how the path is found. Registry
+hypothesis rejected (owner was right).
+
+**Static analysis of the bundle (this chunk) — the real chain:**
+- `nmcades.exe` (our host, launched by Chrome via our HKCU manifest) loads
+  **`npcades.dll`** (string `npcades.dll` is in `nmcades.exe`); the search order
+  finds *our* `npcades.dll` sitting next to it. ✓ (matches: renaming the system
+  `nmcades.exe` didn't break anything.)
+- `npcades.dll` imports `SHGetFolderPathW` + `GetEnvironmentVariableW` and holds
+  the **relative** suffix strings `Mini CSP\capi20.dll`, `CAdES Browser Plug-in`,
+  `Crypto Pro`, plus the log line `LoadLibraryExA(capi20.dll) failed.`. It builds
+  `<base>\Crypto Pro\CAdES Browser Plug-in\Mini CSP\capi20.dll` and `LoadLibraryEx`s
+  it. `<base>` comes from `SHGetFolderPath` (Program Files), **not** from
+  `GetModuleFileName(npcades)`. (matches: renaming the *system* `Mini CSP` broke
+  it — the provider loads from `…\Program Files (x86)\Crypto Pro\CAdES Browser
+  Plug-in\Mini CSP`, ignoring our co-located copy.)
+- `mydss.dll` lives in the plug-in root (same `<base>`), which is why the clean
+  machine first fails on `mydss.dll installation path` and reports `0.0.0000`:
+  `<base>` (`…\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in`) does not
+  exist there at all.
+
+**Conclusion:** the provider/module path is effectively hardcoded as
+`SHGetFolderPath(Program Files[ x86]) + \Crypto Pro\CAdES Browser Plug-in\…`,
+resolved inside `npcades.dll`, independent of where our files sit. `cades.dll`
+and `npcades.dll` *do* read `…\CurrentVersion\AppPath`, but only (apparently) as an
+optional override that nobody sets — the working machine has no such key yet works,
+so the `SHGetFolderPath` path is the live mechanism.
+
+**Options (no rebuild) to test, in order:**
+1. **(still worth a 1-min test, despite "no registry")** create
+   `HKLM\SOFTWARE\WOW6432Node\Crypto Pro\Cryptography\CurrentVersion` with
+   `AppPath = <our extracted …\CAdES Browser Plug-in>` and see if the provider
+   loads from our dir. "Key absent" ≠ "override won't work"; the binaries read it.
+   If it works → relocatable via one HKLM value (admin once, but path is ours, not
+   Program Files).
+2. **Junction/copy into Program Files (x86)** — MVP unblock: create
+   `C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in` (or a junction to our
+   dir). Needs admin once; collides with a real CryptoPro install; not portable.
+3. **CryptoPro change (best for product, owner has a contact):** make `npcades.dll`
+   resolve `Mini CSP\…` / `mydss.dll` relative to its own module
+   (`GetModuleFileName(hNpcades)` — already imported) instead of
+   `SHGetFolderPath(Program Files)+Crypto Pro\CAdES Browser Plug-in`, or honor an
+   env var / HKCU override. This is the only path to true admin-free portability.
+
+**Next:** owner to (a) try option 1 (set WOW6432Node AppPath → our dir) as a quick
+check, and/or (b) raise option 3 with CryptoPro. ProcMon would confirm the exact
+`SHGetFolderPath` CSIDL + whether AppPath is consulted first, if needed.
+
+---
+
 ## 2026-06-02 — Owner bisect: Mini CSP loads from the ABSOLUTE system path
 
 **Context:** owner ran our launcher on a machine where the CryptoPro plug-in was
