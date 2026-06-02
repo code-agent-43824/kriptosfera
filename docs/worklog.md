@@ -42,17 +42,25 @@ back to `Program Files`. Pass the actual `HINSTANCE` (from `DllMain`) or
 our `nmcades.exe` and runs the launcher; if the provider loads with NO Program Files
 install present, hypothesis confirmed and PoC achieved.
 
-**Update:** owner confirmed the patched `npcades.dll` (sha `4c52c39b…`) is in the
-right dir (`…\Program Files\Crypto Pro\CAdES Browser Plug-in\`, next to
-`nmcades.exe`) on a clean machine — **still no provider.** So clearing the header
-ASLR bit alone wasn't enough: system-wide ASLR (mandatory/bottom-up) still relocates
-npcades off `0x10000000`. Plan: (1) verify load base (`Get-Process nmcades`→ module
-base ≠ 0x10000000 confirms relocation); (2) disable system ASLR
-(`MoveImages=0` in `…\Session Manager\Memory Management` + reboot) to test the
-hypothesis cleanly; (3) if still failing, the provider path isn't resolved via that
-module-relative function — use ProcMon to see the actual `capi20.dll` open path, or a
-Frida hook of `GetModuleFileNameA/W` (return our path when hModule==0x10000000),
-which is ASLR-independent.
+**Update 2:** header-only ASLR patch failed even with system ASLR fully disabled
+(owner set Exploit Protection: Mandatory off, Bottom-up off; `Get-Process nmcades`
+returned nothing — host too short-lived to catch). Conclusion: `0x10000000` is
+occupied in the `nmcades.exe` process (or the address simply isn't npcades' base),
+so `GetModuleFileName(0x10000000)` still misses. **Better patch (ASLR-independent):**
+at the 3 sites (`0x10004069`, `0x10054cf2` builds `Mini CSP\capi20.dll`,
+`0x10056637`) change `push 0x10000000` → `push 0` (one byte each: imm high byte
+`0x10→0x00`). `GetModuleFileName(NULL)` returns the **main exe path = `nmcades.exe`**,
+which sits in OUR dir next to `Mini CSP`/`mydss.dll`, so the module-relative build
+resolves into our bundle regardless of load address/ASLR. Header restored to
+original `0x140`; only 3 code bytes + checksum changed. Patched sha256 `9816aef0…`
+(orig `0f7ffc9a…`). Owner can revert the system ASLR changes — not needed anymore.
+
+**Vendor report (final):** "npcades.dll passes a hardcoded `0x10000000` as `hModule`
+to `GetModuleFileNameA/W` in 3 places; under ASLR (or whenever the DLL isn't at its
+preferred base) this returns the wrong/empty path and the plug-in falls back to
+`%ProgramFiles%\Crypto Pro\CAdES Browser Plug-in`. Pass the module's real `HINSTANCE`
+(from `DllMain`) or `NULL` (to use the host exe's dir) so a side-by-side/portable
+deployment next to `nmcades.exe` works without a system install."
 
 ---
 
