@@ -40,12 +40,21 @@ failure fallback path. Verified the pinned remote payload URL is live: full HTTP
 download returned `200`, size `173037165`, SHA-256
 `9b2a00bb8ba09f59f973691c9a26cdb0bd757795f75533ff3bb971cb83501c48`.
 
-**Next:** local Go is unavailable on Watson's host, so rely on GitHub Actions for
-`gofmt`, `go test ./...`, Windows embedded/remote builds, and payload publishing
-after push. Then owner should retry both launchers on Windows; if Chrome still
-does not load the MV2 extension when the registry write is denied, the next
-investigation is Chrome's actual `chrome://policy` / command-line state on that
-machine.
+**Verification:** local Go is unavailable on Watson's host, so local verification
+was limited to `git diff --check` and the full HTTPS payload download/SHA check
+above. Pushed commit `9f08cb5`; GitHub Actions `build-windows` run
+`26832228871` passed. Windows `go test` passed for `internal/bootstrap`; embedded
+launcher artifact `kriptosfera-windows-embedded` was uploaded as artifact
+`7363256347` (199552391 bytes), and remote launcher artifact
+`kriptosfera-windows-remote` was uploaded as artifact `7363257541` (26666775
+bytes).
+
+**Next:** owner should retry both launchers on Windows using run `26832228871`.
+Expected behavior: remote first-run is no longer killed at 5 minutes; embedded
+startup no longer aborts on denied `ExtensionManifestV2Availability` registry
+write. If Chrome still does not load the MV2 extension when the registry write is
+denied, the next investigation is Chrome's actual `chrome://policy` /
+command-line state on that machine.
 
 ---
 
