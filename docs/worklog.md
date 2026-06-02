@@ -6,6 +6,53 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-02 — Diagnose "mydss.dll installation path" / provider-not-loaded on real run
+
+**Context:** with the launcher now reaching Chrome (after `9f08cb5` made the MV2
+policy write non-fatal), a real run on a clean machine shows: extension loaded ✓,
+plugin loaded ✓, but **"Версия плагина: 0.0.0000"**, **"Объекты плагина: ожидание
+загрузки провайдера"**, and an error dialog **"Error occured while trying to get
+mydss.dll installation path. Maybe CryptoPro Browser plug-in was not correctly
+installed."** Provider never loads.
+
+**Investigation (this chunk):**
+- Re-read `9f08cb5`: it only changes the MV2 policy (registry write → fall back to
+  Chrome `--enable/--disable-features` flags) and the download timeout. It touches
+  neither the plugin nor any CryptoPro registry key. The extension clearly loaded,
+  so MV2 is active. **Conclusion: that fix is not the cause** — it merely let the
+  launcher progress far enough to surface the next, pre-existing problem.
+- Downloaded and unpacked the pinned `2.0.15000` bundle. `mydss.dll` (32-bit) IS
+  present next to `nmcades.exe`/`cades.dll`; the 32-bit `Program Files` tree is
+  fully self-contained (nmcades + cades + mydss + a complete `Mini CSP` with
+  `rutoken.dll`, `cpcspi.dll`, `config.ini`). Native host is PE32 (x86); it loads
+  the matching 32-bit DLLs — architecture is consistent.
+- The error string lives in `cades.dll`/`npcades.dll`. Their registry strings
+  include `SOFTWARE\Crypto Pro\Cryptography\CurrentVersion` + `…\AppPath`,
+  `Software\Crypto Pro\CAdES`, `Software\Crypto Pro\CAdESplugin`. Our launcher
+  writes only two HKCU keys: the native-messaging host and the MV2 policy. It never
+  records where the plug-in is "installed".
+
+**Hypothesis (needs verification — do NOT treat as fact):** on a clean machine the
+plug-in cannot resolve its own install root, so `cades.dll` fails to locate
+`mydss.dll` and the GOST provider → version `0.0.0000`, provider never loads. A
+normal MSI install writes `…\Cryptography\CurrentVersion\AppPath`; our portable
+extraction does not. NOTE: an earlier registry-centric conclusion was wrong once
+before, so verify on the known-good machine first.
+
+**Next:**
+- Verify on the machine where `2.0.15000` worked manually:
+  `reg query "HKCU\Software\Crypto Pro\Cryptography\CurrentVersion" /v AppPath` and
+  the same under `HKLM`. If present and pointing at a plug-in dir → confirms the
+  hypothesis.
+- Candidate fix (no admin): after extracting the plug-in, write
+  `HKCU\Software\Crypto Pro\Cryptography\CurrentVersion\AppPath` (and any sibling
+  key the plug-in needs) pointing at our extracted
+  `…/cryptopro/plugin/.../Program Files/Crypto Pro/CAdES Browser Plug-in`, gated by
+  a state file like the other registrations. Implement only after the reg-query
+  check (or after confirming the exact value via ProcMon on the local Windows box).
+
+---
+
 ## 2026-06-02 — Fix first-run launcher failures after the legacy MV2 repin
 
 **Context:** owner tested the latest remote and embedded launchers after the
