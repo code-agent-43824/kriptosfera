@@ -115,6 +115,11 @@ Resolution (details in `docs/cryptopro-csp-lite-plan.md`):
 
 ## Conventions
 
+- **Multi-agent workflow (important):** several coding agents work on this repo,
+  sometimes in parallel. Before/with each change — even a small one — record it in
+  `docs/worklog.md` (what was planned, what was done, next steps) so the next agent
+  can pick up unfinished work. Keep `CHANGELOG.md` and the relevant plan docs
+  (e.g. `docs/cryptopro-csp-lite-plan.md`) in sync. Document first, then code.
 - Commits use Conventional Commits (`feat:`/`fix:`/`docs:`/`chore:`/`ci:`).
 - Exported Go symbols carry godoc comments; run `gofmt` before committing.
 - Keep all CryptoPro/Chromium binaries out of Git; fetch/generate via build

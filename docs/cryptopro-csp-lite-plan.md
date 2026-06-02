@@ -57,8 +57,12 @@ as a **temporary legacy compatibility profile**:
    Chrome policy `ExtensionManifestV2Availability=2` only when the payload
    contains a loadable Manifest V2 extension, keeping the future MV3/latest
    Chromium path reversible.
-4. **End-to-end check** with a Rutoken: certificate enumeration + `SignCades`
-   through the bundled stack.
+4. **Launcher startUrl** points at the internal-csp test page
+   (`…/cryptopro-cades-test/internal-csp/demopage/cades_bes_sample.html`) so a run
+   actually sets `EnableInternalCSP` and exercises the bundled Mini CSP;
+   `allowedOrigins` is `https://mescheryakov.pro` and `windowMode` is `app`.
+5. **End-to-end check** with a Rutoken: certificate enumeration + `SignCades`
+   through the bundled stack (still pending; see `docs/worklog.md`).
 
 ## Future goals
 

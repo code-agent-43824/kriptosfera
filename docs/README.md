@@ -9,6 +9,11 @@ architecture overview for Kriptosfera. Start with the root
 - [`architecture.md`](architecture.md) — launcher flow, embedded vs. remote
   payload, and the runtime AppData layout (with a diagram).
 
+## Worklog
+
+- [`worklog.md`](worklog.md) — per-chunk handoff log (Planned / Done / Next) for
+  the multi-agent workflow; read this first to see what was last in progress.
+
 ## Engineering plans
 
 - [`remote-payload-implementation-plan.md`](remote-payload-implementation-plan.md)

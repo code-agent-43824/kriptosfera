@@ -3,9 +3,9 @@
   "productName": "Криптосфера Demo",
   "customerName": "Demo Customer",
   "version": "0.5.0",
-  "startUrl": "https://www.cryptopro.ru/sites/default/files/products/cades/demopage/cades_bes_sample.html",
+  "startUrl": "https://mescheryakov.pro/kriptosfera/cryptopro-cades-test/internal-csp/demopage/cades_bes_sample.html",
   "allowedOrigins": [
-    "https://www.cryptopro.ru"
+    "https://mescheryakov.pro"
   ],
   "profileName": "demo",
   "windowMode": "app",

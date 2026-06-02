@@ -8,7 +8,7 @@ import (
 
 const (
 	chromePolicyExtensionManifestV2Availability = "ExtensionManifestV2Availability"
-	chromePolicyLegacyMV2Enabled               = 2
+	chromePolicyLegacyMV2Enabled                = 2
 )
 
 func ApplyChromeCompatibilityPolicies(extensions []ExtensionSpec, logger *logging.Logger) error {

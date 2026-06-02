@@ -37,6 +37,10 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   host when nothing changed since the last run (gated by a state file).
 
 ### Changed
+- The demo `startUrl` now points at the internal-csp test page
+  (`mescheryakov.pro/.../internal-csp/...`), which sets `EnableInternalCSP`, so a
+  launcher run exercises the bundled Mini CSP; `allowedOrigins` updated to match.
+- Added `docs/worklog.md` as a per-chunk handoff log for the multi-agent workflow.
 - The launcher again starts Chromium as a standalone app window (`--app=<startUrl>`
   in `windowMode: "app"`); the diagnostics behavior that opened the target page
   and a diagnostics page as two tabs was removed.
