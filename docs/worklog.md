@@ -46,6 +46,18 @@ user-writable dir (where our launcher already writes). Cleaner than rewriting th
    immediate → `0x1c`. Then drop our `Crypto Pro\CAdES Browser Plug-in\Mini CSP`
    (+ `mydss.dll`) under `%LOCALAPPDATA%`.
 
+**Import-table detail (pefile):** `npcades.dll`'s static imports are 21 DLLs incl.
+`MYDSS.dll`, `cades.dll`, `xades.dll`, `cplib.dll`, `cpasn1.dll` — **but NOT
+`SHELL32.dll`**. So `SHGetFolderPathW` is resolved **dynamically**
+(`LoadLibrary("SHELL32.dll")`+`GetProcAddress`), and a Ghidra "xref on import
+SHGetFolderPathW" will find nothing. Localise instead by: (a) string xref on
+`"SHGetFolderPathW"` → the `GetProcAddress` site → the global fn-ptr → its xrefs;
+or (b) just a dynamic breakpoint on `shell32!SHGetFolderPathW` (works regardless).
+The static imports `MYDSS/cades/xades/cplib/cpasn1` ARE pulled by the loader from
+*our* dir (next to `nmcades.exe`); only the Mini CSP provider (`capi20.dll`) is
+loaded via the built `<base>\…\Mini CSP` path — that's the one to redirect.
+The Frida route (2) is unaffected by the dynamic resolution and stays the simplest.
+
 **Next:** owner runs route 1 (or 2) to confirm; vendor change (resolve relative to
 `GetModuleFileName(npcades)` or honor a CSIDL_LOCAL_APPDATA/env override) remains
 the only release-grade fix.
