@@ -27,7 +27,9 @@ type DownloadResult struct {
 // hostile server from filling the disk before the SHA-256 check runs.
 const maxPayloadDownloadBytes = 1 << 30 // 1 GiB
 
-var defaultDownloadClient = &http.Client{Timeout: 5 * time.Minute}
+const defaultDownloadTimeout = 30 * time.Minute
+
+var defaultDownloadClient = &http.Client{Timeout: defaultDownloadTimeout}
 
 // DownloadFile streams an HTTPS URL to a temporary file while computing its
 // SHA-256. It rejects non-HTTPS URLs, enforces a size cap (the pinned

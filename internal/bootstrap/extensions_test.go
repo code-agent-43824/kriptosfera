@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -95,14 +96,42 @@ func TestRequiresExtensionManifestV2PolicySkipsModernOrBrokenExtensions(t *testi
 	}
 }
 
+func TestApplyChromeCompatibilityPoliciesReturnsFallbackArgsOnPolicyWriteFailure(t *testing.T) {
+	original := writeChromePolicyDWORD
+	writeChromePolicyDWORD = func(string, int) error {
+		return fmt.Errorf("access denied")
+	}
+	t.Cleanup(func() { writeChromePolicyDWORD = original })
+
+	got := ApplyChromeCompatibilityPolicies([]ExtensionSpec{{Name: "legacy", ManifestVersion: 2}}, testLogger(t))
+	want := chromeLegacyMV2FallbackArgs()
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("unexpected fallback args: %#v", got)
+	}
+}
+
+func TestApplyChromeCompatibilityPoliciesReturnsNoFallbackOnPolicyWriteSuccess(t *testing.T) {
+	original := writeChromePolicyDWORD
+	writeChromePolicyDWORD = func(string, int) error {
+		return nil
+	}
+	t.Cleanup(func() { writeChromePolicyDWORD = original })
+
+	got := ApplyChromeCompatibilityPolicies([]ExtensionSpec{{Name: "legacy", ManifestVersion: 2}}, testLogger(t))
+	if len(got) != 0 {
+		t.Fatalf("unexpected fallback args after successful policy write: %#v", got)
+	}
+}
+
 func TestBuildChromiumArgsPlacesExtensionFlagsBeforeURL(t *testing.T) {
 	cfg := testAppConfigWithVersion("0.1.0")
 	cfg.StartURL = "https://example.test"
 	cfg.ChromiumArgs = []string{"--enable-logging"}
-	got := buildChromiumArgs(`C:\profile`, cfg, []string{"--load-extension=C:\\ext"})
+	got := buildChromiumArgs(`C:\profile`, cfg, []string{"--load-extension=C:\\ext", "--enable-features=AllowLegacyMV2Extensions"})
 	want := []string{
 		`--user-data-dir=C:\profile`,
 		`--load-extension=C:\ext`,
+		`--enable-features=AllowLegacyMV2Extensions`,
 		`--app=https://example.test`,
 		`--enable-logging`,
 	}

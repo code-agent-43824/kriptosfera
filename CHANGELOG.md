@@ -63,6 +63,14 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   the large embedded build.
 
 ### Fixed
+- Remote payload first-run downloads no longer fail after exactly five minutes
+  on slower connections; the launcher now allows a longer first-run download
+  window while keeping HTTPS, pinned-size, and SHA-256 verification unchanged.
+- A denied per-user Chrome policy write for the temporary Manifest V2
+  compatibility profile no longer aborts launcher startup. The launcher logs
+  the registry failure and starts Chrome 138 with MV2 fallback feature flags so
+  the legacy CryptoPro extension path remains testable on machines where
+  `HKCU\Software\Policies\Google\Chrome` is not writable.
 - `TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths` is now Windows-portable:
   it no longer relies on `os.IsNotExist` for a path containing `:` (which Windows
   reports as a syntax error, not "not found"), so CI on Windows runners passes.

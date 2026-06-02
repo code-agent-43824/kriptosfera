@@ -6,6 +6,49 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-02 — Fix first-run launcher failures after the legacy MV2 repin
+
+**Context:** owner tested the latest remote and embedded launchers after the
+legacy MV2 stack and internal-csp payload repin. Remote first-run repeatedly
+failed after exactly five minutes while reading the 173 MB `payload.zip`:
+`PAYLOAD_DOWNLOAD_FAILED: context deadline exceeded (Client.Timeout or context
+cancellation while reading body)`. Embedded first-run prepared the payload and
+CryptoPro bundle, detected the MV2 extension, then failed before Chromium launch:
+`apply chrome manifest v2 policy: set chrome policy ExtensionManifestV2Availability:
+ERROR: Access is denied.`
+
+**Planned:**
+- make remote payload downloads tolerant of slow first-run connections without
+  weakening HTTPS/SHA-256/size verification;
+- keep the MV2 compatibility setup reversible, but do not abort the whole
+  launcher when the per-user Chrome policy registry write is denied;
+- add focused tests and update the docs/changelog so the next agent can see
+  exactly why this was changed.
+
+**Done:** increased the default remote download client timeout from 5 minutes to
+30 minutes; this addresses the exact `Client.Timeout ... while reading body`
+failure without changing the HTTPS requirement, pinned expected size, early
+oversize abort, or SHA-256 verification. Changed MV2 policy handling so a denied
+`HKCU\Software\Policies\Google\Chrome\ExtensionManifestV2Availability` write is
+logged as a compatibility warning instead of returning a fatal launcher error.
+When that write fails, the launcher adds Chrome 138 MV2 fallback flags before
+the app URL:
+`--enable-features=AllowLegacyMV2Extensions` and
+`--disable-features=ExtensionManifestV2Unsupported,ExtensionManifestV2Disabled`.
+Added focused tests for the longer first-run download window and the policy
+failure fallback path. Verified the pinned remote payload URL is live: full HTTPS
+download returned `200`, size `173037165`, SHA-256
+`9b2a00bb8ba09f59f973691c9a26cdb0bd757795f75533ff3bb971cb83501c48`.
+
+**Next:** local Go is unavailable on Watson's host, so rely on GitHub Actions for
+`gofmt`, `go test ./...`, Windows embedded/remote builds, and payload publishing
+after push. Then owner should retry both launchers on Windows; if Chrome still
+does not load the MV2 extension when the registry write is denied, the next
+investigation is Chrome's actual `chrome://policy` / command-line state on that
+machine.
+
+---
+
 ## 2026-06-02 — Re-pin the remote payload to the internal-csp build
 
 **Context:** the previous chunk changed `app-config.json` `startUrl` to the

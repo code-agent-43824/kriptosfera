@@ -127,10 +127,9 @@ func Run(cfg config.RuntimeConfig) error {
 		}
 	}
 	loadableExts := loadableExtensions(extensions)
-	if err := ApplyChromeCompatibilityPolicies(loadableExts, logger); err != nil {
-		return err
-	}
+	compatibilityArgs := ApplyChromeCompatibilityPolicies(loadableExts, logger)
 	extensionArgs := buildExtensionArgs(loadableExts)
+	chromiumPrepArgs := append(extensionArgs, compatibilityArgs...)
 	if len(extensionArgs) == 0 {
 		logger.Info("extensions load count=0")
 	} else {
@@ -168,7 +167,7 @@ func Run(cfg config.RuntimeConfig) error {
 		return writeDryRun(appDir, profileDir, appCfg, logger)
 	}
 
-	args := buildChromiumArgs(profileDir, appCfg, extensionArgs)
+	args := buildChromiumArgs(profileDir, appCfg, chromiumPrepArgs)
 	logger.Info("launch chromium path=%s args=%s", chromePath, strings.Join(args, " "))
 
 	cmd := exec.Command(chromePath, args...)

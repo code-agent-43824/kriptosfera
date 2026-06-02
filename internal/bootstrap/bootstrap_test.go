@@ -189,6 +189,12 @@ func TestRemotePayloadSourceDownloadsArchive(t *testing.T) {
 	}
 }
 
+func TestDefaultDownloadClientAllowsSlowFirstRunPayload(t *testing.T) {
+	if defaultDownloadClient.Timeout < 30*time.Minute {
+		t.Fatalf("default remote payload timeout is too short for slow first-run downloads: %s", defaultDownloadClient.Timeout)
+	}
+}
+
 func TestRemotePayloadSourceRejectsNonHTTPS(t *testing.T) {
 	cfg := testRemoteRuntimeConfig("0.1.0", "http://example.test/payload.zip", "abc", 10)
 	source, err := NewRemotePayloadSource(cfg, testLogger(t))
