@@ -6,6 +6,44 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-02 — REAL root cause: npcades.dll passes hardcoded ImageBase to GetModuleFileName + ASLR
+
+**Found via capstone/pefile (not Ghidra):** `npcades.dll` actually *tries* to resolve
+its provider/module paths **relative to its own module**, but in 3 places it calls
+`GetModuleFileNameA/W(hModule = 0x10000000, …)` with the **hardcoded preferred
+ImageBase** (`push 0x10000000`) instead of the real `HINSTANCE`. Sites:
+`0x10004069`, `0x10054cf2` (→ builds `<dir>\Mini CSP\capi20.dll`), `0x10056637`.
+The DLL has **ASLR enabled** (`DllCharacteristics=0x140`, `DYNAMIC_BASE`), so on
+modern Windows it loads at a random base; `0x10000000` is not its base →
+`GetModuleFileName` fails → code falls back to the `Program Files\Crypto Pro\CAdES
+Browser Plug-in` path. THAT is why the provider loads from the system dir, not ours.
+(So it is a CryptoPro bug, not a fundamental hardcoded-absolute-path design.)
+
+**Patch produced (header-only, no code touched):** clear `DYNAMIC_BASE` (ASLR) in
+`DllCharacteristics` `0x140 → 0x100` (file offset `0x19e`: `0x40→0x00`) + recomputed
+PE checksum (offset `0x198`). With ASLR off, npcades loads at its preferred
+`0x10000000`, the hardcoded `GetModuleFileName(0x10000000)` becomes correct, and the
+module-relative resolution loads Mini CSP/mydss **from the dir next to our
+`nmcades.exe`** — exactly our extracted bundle. No %LOCALAPPDATA% reshuffling, no
+CSIDL edit. Orig sha256 `0f7ffc9a…`, patched `4c52c39b…`.
+
+**Caveats:** only works if `0x10000000` is free in the `nmcades.exe` process (normal)
+and system-wide *mandatory* ASLR (Exploit Protection "Force randomization for
+images") is OFF (default). If on, fall back to a Frida hook of
+`GetModuleFileNameA/W` (return our path when `hModule==0x10000000`) or junction.
+
+**Vendor report (sharpened):** "npcades.dll calls `GetModuleFileNameA/W` with a
+hardcoded `0x10000000` (preferred ImageBase) instead of the module's real
+`HINSTANCE`; with `/DYNAMICBASE` this yields the wrong path under ASLR and falls
+back to `Program Files`. Pass the actual `HINSTANCE` (from `DllMain`) or
+`GetModuleHandleW(L"npcades.dll")`."
+
+**Next:** owner drops the patched `npcades.dll` into the extracted bundle next to
+our `nmcades.exe` and runs the launcher; if the provider loads with NO Program Files
+install present, hypothesis confirmed and PoC achieved.
+
+---
+
 ## 2026-06-02 — PoC plan: redirect npcades.dll's provider base to %LOCALAPPDATA% (owner machine, not for release)
 
 **Goal:** owner wants to *prove* the path hypothesis on his own machine/licence
