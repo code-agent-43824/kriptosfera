@@ -6,6 +6,45 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-02 — Owner bisect: Mini CSP loads from the ABSOLUTE system path
+
+**Context:** owner ran our launcher on a machine where the CryptoPro plug-in was
+already installed via MSI with `ADDMINICSP=1`. It worked (version now reads
+`2.0.15000`, not `0.0.0000`). Then a two-step rename test:
+1. Renamed `nmcades.exe` inside the *system* install
+   (`C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\`) → **still worked**
+   ⇒ Chrome launches *our* `nmcades.exe` (via our HKCU native-messaging manifest),
+   not the system one. Good.
+2. Renamed the *system* `Mini CSP` folder → **broke immediately** ⇒ the provider
+   (Mini CSP / `cpcspi.dll`) is loaded from the absolute system path
+   `…\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\Mini CSP`, **not** from
+   our extracted bundle next to our `nmcades.exe`.
+
+**Interpretation:** the earlier `mydss.dll` / `0.0.0000` failure on a clean machine
+and this bisect agree: the plug-in resolves its provider/module path from an
+ABSOLUTE location (registry `AppPath` and/or a hardcoded
+`Program Files (x86)\Crypto Pro\CAdES Browser Plug-in`), independent of where our
+`nmcades.exe` actually sits. Our portable extraction never points it at our dir.
+
+**Still-open branch (decides the fix):** is that absolute path
+(a) read from the registry key
+`HKLM\SOFTWARE\WOW6432Node\Crypto Pro\Cryptography\CurrentVersion\AppPath`
+(32-bit view) — in which case we override it (ideally HKCU, no rebuild, maybe no
+admin) to point at our extracted dir; or
+(b) hardcoded in `cpcspi.dll`/`cades.dll` as a literal
+`C:\Program Files (x86)\…` — in which case we must place Mini CSP there (junction
+or admin copy) or get a relocatable build from CryptoPro.
+
+**Next (decisive test):** ProcMon on `nmcades.exe` (+children), filter
+`RegQueryValue`/`CreateFile`, watch what precedes the `…\Mini CSP\cpcspi.dll`
+load — a `RegQueryValue` on `…\CurrentVersion\AppPath` (or on
+`HKLM\…\Microsoft\Cryptography\Defaults\Provider\…\Image Path`) means registry-
+driven (good, override it); a bare `CreateFile` on the literal Program Files path
+with no preceding reg read means hardcoded. Quick pre-check on the working machine:
+`reg query "HKLM\SOFTWARE\WOW6432Node\Crypto Pro\Cryptography\CurrentVersion" /v AppPath`.
+
+---
+
 ## 2026-06-02 — Diagnose "mydss.dll installation path" / provider-not-loaded on real run
 
 **Context:** with the launcher now reaching Chrome (after `9f08cb5` made the MV2
