@@ -400,3 +400,32 @@ restored ("Плагин загружен"), and the provider now resolves from o
 residual mydss popup may reappear (it did in the very first screenshot) but did not
 block "plugin loaded". Clean machine is the only meaningful target — on a machine with
 the plugin installed the provider comes from Program Files and tells us nothing.
+
+---
+
+## 2026-06-03 — Dump #2 memory: native-messaging dialog recovered; cades.dll has the SAME hardcoded-base bug
+
+**New data mined from the 2nd minidump's memory (huge):** the native-messaging
+conversation is in process memory:
+- `cadesplugin.EnableInternalCSP` → **result `true`** (internal-CSP mode engages!).
+- next request: `{"method":"CreateObject","params":[{"value":"CAdESCOM.About"}],"requestid":3}`.
+So the extension↔plugin protocol works far in: internal CSP ON, plugin alive and
+responding, parked in `ReadFile(stdin)` waiting for the next message (identical stack
+to dump #1). `capi20/cpcspi` (the CSP) still never load — we stall around About/version
+and provider load, not earlier.
+
+**"Версия плагина: 0.0.0000" explained:** `cades.dll` ALSO has the hardcoded
+`push 0x10000000` → `GetModuleFileName` bug — 2 sites (rva `0x252a` GetModuleFileNameA
+helper, `0x4f09a` GetModuleFileNameW+registry). ASLR on (`DllChar 0x140`). So
+`cades.dll` can't locate itself → `About.PluginVersion` reads `0.0.0000`. We only
+patched `npcades` before. No self-integrity strings in `cades.dll` (safe to patch).
+
+**Patch built:** `cades.dll` rva `0x252a` only (the path helper; left the registry
+site `0x4f09a` alone, per the npcades lesson). file off `0x192e`: `0x10→0x00`,
+checksum recomputed. orig sha `c108c5d5…`, patched `653efb0f…`. Use together with the
+minimal `npcades.dll` (`db30e180…`).
+
+**Takeaway:** this is the same single bug (hardcoded preferred ImageBase passed to
+GetModuleFileName) replicated across modules; we're peeling it module by module
+(npcades → cades → likely the CSP-load path next). Confirms the vendor fix (resolve
+relative to the real HINSTANCE everywhere) is the clean global solution.
