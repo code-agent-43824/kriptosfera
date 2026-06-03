@@ -434,8 +434,10 @@ relative to the real HINSTANCE everywhere) is the clean global solution.
 
 ## 2026-06-03 — Dump #3 + page: NULL byte-patch is a dead end (breaks handshake); revert to originals
 
-**Page with cades.dll patch (rva 0x252a → NULL):** REGRESSION — "Версия плагина" no
-longer shown at all, "Истекло время ожидания загрузки плагина". Dump #3: 4 threads
+**Page with cades.dll patch (rva 0x252a → NULL):** NO new regression (owner
+correction) — the version stopped showing already when the npcades patch turned the
+mydss error into a hang; cades patch left that unchanged. "Истекло время ожидания
+загрузки плагина", no version. Dump #3: 4 threads
 (cades COM/thread-pool init kicked in — real change), main thread still in
 `ReadFile(stdin)`, `capi20`/CSP still not loaded; protocol memory unchanged
 (EnableInternalCSP=true → CreateObject CAdESCOM.About, no further).
