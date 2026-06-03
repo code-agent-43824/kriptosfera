@@ -429,3 +429,34 @@ minimal `npcades.dll` (`db30e180…`).
 GetModuleFileName) replicated across modules; we're peeling it module by module
 (npcades → cades → likely the CSP-load path next). Confirms the vendor fix (resolve
 relative to the real HINSTANCE everywhere) is the clean global solution.
+
+---
+
+## 2026-06-03 — Dump #3 + page: NULL byte-patch is a dead end (breaks handshake); revert to originals
+
+**Page with cades.dll patch (rva 0x252a → NULL):** REGRESSION — "Версия плагина" no
+longer shown at all, "Истекло время ожидания загрузки плагина". Dump #3: 4 threads
+(cades COM/thread-pool init kicked in — real change), main thread still in
+`ReadFile(stdin)`, `capi20`/CSP still not loaded; protocol memory unchanged
+(EnableInternalCSP=true → CreateObject CAdESCOM.About, no further).
+
+**Why every `push 0x10000000 → push 0` (NULL) patch hurts:** `GetModuleFileName(NULL)`
+returns the **nmcades.exe** path. But the plugin version is `cades.dll`'s version,
+which it reads via `GetFileVersionInfo` on the path **to cades.dll**; and the provider
+path needs `…\Mini CSP\…`. Different sites want paths to DIFFERENT modules; a single
+NULL gives them all the exe path, so something always breaks. The version/handshake
+path breaks → "истекло время загрузки плагина". `cades.dll` loads the CSP via
+`LoadLibrary` + `GetModuleHandleA("capi20.dll")` (string VA 0x10206e9c, refs=2),
+choosing capi10/capi20 — internal-CSP, no registry. No `CryptAcquireContext` import.
+
+**Conclusion:** byte-patching `→NULL` cannot build a clean PoC — each patch fixes one
+path and breaks another. The correct fix is `GetModuleHandle("<module>.dll")` per site
+(real HINSTANCE), which is not a one-byte edit. Best reachable state is the ORIGINAL
+DLLs: plugin "loaded", version 0.0.0000, stuck at "ожидание провайдера". Reverted
+owner to original `cades.dll` (sha c108c5d5) + `npcades_orig.dll`. Remaining path =
+the vendor fix (per-module HINSTANCE everywhere), which owner is already awaiting.
+
+**Sites catalogued for the record:** npcades.dll push 0x10000000 → GetModuleFileName
+at rva 0x4069 (path helper), 0x54cf2 (Mini CSP\capi20.dll), 0x56637 (GMFW+registry);
+cades.dll at rva 0x252a (path helper), 0x4f09a (GMFW+registry). All ASLR-on (0x140),
+no self-integrity strings in npcades/cades. capi20/cpcspi (certified CSP) NOT patched.
