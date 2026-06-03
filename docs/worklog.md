@@ -369,3 +369,34 @@ doc and CHANGELOG.
   branding/customer startUrl as a config, and track the future MV3/latest-Chromium
   migration (see `docs/cryptopro-csp-lite-plan.md` → Future goals).
 - Blocked/needs owner: nothing for this step.
+
+---
+
+## 2026-06-03 — Dump: nmcades is NOT hung (idle on ReadFile); minimal single-site patch
+
+**Minidump analysis (nmcades.exe, clean machine, patched npcades):** 1 thread,
+parked in `ntdll/KERNELBASE` Wait inside its own frames. nmcades imports for I/O are
+ONLY `ReadFile/WriteFile/GetStdHandle` — no `WaitForSingleObject/Event/CreateThread/
+GetMessage`. So the "Wait" is `ReadFile(stdin)`, handle `0x74` = the Chrome native-
+messaging pipe. **nmcades isn't hung — it's idly waiting for the next message.** The
+"plugin load timeout" is therefore a handshake/response problem, not a hang or a
+window.
+
+**The 3 `push 0x10000000` sites in npcades.dll decoded:**
+- `0x4069` — generic helper "module dir + suffix" (used for paths incl. mydss).
+- `0x54cf2` — builds `Mini CSP\capi20.dll` (the provider path). THE one that matters.
+- `0x56637` — `GetModuleFileNameW` + opens **HKLM** registry (`0x80000002`,
+  `RegOpenKeyEx`) — trace/settings, unrelated to provider resolution.
+
+Patching all 3 (NULL) cleared the mydss error but regressed the handshake ("Плагин
+загружен" → "истекло время загрузки плагина"), likely because the trace/registry
+site (or the helper) is on the init path. **New minimal patch: only `0x54cf2`**
+(file off `0x540f6`: `0x10→0x00`), header untouched (`0x140`), checksum recomputed.
+orig sha `0f7ffc9a…`, minimal-patch sha `db30e180…`.
+
+**Most useful experiment (owner, CLEAN machine, no plugin):** drop the minimal
+npcades into our extracted dir, run the launcher, read the page. Hypothesis: handshake
+restored ("Плагин загружен"), and the provider now resolves from our `Mini CSP`. A
+residual mydss popup may reappear (it did in the very first screenshot) but did not
+block "plugin loaded". Clean machine is the only meaningful target — on a machine with
+the plugin installed the provider comes from Program Files and tells us nothing.
