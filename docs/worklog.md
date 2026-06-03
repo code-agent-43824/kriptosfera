@@ -462,3 +462,21 @@ the vendor fix (per-module HINSTANCE everywhere), which owner is already awaitin
 at rva 0x4069 (path helper), 0x54cf2 (Mini CSP\capi20.dll), 0x56637 (GMFW+registry);
 cades.dll at rva 0x252a (path helper), 0x4f09a (GMFW+registry). All ASLR-on (0x140),
 no self-integrity strings in npcades/cades. capi20/cpcspi (certified CSP) NOT patched.
+
+---
+
+## 2026-06-03 — BREAKTHROUGH: nmcades is NOT hung — it responds (Go probe via stdin/stdout)
+
+Couldn't use Frida; instead built a tiny Go probe (`nmprobe.exe`, GOOS=windows) that
+launches `nmcades.exe`, writes a length-prefixed native-messaging message and actively
+reads stdout (a plain `> file` redirect just buffered and looked empty/hung). Result —
+host **answered**:
+`{"data":{"message":"Can't find object by id","requestid":1,"type":"error"},"tabid":"…"}`.
+
+**This disproves the "host hangs" theory.** nmcades reads, processes, replies with a
+proper protocol error, and flushes — the ReadFile idle in the dumps is just normal
+between-message waiting. The `Can't find object by id` (objid=0) is because a single
+CreateObject without the prior handshake has no registered root object. Built
+`nmprobe2.exe` to replay the real dump sequence (EnableInternalCSP → CreateObject
+CAdESCOM.About → GetProperty PluginVersion) and reveal the response side of the full
+dialog. Awaiting owner run. Probes live only on owner's box / /tmp; not committed.
