@@ -76,6 +76,7 @@ function New-SlimCryptoProPluginArchive {
         throw "Duplicate CryptoPro slim archive entry: $targetName"
       }
       $newEntry = $destination.CreateEntry($targetName, [System.IO.Compression.CompressionLevel]::Optimal)
+      $newEntry.LastWriteTime = $entry.LastWriteTime
       $inputStream = $entry.Open()
       $outputStream = $newEntry.Open()
       try {
