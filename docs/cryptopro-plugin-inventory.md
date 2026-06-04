@@ -121,7 +121,10 @@ For MVP, the launcher should generate or patch the manifest at runtime so `path`
 
 ## Current conclusion
 
-The next implementation step can consume `build/cryptopro-plugin-lock.json`, download `cryptopro-plugin.zip`, verify size/SHA-256, and embed the verified archive into both launcher variants.
+The build consumes `build/cryptopro-plugin-lock.json`, downloads the full static
+`cryptopro-plugin.zip`, verifies its original size/SHA-256, then normalizes it
+before embedding into launcher variants. The embedded archive keeps only the
+current runtime subtree as `CAdES Browser Plug-in/...`.
 
 The main runtime uncertainty remains whether the extracted AppData-only layout is enough for plugin detection, or whether CryptoPro components require additional COM/CSP/system registration. We should test this empirically after native messaging registration is implemented.
 
@@ -213,13 +216,36 @@ Mini CSP/
 `cpcspi.dll`, `cpsuprt.dll`, `cpui.dll`, `cpconfig.exe`, `config.ini`, and token
 modules such as `rutoken.dll`, `jacarta.dll`, `pcsc.dll`, and `safenet.dll`.
 
-Do **not** prune this bundle in the current vendor-waiting chunk. The apparent
-cleanup candidates (`Common/`, `Common64/`, `Program Files 64/`, `*.msi`,
-GroupPolicy/PolicyDefinitions, MMC tools, and shared COM helpers) are plausible
-non-runtime material for our current 32-bit native-host path, but the clean-machine
-bug means we do not yet have a stable vendor build to validate against. Remove
-those only in a later Windows smoke-test chunk, and only with a new bundle hash,
-lock update, and explicit comparison on:
+The launcher embed step now prunes everything outside the current 32-bit
+Browser Plug-in runtime subtree. The full static archive remains immutable on
+the project server for provenance and future repinning, but
+`internal/bootstrap/cryptopro-plugin.zip` is a slim normalized archive.
+
+Current slim archive inventory from the pinned `2.0.15000` source:
+
+```text
+61 files
+27,618,881 bytes raw
+~11,247,865 bytes zipped
+```
+
+Pruned from launcher embed:
+
+```text
+Program Files 64/
+Common/
+Common64/
+CommonAppData/
+System64/
+Windows/
+*.msi
+MSI pseudo-path entries such as .:Common
+```
+
+Do **not** prune files inside `CAdES Browser Plug-in/` or `Mini CSP/` until a
+fixed vendor build exists and can be checked on Windows. That subtree contains
+the native host, plug-in DLLs, CAdES runtime libraries, Mini CSP provider chain,
+and token modules. Future deeper pruning must use an explicit comparison on:
 
 - machine with no system CryptoPro install;
 - machine with MSI-installed plug-in/CSP for control;

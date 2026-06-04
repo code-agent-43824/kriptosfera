@@ -44,6 +44,10 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   recognizable vendor subtree: runtime layout v3 now extracts Mini CSP to
   `%LOCALAPPDATA%\Kriptosfera\apps\demo\<version>\Crypto Pro\CAdES Browser Plug-in\Mini CSP`
   and removes the old deep `cryptopro\plugin\...\Program Files` wrapper layout.
+- Slimmed the CryptoPro archive that gets embedded into launchers: the build still
+  verifies the full immutable static archive, then embeds only the runtime
+  `CAdES Browser Plug-in` subtree, dropping `Common`, `Common64`,
+  `Program Files 64`, MSI packages, policy/system folders, and MSI pseudo-paths.
 
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing

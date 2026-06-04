@@ -56,7 +56,7 @@
 - отдельный `user-data-dir` для запуска встроенного браузера;
 - cache-friendly подготовка Chromium runtime в CI;
 - CryptoPro extension layer: unpacked extension доставляется в payload, launcher добавляет Chromium extension flags, extension id стабилен через `manifest.key`;
-- CryptoPro Browser Plugin bundle закреплён отдельным lock-файлом, скачивается с project static storage, проверяется по SHA-256/size и встраивается в оба launcher variants;
+- CryptoPro Browser Plugin bundle закреплён отдельным lock-файлом, скачивается с project static storage, проверяется по SHA-256/size, нормализуется до runtime-поддерева `CAdES Browser Plug-in` и встраивается в оба launcher variants без MSI/Common/64-bit деревьев;
 - launcher разворачивает встроенный CryptoPro Browser Plugin bundle в AppData рядом с Chromium под vendor-style путём `Crypto Pro\CAdES Browser Plug-in`, пропускает MSI pseudo-path entries с Windows-недопустимыми именами и проверяет наличие `nmcades.exe`, `nmcades.json`, `npcades.dll`;
 - launcher генерирует native messaging manifest `ru.cryptopro.nmcades.json` и регистрирует его в HKCU для текущего пользователя;
 - ручная проверка показала, что на машине с установленным обычным CryptoPro CSP приложение ведёт себя как настроенный Chrome: видит extension, Browser Plugin, plugin version, системный CSP, стандартное окно подтверждения доступа и сертификаты;

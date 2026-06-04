@@ -440,6 +440,13 @@ func TestCryptoProPluginZipMapsVendorSubtree(t *testing.T) {
 	if target, skip := mapCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15000/Program Files 64/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); !skip || target != "" {
 		t.Fatalf("64-bit Program Files subtree should be skipped, got target=%q skip=%v", target, skip)
 	}
+	target, skip = mapCryptoProPluginZipEntry("CAdES Browser Plug-in/nmcades.exe")
+	if skip {
+		t.Fatal("normalized slim archive entry must not be skipped")
+	}
+	if target != "CAdES Browser Plug-in/nmcades.exe" {
+		t.Fatalf("unexpected normalized mapped path: %s", target)
+	}
 }
 
 func TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths(t *testing.T) {
@@ -492,6 +499,21 @@ func TestEmbeddedCryptoProBundleContainsRequiredFiles(t *testing.T) {
 	for _, required := range requiredCryptoProPluginFiles {
 		if !has(required) {
 			t.Errorf("embedded CryptoPro bundle is missing required file: %s", required)
+		}
+	}
+	for _, f := range reader.File {
+		if f.FileInfo().IsDir() {
+			continue
+		}
+		name := filepath.ToSlash(filepath.Clean(f.Name))
+		if strings.Contains(name, ":") {
+			t.Errorf("embedded CryptoPro bundle must not contain MSI pseudo-path entry: %s", f.Name)
+		}
+		if strings.Contains(name, "Program Files/") || strings.Contains(name, "Program Files 64/") || strings.Contains(name, "Common/") || strings.Contains(name, "Common64/") {
+			t.Errorf("embedded CryptoPro bundle must be normalized, got extra wrapper/tree: %s", f.Name)
+		}
+		if strings.HasSuffix(strings.ToLower(name), ".msi") {
+			t.Errorf("embedded CryptoPro bundle must not contain MSI package: %s", f.Name)
 		}
 	}
 }

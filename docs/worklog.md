@@ -6,6 +6,58 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-04 — Prune embedded CryptoPro archive before launcher embed
+
+**Context:** owner asked to verify that launchers no longer carry unnecessary
+CryptoPro folders such as `Common`, other-bitness libraries, and MSI files. The
+runtime layout v3 already skips those entries during AppData extraction, but the
+build still embeds the full downloaded `cryptopro-plugin.zip` into both launcher
+variants unless the archive is normalized before `go:embed`.
+
+**Planned:**
+- inventory the current pinned `2.0.15000` archive and confirm which entries are
+  runtime-required for the current 32-bit native host / Browser Plug-in / Mini
+  CSP path;
+- change `build/fetch-cryptopro-plugin.ps1` so it still downloads and verifies
+  the immutable full static archive against `build/cryptopro-plugin-lock.json`,
+  but writes a slim normalized `internal/bootstrap/cryptopro-plugin.zip`;
+- keep only the `Program Files\Crypto Pro\CAdES Browser Plug-in\...` subtree,
+  stored in the slim archive as `CAdES Browser Plug-in\...`;
+- add tests that accept both original static archive layout and normalized slim
+  layout, and fail CI if the embedded bundle still contains `Program Files`,
+  `Program Files 64`, MSI pseudo-paths, or `.msi` files;
+- update docs with before/after size and CI verification.
+
+**Inventory:** the full pinned static archive is `24,052,329` bytes compressed,
+112 files, and `61,991,999` bytes raw. The current runtime subtree
+`Program Files\Crypto Pro\CAdES Browser Plug-in\...` is 61 files and
+`27,618,881` bytes raw; a local zip simulation produced a slim archive around
+`11,247,865` bytes. The dropped trees are `Program Files 64`, `Common`,
+`Common64`, `CommonAppData`, `System64`, `Windows`, MSI packages, and MSI
+pseudo-path entries.
+
+**Done:**
+- added build-time normalization in `build/fetch-cryptopro-plugin.ps1`: it
+  downloads and verifies the full static archive, then writes a slim
+  `internal/bootstrap/cryptopro-plugin.zip`;
+- the slim archive stores entries directly as `CAdES Browser Plug-in\...`;
+- updated runtime zip mapping to accept both full source archive layout and
+  already-normalized slim archive layout;
+- extended CI tests so a real embedded bundle fails if it contains `Program Files`,
+  `Program Files 64`, `Common`, `Common64`, MSI pseudo-path entries, or `.msi`
+  packages;
+- updated README, CHANGELOG, and bundle inventory docs.
+
+**Verification:**
+- `git diff --check` passed locally;
+- local `go test`, `gofmt`, and PowerShell script execution are unavailable on
+  Watson's Linux host.
+
+**Next:** push and verify with GitHub Actions `build-windows`; confirm CI logs
+print the slim archive size/hash and that embedded/remote artifacts shrink.
+
+---
+
 ## 2026-06-04 — Shorten CryptoPro AppData layout while keeping vendor path
 
 **Context:** owner asked to reduce the deep AppData nesting, but keep the visible

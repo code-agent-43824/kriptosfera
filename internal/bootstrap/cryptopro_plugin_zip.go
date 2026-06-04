@@ -26,6 +26,9 @@ func mapCryptoProPluginZipEntry(name string) (string, bool) {
 	}
 	cleanName := filepath.ToSlash(filepath.Clean(name))
 	parts := strings.Split(cleanName, "/")
+	if len(parts) >= 2 && parts[0] == "CAdES Browser Plug-in" {
+		return cleanName, false
+	}
 	for i := 0; i+2 < len(parts); i++ {
 		if parts[i] == "Program Files" && parts[i+1] == "Crypto Pro" {
 			rel := strings.Join(parts[i+2:], "/")
