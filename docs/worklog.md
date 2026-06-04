@@ -6,6 +6,73 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-04 — Static bundle recovery and payload slimming plan
+
+**Context:** owner approved a repo cleanup pass while waiting for the CryptoPro
+vendor fix. Before changing code or assets, Watson pulled the latest `origin/main`
+and reviewed the 14 intervening doc-only commits. The important new repo state is
+that the portable/no-MSI blocker is now consolidated in
+`docs/cryptopro-portable-plugin-findings.md`: the current path forward is to wait
+for a fixed CryptoPro plug-in build rather than keep byte-patching
+`npcades.dll`/`cades.dll`.
+
+**Planned:**
+- restore the live static-storage invariant for the pinned legacy plug-in:
+  `build/cryptopro-plugin-lock.json` points at immutable `2.0.15000` URL
+  `4590391e.../cryptopro-plugin.zip`, but the live server currently returns 404;
+- inventory the restored CryptoPro `2.0.15000` bundle before any pruning and mark
+  what is runtime-required versus cleanup-risky;
+- document a small, reversible payload slimming approach. The current remote
+  `payload.zip` is 173,037,165 bytes and its contents are almost entirely Chromium
+  (`~389.7 MB` raw / `~172.9 MB` compressed); the CryptoPro plug-in is not inside
+  that payload and is embedded into launcher variants as a separate verified
+  archive;
+- defer the actual payload rebuild, payload-lock update, GitHub Actions log
+  review, and Windows smoke/E2E checks to a later chunk per owner instruction.
+
+**Initial findings:** the live remote payload URL still verifies against
+`build/payload-lock.json` (size `173037165`, SHA-256
+`9b2a00bb8ba09f59f973691c9a26cdb0bd757795f75533ff3bb971cb83501c48`). The pinned
+legacy CryptoPro plug-in URL and metadata URL currently return 404 on
+`mescheryakov.pro`, while the server still has the older `2.0.15700` bundle that
+the docs now mark as broken for Mini CSP.
+
+**Done:** restored the immutable `2.0.15000` static bundle from the local
+workspace recovery directory to:
+
+```text
+https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15000/4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a/
+```
+
+Also restored the legacy installer and MV2 CRX source mirrors under:
+
+```text
+https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2/
+```
+
+Public re-download verification:
+
+```text
+cryptopro-plugin.zip        size 24052329  sha256 4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a
+cryptopro-plugin.json       HTTP 200       metadata sha256/size match lock
+cadesplugin_2_0_1500.exe    size 11781256  sha256 7c43d41482684ff3d98fe45c741c6a14b63055c88721f0207ab2b605dbc28cb2
+extension_1.2.13.crx        size 70909     sha256 cf9bd5ce31d8ae6e50038dc742b4fd900a87c854cccb5db69a39976cccbf07c9
+```
+
+Updated `docs/cryptopro-plugin-inventory.md` with the restored `2.0.15000`
+inventory and pruning notes. Added `docs/payload-slimming-plan.md`: first safe
+payload pass should target locales, hyphen-data, `setup.exe`, and helper EXEs
+only after smoke testing; GPU/Vulkan/SwiftShader and core Chrome files stay out
+of the first pass.
+
+**Next:** implement the actual Chromium slimming build step in a later chunk,
+then rebuild/publish a new immutable payload, update `build/payload-lock.json`,
+and inspect GitHub Actions logs. Do not prune the CryptoPro plug-in bundle until
+a fixed vendor build exists and can be checked on Windows with clean-machine and
+MSI-installed controls.
+
+---
+
 ## 2026-06-02 — REAL root cause: npcades.dll passes hardcoded ImageBase to GetModuleFileName + ASLR
 
 **Found via capstone/pefile (not Ghidra):** `npcades.dll` actually *tries* to resolve

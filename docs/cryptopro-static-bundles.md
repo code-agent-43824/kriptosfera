@@ -83,6 +83,16 @@ https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2
 https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2/extension_1.2.13.crx
 ```
 
+2026-06-04 recovery note: these `2.0.15000` immutable files were restored after
+the live static storage was found to be missing the lock-pinned bundle while still
+serving the older broken `2.0.15700` bundle. Public re-download verification:
+
+```text
+cryptopro-plugin.zip size 24052329 sha256 4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a
+cadesplugin_2_0_1500.exe size 11781256 sha256 7c43d41482684ff3d98fe45c741c6a14b63055c88721f0207ab2b605dbc28cb2
+extension_1.2.13.crx size 70909 sha256 cf9bd5ce31d8ae6e50038dc742b4fd900a87c854cccb5db69a39976cccbf07c9
+```
+
 Current CryptoPro CSP Linux installer assets for cross-platform experiments:
 
 ```text
@@ -144,6 +154,8 @@ Known bundle values:
 - source installer mirror size: `11781256`
 - source installer mirror SHA-256: `7c43d41482684ff3d98fe45c741c6a14b63055c88721f0207ab2b605dbc28cb2`
 - source installer bootstrapper file version: `2.0.15002.0`
+- MV2 extension CRX size: `70909`
+- MV2 extension CRX SHA-256: `cf9bd5ce31d8ae6e50038dc742b4fd900a87c854cccb5db69a39976cccbf07c9`
 - Linux source archive: `linux-amd64_all.zip`
 - Linux source archive size: `144025183`
 - Linux source archive SHA-256: `6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5`

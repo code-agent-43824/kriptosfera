@@ -36,6 +36,8 @@ architecture overview for Kriptosfera. Start with the root
   the CryptoPro Browser Plugin bundle.
 - [`cryptopro-static-bundles.md`](cryptopro-static-bundles.md) — how static
   artifacts (payload, plugin) are hosted and pinned.
+- [`payload-slimming-plan.md`](payload-slimming-plan.md) — current size inventory
+  and conservative plan for trimming the Chromium payload.
 - [`mvp-risks.md`](mvp-risks.md) — open technical risks for the MVP.
 
 ## Summary

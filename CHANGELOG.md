@@ -33,6 +33,13 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   bundle. The MV2 stack works when the plug-in is MSI-installed (`ADDMINICSP=1`);
   portable use is paused pending a CryptoPro fix. No plug-in binaries or diagnostic
   patches are committed.
+- Restored the live static-storage copy of the lock-pinned legacy `2.0.15000`
+  CryptoPro plug-in bundle and source mirrors after the URL in
+  `build/cryptopro-plugin-lock.json` was found returning 404; public
+  re-downloads now match the pinned size and SHA-256 again.
+- Added `docs/payload-slimming-plan.md` and updated the CryptoPro bundle
+  inventory with `2.0.15000` size/pruning notes. Payload rebuild, lock update,
+  and CI verification are intentionally deferred to a later chunk.
 
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing

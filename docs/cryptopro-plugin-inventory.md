@@ -30,6 +30,32 @@ Signature verification with `osslsigncode` reported `Signature verification: ok`
 
 ## Published static bundles
 
+Current temporary legacy compatibility bundle:
+
+```text
+url: https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15000/4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a/cryptopro-plugin.zip
+sha256: 4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a
+size: 24052329
+metadata: https://mescheryakov.pro/kriptosfera/cryptopro/plugin/2.0.15000/4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a/cryptopro-plugin.json
+```
+
+Legacy source mirror for audit/rebuild:
+
+```text
+installer: https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2/cadesplugin_2_0_1500.exe
+installer sha256: 7c43d41482684ff3d98fe45c741c6a14b63055c88721f0207ab2b605dbc28cb2
+installer size: 11781256
+extension: https://mescheryakov.pro/kriptosfera/cryptopro/special/legacy-cades-2.0.1500-mv2/extension_1.2.13.crx
+extension sha256: cf9bd5ce31d8ae6e50038dc742b4fd900a87c854cccb5db69a39976cccbf07c9
+extension size: 70909
+```
+
+The `2.0.15000` bundle and its source mirror were restored on 2026-06-04 after a
+static-storage cleanup left `build/cryptopro-plugin-lock.json` pointing at a 404.
+Public re-download verification matched the lock file exactly.
+
+Previous bundle retained for audit/history:
+
 Plugin runtime bundle:
 
 ```text
@@ -128,6 +154,62 @@ Runtime diagnostics are written by the launcher to:
 ```
 
 The file captures the extracted plugin root, selected extension id, native messaging manifest/host paths, expected HKCU native messaging key, plugin bundle metadata, and SHA-256 values for the required CAdES/Mini CSP files. It is a read-only snapshot for the next two-machine comparison and does not attempt CSP activation.
+
+## 2.0.15000 bundle inventory and pruning notes
+
+The restored `2.0.15000` archive has 112 files, `61,991,999` bytes raw and
+`24,052,329` bytes as a zip. Top-level raw sizes:
+
+```text
+27.6 MB  Program Files/
+11.8 MB  Program Files 64/
+10.7 MB  Common64/
+10.0 MB  Common/
+0.94 MB  cadescom-x64.msi
+0.91 MB  cadescom-win32.msi
+0.11 MB  System64/
+0.01 MB  Windows/
+0       CommonAppData/
+```
+
+Current launcher integration uses the 32-bit native messaging host and browser
+plug-in path under:
+
+```text
+Program Files/Crypto Pro/CAdES Browser Plug-in/
+```
+
+Important files in that path:
+
+```text
+nmcades.exe
+nmcades.json
+npcades.dll
+cades.dll
+xades.dll
+asn1.dll
+cpasn1.dll
+cplib.dll
+mydss.dll
+Mini CSP/
+```
+
+`Mini CSP/` is about `10.0 MB` raw and includes `capi10.dll`, `capi20.dll`,
+`cpcspi.dll`, `cpsuprt.dll`, `cpui.dll`, `cpconfig.exe`, `config.ini`, and token
+modules such as `rutoken.dll`, `jacarta.dll`, `pcsc.dll`, and `safenet.dll`.
+
+Do **not** prune this bundle in the current vendor-waiting chunk. The apparent
+cleanup candidates (`Common/`, `Common64/`, `Program Files 64/`, `*.msi`,
+GroupPolicy/PolicyDefinitions, MMC tools, and shared COM helpers) are plausible
+non-runtime material for our current 32-bit native-host path, but the clean-machine
+bug means we do not yet have a stable vendor build to validate against. Remove
+those only in a later Windows smoke-test chunk, and only with a new bundle hash,
+lock update, and explicit comparison on:
+
+- machine with no system CryptoPro install;
+- machine with MSI-installed plug-in/CSP for control;
+- Rutoken certificate enumeration and `SignCades`;
+- diagnostics file with all required runtime hashes present.
 
 ## Manual runtime findings
 
