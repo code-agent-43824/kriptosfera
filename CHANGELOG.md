@@ -25,6 +25,14 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 - The launcher now applies the per-user Chrome policy
   `ExtensionManifestV2Availability=2` only when a loadable Manifest V2 extension
   is present, keeping the future Manifest V3/latest-Chromium path reversible.
+- Documented the clean-machine (portable, no-MSI) blocker in
+  `docs/cryptopro-portable-plugin-findings.md`: the CAdES plug-in (`npcades.dll`,
+  `cades.dll`) resolves module/provider paths from a hardcoded preferred image base
+  (`GetModuleFileName(0x10000000)`) instead of the real `HINSTANCE`, so under ASLR it
+  falls back to `%ProgramFiles%` and the provider never loads from our extracted
+  bundle. The MV2 stack works when the plug-in is MSI-installed (`ADDMINICSP=1`);
+  portable use is paused pending a CryptoPro fix. No plug-in binaries or diagnostic
+  patches are committed.
 
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing

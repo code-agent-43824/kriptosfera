@@ -480,3 +480,31 @@ CreateObject without the prior handshake has no registered root object. Built
 `nmprobe2.exe` to replay the real dump sequence (EnableInternalCSP → CreateObject
 CAdESCOM.About → GetProperty PluginVersion) and reveal the response side of the full
 dialog. Awaiting owner run. Probes live only on owner's box / /tmp; not committed.
+
+---
+
+## 2026-06-03 — Pause portable investigation; consolidate findings in repo
+
+Owner: stop experiments, await CryptoPro fix. Probe v2 on the **working-install**
+machine returned the **same** `Can't find object by id` as on the clean machine —
+so that error is a limitation of our replayed handshake (objid=0 root object needs
+the full browser sequence), not a machine difference. Fully reproducing the
+browser handshake needs the real `cadesplugin_api.js` protocol (demo page loads it
+as `../cadesplugin_api.js`).
+
+**Consolidated everything important into the repo:**
+- New `docs/cryptopro-portable-plugin-findings.md` — standalone summary: root cause
+  (`GetModuleFileName(0x10000000)` hardcoded base in npcades/cades under ASLR →
+  Program Files fallback), reproduction, all dead ends (AppPath/junction/ASLR/byte
+  patch), the Go probe proof that the host responds (not hung), and the vendor
+  report with affected RVAs.
+- `docs/cryptopro-csp-lite-plan.md` — added the "Clean-machine (portable, no-MSI)
+  blocker" section pointing at the findings doc.
+- `docs/README.md` — linked the findings doc.
+
+**Not committed (by design):** the diagnostic `npcades`/`cades` byte-patches and the
+Go probes lived on the owner's box / in `/tmp` only — no CryptoPro binaries in Git.
+
+**Next (when vendor build lands):** re-pin plug-in in `build/cryptopro-plugin-lock.json`,
+re-run launcher on a clean machine, expect provider load + cert enumeration +
+`SignCades` with a Rutoken; then track the MV3 / latest-Chromium migration.

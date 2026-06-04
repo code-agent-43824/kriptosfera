@@ -25,6 +25,10 @@ architecture overview for Kriptosfera. Start with the root
 - [`cryptopro-csp-lite-plan.md`](cryptopro-csp-lite-plan.md) — Mini CSP / CSP Lite
   activation: root cause (a broken plugin build), the working combination, and
   the remaining integration + future-migration goals.
+- [`cryptopro-portable-plugin-findings.md`](cryptopro-portable-plugin-findings.md)
+  — consolidated record of the clean-machine (portable, no-MSI) blocker: the
+  CryptoPro `GetModuleFileName(0x10000000)` bug, everything we tried, the host
+  probe findings, and the vendor report. Investigation paused, awaiting a vendor fix.
 
 ## Inventories and references
 

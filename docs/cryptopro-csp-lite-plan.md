@@ -64,6 +64,22 @@ as a **temporary legacy compatibility profile**:
 5. **End-to-end check** with a Rutoken: certificate enumeration + `SignCades`
    through the bundled stack (still pending; see `docs/worklog.md`).
 
+## Clean-machine (portable, no-MSI) blocker — paused, awaiting vendor fix
+
+The MV2 stack works end-to-end **when the plug-in is installed via MSI
+(`ADDMINICSP=1`)**. Running it **portably from our extracted directory on a clean
+machine** is currently blocked by a CryptoPro bug: `npcades.dll` and `cades.dll`
+resolve their module/provider paths from a **hardcoded preferred image base**
+(`GetModuleFileName(0x10000000)`) instead of the real `HINSTANCE`; under ASLR this
+misses and the plug-in falls back to `%ProgramFiles%\…`, which is absent on a clean
+machine (hence the `mydss.dll installation path` error and `0.0.0000` version).
+
+Full root-cause analysis, everything we tried (registry `AppPath`, junction, ASLR
+disable, byte-patching — all dead ends), the Go stdin/stdout probe findings, and the
+exact vendor report (affected RVAs) are in
+**`docs/cryptopro-portable-plugin-findings.md`**. We are paused here pending a fixed
+plug-in build from CryptoPro that resolves paths relative to each module.
+
 ## Future goals
 
 - **Return to a fresh stack once CryptoPro ships a fixed MV3-compatible plug-in
