@@ -225,8 +225,9 @@ Runtime flow:
    - if missing/stale/broken, extract embedded `cryptopro-plugin.zip` into a staging dir;
    - validate required files;
    - rename staging into:
-     - `<appDir>/native-host/cryptopro/`
-     - and/or `<appDir>/cryptopro/plugin/`, depending on the official package layout.
+     - `<appDir>/Crypto Pro/`, keeping the vendor-visible
+       `Crypto Pro/CAdES Browser Plug-in` subtree but dropping the archive's
+       extra top-level and `Program Files` wrappers.
 3. Generate native messaging manifest using paths inside `appDir`.
 4. Register HKCU native messaging key.
 5. Start Chromium.
@@ -383,7 +384,10 @@ Objective: deploy CryptoPro plugin files into `appDir` beside Chromium.
 
 Current implementation:
 
-- `CryptoProPluginManager` extracts the embedded `cryptopro-plugin.zip` into `<appDir>/cryptopro/plugin`;
+- `CryptoProPluginManager` extracts the embedded `cryptopro-plugin.zip` into `<appDir>/Crypto Pro`;
+- runtime layout version 3 maps the archive's
+  `Program Files/Crypto Pro/CAdES Browser Plug-in/...` files to
+  `<appDir>/Crypto Pro/CAdES Browser Plug-in/...`;
 - extraction uses staging + rename and the same bootstrap lock pattern as payload preparation;
 - state is stored in `<appDir>/.cryptopro-plugin-state.json`;
 - readiness is marked by `<appDir>/.cryptopro-plugin-ready`;

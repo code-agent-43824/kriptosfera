@@ -27,8 +27,11 @@ the vendor conversation.
 
 - Launcher run (remote or embedded) on a clean Windows 11 box, no CryptoPro
   installed. Start URL = the internal-csp demo page (sets `EnableInternalCSP`).
-- Bundle `2.0.15000` extracted to
+- At the time of the reproduction, bundle `2.0.15000` was extracted to the
+  pre-layout-v3 path:
   `%LOCALAPPDATA%\Kriptosfera\apps\demo\0.5.0\cryptopro\plugin\cryptopro-cades-plugin-2.0.15000\Program Files\Crypto Pro\CAdES Browser Plug-in\`.
+- Current layout v3 shortens the AppData path to:
+  `%LOCALAPPDATA%\Kriptosfera\apps\demo\0.5.0\Crypto Pro\CAdES Browser Plug-in\`.
 - Native messaging host `ru.cryptopro.nmcades` registered in HKCU pointing at our
   extracted `nmcades.exe`. Extension `iifchhfnnmpdbibifmljnfjhpififfog` loads.
 - Symptom on the page: "Расширение загружено" ✓, but the plug-in never reports

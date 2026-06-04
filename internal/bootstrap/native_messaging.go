@@ -60,7 +60,7 @@ func PrepareCryptoProNativeMessaging(appDir, pluginDir string, extensions []Exte
 	if !preferred {
 		logger.Info("native messaging warning: cryptopro-cades extension not found, using fallback extension id=%s", extensionID)
 	}
-	hostPath, err := findFileBySlashSuffix(pluginDir, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe")
+	hostPath, err := findFileBySlashSuffix(pluginDir, "CAdES Browser Plug-in/nmcades.exe")
 	if err != nil {
 		return NativeMessagingResult{}, err
 	}

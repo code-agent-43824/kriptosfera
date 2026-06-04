@@ -6,6 +6,43 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-04 — Shorten CryptoPro AppData layout while keeping vendor path
+
+**Context:** owner asked to reduce the deep AppData nesting, but keep the visible
+CryptoPro-style folder names because the MSI install path on Windows is normally
+`C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\`.
+
+**Planned:**
+- keep the per-app root unchanged: `%LOCALAPPDATA%\Kriptosfera\apps\demo\0.5.0`;
+- extract the plug-in archive's `Program Files\Crypto Pro\...` subtree directly
+  into `<appDir>\Crypto Pro\...`;
+- make the resulting Mini CSP path:
+  `%LOCALAPPDATA%\Kriptosfera\apps\demo\0.5.0\Crypto Pro\CAdES Browser Plug-in\Mini CSP`;
+- bump the CryptoPro plugin layout version so old deep extractions are not
+  reused;
+- update native messaging lookup, diagnostics expected files, tests, and docs.
+
+**Done:**
+- added zip-entry mapping for the CryptoPro bundle so only the archive's
+  `Program Files\Crypto Pro\...` subtree is extracted;
+- changed the plugin root from `<appDir>\cryptopro\plugin` to
+  `<appDir>\Crypto Pro`;
+- bumped the CryptoPro plugin layout version from `2` to `3`;
+- updated native messaging lookup and required-file validation to the shorter
+  `CAdES Browser Plug-in\...` suffixes;
+- added cleanup for the legacy `<appDir>\cryptopro` extraction after a successful
+  layout-v3 extraction;
+- updated tests and docs for the new path.
+
+**Verification:**
+- `git diff --check` passed locally;
+- local `go test ./internal/bootstrap` and `gofmt` could not run because this
+  Linux host does not have `go`/`gofmt` installed.
+
+**Next:** push and verify with GitHub Actions `build-windows`.
+
+---
+
 ## 2026-06-04 — Static bundle recovery and payload slimming plan
 
 **Context:** owner approved a repo cleanup pass while waiting for the CryptoPro
@@ -335,7 +372,7 @@ before, so verify on the known-good machine first.
 - Candidate fix (no admin): after extracting the plug-in, write
   `HKCU\Software\Crypto Pro\Cryptography\CurrentVersion\AppPath` (and any sibling
   key the plug-in needs) pointing at our extracted
-  `…/cryptopro/plugin/.../Program Files/Crypto Pro/CAdES Browser Plug-in`, gated by
+  `…/Crypto Pro/CAdES Browser Plug-in`, gated by
   a state file like the other registrations. Implement only after the reg-query
   check (or after confirming the exact value via ProcMon on the local Windows box).
 

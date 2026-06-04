@@ -76,6 +76,8 @@ On Windows the app root is `%LOCALAPPDATA%\Kriptosfera`; on other platforms it i
         chromium/                managed Chromium runtime (Windows builds)
         config/app-config.json   product-facing config
         extensions/              unpacked CryptoPro CAdES extension
+        Crypto Pro/
+          CAdES Browser Plug-in/  bundled native host, plug-in DLLs, Mini CSP
         diagnostics/             diagnostics.html + cryptopro-runtime.json
         manifest.json            payload file checksums
         .payload-state.json      version / mode / sha256 of prepared payload

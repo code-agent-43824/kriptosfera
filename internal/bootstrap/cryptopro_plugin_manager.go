@@ -17,23 +17,23 @@ import (
 const (
 	cryptoProPluginComponent = "cryptopro-browser-plugin"
 	cryptoProPluginVersion   = "2.0.15000"
-	cryptoProPluginLayout    = 2
+	cryptoProPluginLayout    = 3
 	cryptoProPluginStateFile = ".cryptopro-plugin-state.json"
 	cryptoProPluginReadyFile = ".cryptopro-plugin-ready"
 )
 
 var requiredCryptoProPluginFiles = []string{
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/cades.dll",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/xades.dll",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/cplib.dll",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi10.dll",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpcspi.dll",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpsuprt.dll",
-	"Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll",
+	"CAdES Browser Plug-in/nmcades.exe",
+	"CAdES Browser Plug-in/nmcades.json",
+	"CAdES Browser Plug-in/npcades.dll",
+	"CAdES Browser Plug-in/cades.dll",
+	"CAdES Browser Plug-in/xades.dll",
+	"CAdES Browser Plug-in/cplib.dll",
+	"CAdES Browser Plug-in/Mini CSP/capi10.dll",
+	"CAdES Browser Plug-in/Mini CSP/capi20.dll",
+	"CAdES Browser Plug-in/Mini CSP/cpcspi.dll",
+	"CAdES Browser Plug-in/Mini CSP/cpsuprt.dll",
+	"CAdES Browser Plug-in/Mini CSP/cpui.dll",
 }
 
 type CryptoProPluginState struct {
@@ -67,7 +67,7 @@ func NewEmbeddedCryptoProPluginManager() CryptoProPluginManager {
 }
 
 func (m CryptoProPluginManager) Prepare(appDir string, logger *logging.Logger, progress ProgressReporter) (ComponentPrepareResult, error) {
-	targetDir := filepath.Join(appDir, "cryptopro", "plugin")
+	targetDir := filepath.Join(appDir, "Crypto Pro")
 	if len(m.Bundle) == 0 {
 		if runtime.GOOS == "windows" {
 			return ComponentPrepareResult{}, errors.New("embedded CryptoPro plugin bundle is empty")
@@ -134,6 +134,7 @@ func (m CryptoProPluginManager) Prepare(appDir string, logger *logging.Logger, p
 	if err := os.Rename(tempDir, targetDir); err != nil {
 		return ComponentPrepareResult{}, err
 	}
+	cleanupLegacyCryptoProPluginLayout(appDir, logger)
 	if err := writeCryptoProPluginState(appDir, CryptoProPluginState{
 		Component:     cryptoProPluginComponent,
 		Version:       m.Version,
@@ -147,6 +148,15 @@ func (m CryptoProPluginManager) Prepare(appDir string, logger *logging.Logger, p
 	}
 
 	return ComponentPrepareResult{Path: targetDir}, nil
+}
+
+func cleanupLegacyCryptoProPluginLayout(appDir string, logger *logging.Logger) {
+	legacyDir := filepath.Join(appDir, "cryptopro")
+	if err := os.RemoveAll(legacyDir); err != nil {
+		if logger != nil {
+			logger.Info("cryptopro legacy layout cleanup warning path=%s error=%v", legacyDir, err)
+		}
+	}
 }
 
 func (m CryptoProPluginManager) isPrepared(appDir, targetDir string) (bool, error) {

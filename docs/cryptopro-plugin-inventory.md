@@ -127,20 +127,35 @@ The main runtime uncertainty remains whether the extracted AppData-only layout i
 
 Runtime extraction note: the MSI extraction output contains pseudo-path entries such as `.:Common`. These names are valid as MSI table abstractions but invalid as Windows filesystem path components. The launcher skips archive entries with `:` in any path component.
 
+The source archive keeps CryptoPro's normal 32-bit install subtree:
+`Program Files/Crypto Pro/CAdES Browser Plug-in/`. Runtime layout version 3
+strips the archive's top-level extraction folder and `Program Files` wrapper,
+then places that subtree under the versioned AppData application directory as:
+
+```text
+<appDir>/Crypto Pro/CAdES Browser Plug-in/
+```
+
+The resulting Mini CSP path is:
+
+```text
+<appDir>/Crypto Pro/CAdES Browser Plug-in/Mini CSP/
+```
+
 The AppData layout is now validated for the native host, CAdES runtime, and core Mini CSP files:
 
 ```text
-Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe
-Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.json
-Program Files/Crypto Pro/CAdES Browser Plug-in/npcades.dll
-Program Files/Crypto Pro/CAdES Browser Plug-in/cades.dll
-Program Files/Crypto Pro/CAdES Browser Plug-in/xades.dll
-Program Files/Crypto Pro/CAdES Browser Plug-in/cplib.dll
-Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi10.dll
-Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll
-Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpcspi.dll
-Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpsuprt.dll
-Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll
+Crypto Pro/CAdES Browser Plug-in/nmcades.exe
+Crypto Pro/CAdES Browser Plug-in/nmcades.json
+Crypto Pro/CAdES Browser Plug-in/npcades.dll
+Crypto Pro/CAdES Browser Plug-in/cades.dll
+Crypto Pro/CAdES Browser Plug-in/xades.dll
+Crypto Pro/CAdES Browser Plug-in/cplib.dll
+Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi10.dll
+Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll
+Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpcspi.dll
+Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpsuprt.dll
+Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll
 ```
 
 Token-specific DLLs such as `rutoken.dll`, `jacarta.dll`, `pcsc.dll`, and `safenet.dll` are present in the bundle and should be reported by runtime diagnostics, but they are not hard blockers yet because the first Mini CSP prototype must prove provider activation before token-specific behavior.
@@ -173,10 +188,10 @@ The restored `2.0.15000` archive has 112 files, `61,991,999` bytes raw and
 ```
 
 Current launcher integration uses the 32-bit native messaging host and browser
-plug-in path under:
+plug-in path under AppData:
 
 ```text
-Program Files/Crypto Pro/CAdES Browser Plug-in/
+Crypto Pro/CAdES Browser Plug-in/
 ```
 
 Important files in that path:

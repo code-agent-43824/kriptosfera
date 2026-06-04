@@ -301,11 +301,18 @@ func TestCryptoProPluginManagerExtractsAndReusesCurrentState(t *testing.T) {
 	appDir := t.TempDir()
 	logger := testLogger(t)
 	bundle := testCryptoProPluginZip(t)
+	legacyDir := filepath.Join(appDir, "cryptopro", "plugin")
+	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, "old.txt"), []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	manager := CryptoProPluginManager{
 		Bundle:        bundle,
 		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 2,
+		LayoutVersion: 3,
 	}
 
 	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
@@ -315,7 +322,22 @@ func TestCryptoProPluginManagerExtractsAndReusesCurrentState(t *testing.T) {
 	if result.Reused {
 		t.Fatal("first CryptoPro plugin extraction must not be reused")
 	}
-	if _, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); err != nil {
+	if result.Path != filepath.Join(appDir, "Crypto Pro") {
+		t.Fatalf("unexpected CryptoPro plugin root: %s", result.Path)
+	}
+	if _, err := os.Stat(filepath.Join(appDir, "Crypto Pro", "CAdES Browser Plug-in", "Mini CSP")); err != nil {
+		t.Fatalf("expected shortened Mini CSP path: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(result.Path, "cryptopro-cades-plugin-2.0.15000")); err == nil {
+		t.Fatal("archive top-level directory should not be extracted into AppData")
+	}
+	if _, err := os.Stat(filepath.Join(result.Path, "Program Files")); err == nil {
+		t.Fatal("Program Files wrapper should not be extracted into AppData")
+	}
+	if _, err := os.Stat(filepath.Join(appDir, "cryptopro")); err == nil {
+		t.Fatal("legacy cryptopro/plugin layout should be removed after layout v3 extraction")
+	}
+	if _, err := findFileBySlashSuffix(result.Path, "CAdES Browser Plug-in/nmcades.exe"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -347,14 +369,14 @@ func TestCryptoProPluginManagerRecoversMissingFile(t *testing.T) {
 		Bundle:        bundle,
 		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 2,
+		LayoutVersion: 3,
 	}
 
 	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	hostPath, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe")
+	hostPath, err := findFileBySlashSuffix(result.Path, "CAdES Browser Plug-in/nmcades.exe")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,7 +391,7 @@ func TestCryptoProPluginManagerRecoversMissingFile(t *testing.T) {
 	if result.Reused {
 		t.Fatal("broken CryptoPro plugin extraction must be recovered")
 	}
-	if _, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); err != nil {
+	if _, err := findFileBySlashSuffix(result.Path, "CAdES Browser Plug-in/nmcades.exe"); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -386,7 +408,7 @@ func TestCryptoProPluginManagerRequiresCadesAndMiniCSPFiles(t *testing.T) {
 		Bundle:        bundle,
 		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 2,
+		LayoutVersion: 3,
 	}
 
 	_, err := manager.Prepare(appDir, logger, noopProgressReporter{})
@@ -407,6 +429,19 @@ func TestCryptoProPluginZipSkipsMSIPseudoPaths(t *testing.T) {
 	}
 }
 
+func TestCryptoProPluginZipMapsVendorSubtree(t *testing.T) {
+	target, skip := mapCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/capi20.dll")
+	if skip {
+		t.Fatal("required Mini CSP file must not be skipped")
+	}
+	if target != "CAdES Browser Plug-in/Mini CSP/capi20.dll" {
+		t.Fatalf("unexpected mapped path: %s", target)
+	}
+	if target, skip := mapCryptoProPluginZipEntry("cryptopro-cades-plugin-2.0.15000/Program Files 64/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); !skip || target != "" {
+		t.Fatalf("64-bit Program Files subtree should be skipped, got target=%q skip=%v", target, skip)
+	}
+}
+
 func TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths(t *testing.T) {
 	appDir := t.TempDir()
 	logger := testLogger(t)
@@ -415,14 +450,14 @@ func TestCryptoProPluginManagerSkipsInvalidMSIPseudoPaths(t *testing.T) {
 		Bundle:        bundle,
 		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 2,
+		LayoutVersion: 3,
 	}
 
 	result, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := findFileBySlashSuffix(result.Path, "Program Files/Crypto Pro/CAdES Browser Plug-in/nmcades.exe"); err != nil {
+	if _, err := findFileBySlashSuffix(result.Path, "CAdES Browser Plug-in/nmcades.exe"); err != nil {
 		t.Fatal(err)
 	}
 	// The MSI pseudo-path entry (name contains ':') must be skipped, so the file
@@ -471,7 +506,7 @@ func TestPrepareCryptoProNativeMessagingReusesRegistration(t *testing.T) {
 	t.Cleanup(func() { registerNativeMessagingHost = original })
 
 	bundle := testCryptoProPluginZip(t)
-	manager := CryptoProPluginManager{Bundle: bundle, Version: "2.0.15000", SHA256: checksumBytes(bundle), LayoutVersion: 2}
+	manager := CryptoProPluginManager{Bundle: bundle, Version: "2.0.15000", SHA256: checksumBytes(bundle), LayoutVersion: 3}
 	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
 		t.Fatal(err)
@@ -533,7 +568,7 @@ func TestPrepareCryptoProNativeMessagingWritesManifest(t *testing.T) {
 		Bundle:        bundle,
 		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 2,
+		LayoutVersion: 3,
 	}
 	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
@@ -577,7 +612,7 @@ func TestWriteCryptoProRuntimeDiagnostics(t *testing.T) {
 		Bundle:        bundle,
 		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 2,
+		LayoutVersion: 3,
 	}
 	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {
@@ -638,7 +673,7 @@ func TestPrepareCryptoProNativeMessagingRequiresExtensionID(t *testing.T) {
 		Bundle:        bundle,
 		Version:       "2.0.15000",
 		SHA256:        checksumBytes(bundle),
-		LayoutVersion: 2,
+		LayoutVersion: 3,
 	}
 	pluginResult, err := manager.Prepare(appDir, logger, noopProgressReporter{})
 	if err != nil {

@@ -492,16 +492,35 @@ func unzipReaderAt(readerAt io.ReaderAt, size int64, dest string) error {
 }
 
 func unzipReaderAtFiltered(readerAt io.ReaderAt, size int64, dest string, skip func(string) bool) error {
+	var mapName func(string) (string, bool)
+	if skip != nil {
+		mapName = func(name string) (string, bool) {
+			return name, skip(name)
+		}
+	}
+	return unzipReaderAtMapped(readerAt, size, dest, mapName)
+}
+
+func unzipReaderAtMapped(readerAt io.ReaderAt, size int64, dest string, mapName func(string) (targetName string, skip bool)) error {
 	r, err := zip.NewReader(readerAt, size)
 	if err != nil {
 		return err
 	}
 	cleanDest := filepath.Clean(dest)
 	for _, f := range r.File {
-		if skip != nil && skip(f.Name) {
+		name := f.Name
+		if mapName != nil {
+			var skip bool
+			name, skip = mapName(f.Name)
+			if skip {
+				continue
+			}
+		}
+		name = filepath.Clean(name)
+		if name == "." {
 			continue
 		}
-		target := filepath.Join(cleanDest, filepath.Clean(f.Name))
+		target := filepath.Join(cleanDest, name)
 		if !strings.HasPrefix(target, cleanDest+string(os.PathSeparator)) && filepath.Clean(target) != cleanDest {
 			return errors.New("zip path traversal detected")
 		}

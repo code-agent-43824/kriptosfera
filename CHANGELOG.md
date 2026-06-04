@@ -40,6 +40,10 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 - Added `docs/payload-slimming-plan.md` and updated the CryptoPro bundle
   inventory with `2.0.15000` size/pruning notes. Payload rebuild, lock update,
   and CI verification are intentionally deferred to a later chunk.
+- Shortened the embedded CryptoPro plug-in AppData layout while keeping the
+  recognizable vendor subtree: runtime layout v3 now extracts Mini CSP to
+  `%LOCALAPPDATA%\Kriptosfera\apps\demo\<version>\Crypto Pro\CAdES Browser Plug-in\Mini CSP`
+  and removes the old deep `cryptopro\plugin\...\Program Files` wrapper layout.
 
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing

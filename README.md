@@ -57,7 +57,7 @@
 - cache-friendly подготовка Chromium runtime в CI;
 - CryptoPro extension layer: unpacked extension доставляется в payload, launcher добавляет Chromium extension flags, extension id стабилен через `manifest.key`;
 - CryptoPro Browser Plugin bundle закреплён отдельным lock-файлом, скачивается с project static storage, проверяется по SHA-256/size и встраивается в оба launcher variants;
-- launcher разворачивает встроенный CryptoPro Browser Plugin bundle в AppData рядом с Chromium, пропускает MSI pseudo-path entries с Windows-недопустимыми именами и проверяет наличие `nmcades.exe`, `nmcades.json`, `npcades.dll`;
+- launcher разворачивает встроенный CryptoPro Browser Plugin bundle в AppData рядом с Chromium под vendor-style путём `Crypto Pro\CAdES Browser Plug-in`, пропускает MSI pseudo-path entries с Windows-недопустимыми именами и проверяет наличие `nmcades.exe`, `nmcades.json`, `npcades.dll`;
 - launcher генерирует native messaging manifest `ru.cryptopro.nmcades.json` и регистрирует его в HKCU для текущего пользователя;
 - ручная проверка показала, что на машине с установленным обычным CryptoPro CSP приложение ведёт себя как настроенный Chrome: видит extension, Browser Plugin, plugin version, системный CSP, стандартное окно подтверждения доступа и сертификаты;
 - минимальная app-config validation: `startUrl` должен быть валидным URL и соответствовать `allowedOrigins` (если список задан), `diagnosticsUrl` обязан быть HTTPS, а `profileName` проверяется как безопасный одиночный сегмент пути (без `..`, разделителей путей и `:`), чтобы каталог профиля не мог выйти за пределы app-root;
