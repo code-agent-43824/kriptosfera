@@ -52,9 +52,29 @@ pseudo-path entries.
 - `git diff --check` passed locally;
 - local `go test`, `gofmt`, and PowerShell script execution are unavailable on
   Watson's Linux host.
+- GitHub Actions `build-windows` run `26942148017` passed on commit `e049f52`,
+  confirming the PowerShell normalizer, Windows build, and `internal/bootstrap`
+  tests against a real embedded bundle;
+- follow-up commit `ec3458e` preserves source zip entry timestamps so the slim
+  archive is deterministic across embedded and remote builds;
+- GitHub Actions `build-windows` run `26942298368` passed on commit `ec3458e`.
+  CI logs show both launcher variants verified the full static source archive
+  (`24,052,329` bytes, SHA-256
+  `4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a`) and then
+  embedded the slim archive (`11,245,901` bytes, 61 entries, SHA-256
+  `cb4f8b5cfcecb65311b59e53d03bed8a067b85c427d31bcd639c21d21291917a`);
+- CI `go test` passed for `github.com/code-agent-43824/kriptosfera/internal/bootstrap`
+  (`0.555s`), including the guard that rejects `Program Files`, `Program Files 64`,
+  `Common`, `Common64`, MSI pseudo-path entries, and `.msi` packages in the
+  embedded bundle;
+- downloaded artifacts contain `KriptosferaDemo.exe` (`190,750,720` bytes) and
+  `KriptosferaDemo-remote.exe` (`17,713,152` bytes). Compared with the previous
+  layout-v3 artifacts (`203,556,352` / `30,519,296` bytes), each launcher is about
+  `12.8 MB` smaller.
 
-**Next:** push and verify with GitHub Actions `build-windows`; confirm CI logs
-print the slim archive size/hash and that embedded/remote artifacts shrink.
+**Next:** validate the resulting launchers on Windows. Do not prune inside
+`CAdES Browser Plug-in` / `Mini CSP` until a fixed vendor build and token smoke
+tests are available.
 
 ---
 
