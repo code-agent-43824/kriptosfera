@@ -38,8 +38,19 @@ CryptoPro-style folder names because the MSI install path on Windows is normally
 - `git diff --check` passed locally;
 - local `go test ./internal/bootstrap` and `gofmt` could not run because this
   Linux host does not have `go`/`gofmt` installed.
+- GitHub Actions `build-windows` run `26940693588` passed on commit `ac36a79`:
+  payload packaging, embedded launcher build, and remote launcher build all
+  completed successfully;
+- CI `go test` passed for `github.com/code-agent-43824/kriptosfera/internal/bootstrap`
+  (`0.692s`);
+- CI logs confirmed both launcher variants fetched the pinned CryptoPro bundle
+  `2.0.15000` with SHA-256
+  `4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a`;
+- downloaded artifacts contain `KriptosferaDemo.exe` (`203556352` bytes) and
+  `KriptosferaDemo-remote.exe` (`30519296` bytes).
 
-**Next:** push and verify with GitHub Actions `build-windows`.
+**Next:** validate the new AppData path on Windows. The expected Mini CSP path is
+`%LOCALAPPDATA%\Kriptosfera\apps\demo\0.5.0\Crypto Pro\CAdES Browser Plug-in\Mini CSP`.
 
 ---
 
