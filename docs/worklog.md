@@ -65,6 +65,16 @@ payload pass should target locales, hyphen-data, `setup.exe`, and helper EXEs
 only after smoke testing; GPU/Vulkan/SwiftShader and core Chrome files stay out
 of the first pass.
 
+**Verification:** `git diff --check` passed. Commit `5ecdd55` was pushed and
+GitHub Actions `build-windows` run `26939377762` passed. The run fetched the
+restored `2.0.15000` CryptoPro bundle twice (embedded and remote launcher builds)
+with SHA-256 `4590391e35c251cd4685d839ab62fad69e08716335931ac1c1b753b0cd346c6a`.
+Artifacts uploaded successfully: embedded artifact `7406303451` (199,552,437
+bytes) and remote artifact `7406303998` (26,666,817 bytes). The workflow also
+rebuilt a same-size payload from the current commit (`173037165` bytes) for the
+embedded launcher, but no new payload was published and `build/payload-lock.json`
+was not changed.
+
 **Next:** implement the actual Chromium slimming build step in a later chunk,
 then rebuild/publish a new immutable payload, update `build/payload-lock.json`,
 and inspect GitHub Actions logs. Do not prune the CryptoPro plug-in bundle until
