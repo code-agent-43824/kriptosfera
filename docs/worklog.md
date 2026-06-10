@@ -746,3 +746,25 @@ immediately; remote needs the republished payload).
 **Next:** still blocked on the vendor path-resolution fix before the provider comes
 up on a clean machine; trusted sites only suppress the confirmation dialog, they do
 not affect provider loading.
+
+---
+
+## 2026-06-03 — Trusted sites confirmed working; re-pin remote payload
+
+Owner verified on the machine WITH the system plug-in installed (not a clean-machine
+proof): `reg query "HKCU\Software\Crypto Pro\CAdESplugin"` showed **no key** (launcher
+reused the old extracted payload without `trustedSites`, so it skipped the write).
+Adding the key manually (`reg add … TrustedSites REG_MULTI_SZ …`) + restart →
+**the confirmation dialog disappeared**. This proves the registry location/format are
+correct and the launcher code is right; it just needs the new app-config to reach it.
+
+Re-pinned `build/payload-lock.json` to the payload built from the trustedSites commit
+(`72a87b3`): sha `b8fca45a…`, size `173037195` (verified live on the server, payload.json
+matches). So the **remote** launcher now ships the trustedSites config and writes the
+key on next run; **embedded** gets it from a fresh build. After the first such run the
+key is set (state-gated), no manual `reg add` needed.
+
+Also ruled out the config-file hypothesis: Mini CSP `config.ini` has nothing about
+web-site trust (only key devices/RNG/cert stores); the dialog is the plug-in's
+(`npcades.dll`: TrustedSites/IsUntrustedSitesDisabled/ShowDocGetConfirm/Silent), driven
+by the registry list — as the dialog text itself states.
