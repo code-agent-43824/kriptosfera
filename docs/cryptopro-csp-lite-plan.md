@@ -98,5 +98,8 @@ plug-in build from CryptoPro that resolves paths relative to each module.
 - Keep all CryptoPro/Chromium binaries out of Git; fetch/generate via build
   scripts, pinned by SHA-256/size lock files.
 - Runtime extraction uses staging + atomic rename + ready/state files.
-- Do not disable or bypass the CryptoPro user confirmation dialog — it is part of
-  the expected security model.
+- Do not disable or bypass the CryptoPro user confirmation dialog through hacks.
+  Suppressing it for **owner-approved origins** via the documented **trusted-sites**
+  mechanism is allowed and is config-scoped: `AppConfig.trustedSites` →
+  `HKCU\Software\Crypto Pro\CAdESplugin\TrustedSites` (REG_MULTI_SZ, per-user, no
+  admin). The demo config trusts `cryptopro.ru` and `mescheryakov.pro` only.

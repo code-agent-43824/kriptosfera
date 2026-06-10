@@ -144,6 +144,13 @@ func Run(cfg config.RuntimeConfig) error {
 		if !nativeResult.Skipped {
 			logger.Info("native messaging ready name=%s registered=%t manifest=%s", nativeResult.HostName, nativeResult.Registered, nativeResult.ManifestPath)
 		}
+		// Trusted sites are a convenience (suppress the plug-in confirmation
+		// dialog for owner-approved origins); a failure must not block launch.
+		if tsResult, err := PrepareCryptoProTrustedSites(appDir, appCfg.TrustedSites, logger); err != nil {
+			logger.Info("cryptopro trusted sites write failed error=%s", err)
+		} else if tsResult.Written {
+			logger.Info("cryptopro trusted sites ready count=%d key=%s", len(tsResult.Sites), tsResult.RegistryKey)
+		}
 		if path, err := WriteCryptoProRuntimeDiagnostics(appDir, cryptoProResult.Path, nativeResult, extensions); err != nil {
 			logger.Info("cryptopro runtime diagnostics write failed error=%s", err)
 		} else {
@@ -267,6 +274,11 @@ func validateAppConfig(appCfg config.AppConfig) error {
 	if !isSafeProfileName(appCfg.ProfileName) {
 		return fmt.Errorf("app config profileName is invalid: %q", appCfg.ProfileName)
 	}
+	for _, site := range appCfg.TrustedSites {
+		if !isValidTrustedSite(site) {
+			return fmt.Errorf("app config trustedSites contains invalid entry: %q", site)
+		}
+	}
 	if len(appCfg.AllowedOrigins) == 0 {
 		return nil
 	}
@@ -286,6 +298,24 @@ func validateAppConfig(appCfg config.AppConfig) error {
 
 func originOf(u *url.URL) string {
 	return strings.ToLower(u.Scheme) + "://" + strings.ToLower(u.Host)
+}
+
+// isValidTrustedSite checks a CryptoPro CAdES plug-in trusted-sites entry. The
+// plug-in expects "scheme://host" strings and allows "*" wildcards in the host
+// (e.g. "https://*.cryptopro.ru"). Validation is intentionally lenient: a
+// non-empty scheme, "://", and a non-empty host are required; wildcards are
+// permitted, so the host is not parsed as a strict URL.
+func isValidTrustedSite(site string) bool {
+	site = strings.TrimSpace(site)
+	scheme, rest, ok := strings.Cut(site, "://")
+	if !ok || scheme == "" {
+		return false
+	}
+	host := rest
+	if i := strings.IndexAny(rest, "/?#"); i >= 0 {
+		host = rest[:i]
+	}
+	return host != ""
 }
 
 // isSafeProfileName guards profileName before it is joined into the per-app

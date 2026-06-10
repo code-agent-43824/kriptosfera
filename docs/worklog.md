@@ -705,3 +705,44 @@ Go probes lived on the owner's box / in `/tmp` only — no CryptoPro binaries in
 **Next (when vendor build lands):** re-pin plug-in in `build/cryptopro-plugin-lock.json`,
 re-run launcher on a clean machine, expect provider load + cert enumeration +
 `SignCades` with a Rutoken; then track the MV3 / latest-Chromium migration.
+
+---
+
+## 2026-06-03 — Trusted sites: launcher writes the CryptoPro CAdES trusted-sites list
+
+**Owner request:** add `cryptopro.ru` and `mescheryakov.pro` to the plug-in's
+trusted-sites list so the per-operation confirmation dialog is not shown on the
+test pages, using the documented plug-in mechanism.
+
+**Documented mechanism (verified in binaries + docs + the extension's own
+`trusted_sites.js`):** per-user key `HKCU\Software\Crypto Pro\CAdESplugin`, value
+**`TrustedSites`** of type **REG_MULTI_SZ**, entries are `scheme://host` with `*`
+wildcards allowed (the extension's own example lists `https://*.cryptopro.ru`,
+`https://*.ru`, etc.). Group policy alternative is
+`HKLM\SOFTWARE\Policies\Crypto-Pro\CadesPlugin\TrustedSites` (admin); we use the
+per-user HKCU path (no admin), consistent with our other registrations.
+
+**Done (config-driven, in the launcher):**
+- `AppConfig.trustedSites []string` (validated: each entry needs `scheme://host`,
+  wildcards allowed) — `internal/config/config.go`, `validateAppConfig`.
+- `internal/bootstrap/trusted_sites.go` (+ `_windows.go` reg.exe REG_MULTI_SZ via
+  `\0` separators, `_other.go` no-op): `PrepareCryptoProTrustedSites` writes the
+  list, gated by a state file (reuse when unchanged), non-fatal on failure. Wired
+  into `bootstrap.Run` right after native-messaging registration.
+- `payload-template/config/app-config.json` ships
+  `https://cryptopro.ru`, `https://*.cryptopro.ru`, `https://mescheryakov.pro`,
+  `https://*.mescheryakov.pro`.
+- Tests in `trusted_sites_test.go` (write/reuse/skip/normalize + validation).
+  gofmt/vet/`go test ./...`/windows+remote builds all green.
+- Updated the plan's safety constraint (trusted sites for owner origins via the
+  documented mechanism is allowed, config-scoped) and CHANGELOG.
+
+**Apply now without a rebuild (owner machine):** the value is per-user REG_MULTI_SZ;
+a one-off (cmd):
+`reg add "HKCU\Software\Crypto Pro\CAdESplugin" /v TrustedSites /t REG_MULTI_SZ /d "https://cryptopro.ru\0https://*.cryptopro.ru\0https://mescheryakov.pro\0https://*.mescheryakov.pro" /f`
+Otherwise the launcher writes it on next run (embedded build picks up the config
+immediately; remote needs the republished payload).
+
+**Next:** still blocked on the vendor path-resolution fix before the provider comes
+up on a clean machine; trusted sites only suppress the confirmation dialog, they do
+not affect provider loading.

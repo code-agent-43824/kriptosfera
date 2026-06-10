@@ -59,6 +59,17 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
 - Native messaging skips re-writing the manifest and re-registering the HKCU
   host when nothing changed since the last run (gated by a state file).
 
+### Added
+- `AppConfig.trustedSites`: the launcher writes the configured origins to the
+  CryptoPro CAdES plug-in trusted-sites list
+  (`HKCU\Software\Crypto Pro\CAdESplugin\TrustedSites`, REG_MULTI_SZ, per-user, no
+  admin) so the plug-in does not show its per-operation confirmation dialog on
+  those sites. Entries are `scheme://host` with optional `*` wildcards; the demo
+  config ships `cryptopro.ru` and `mescheryakov.pro` (bare + `*.` subdomain). The
+  write is gated by a state file and is non-fatal on failure. This uses the
+  documented CryptoPro mechanism (see `docs/cades/plugin` plugin-safety) for the
+  owner's own test domains.
+
 ### Changed
 - The demo `startUrl` now points at the internal-csp test page
   (`mescheryakov.pro/.../internal-csp/...`), which sets `EnableInternalCSP`, so a

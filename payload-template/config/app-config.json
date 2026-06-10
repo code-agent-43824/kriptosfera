@@ -10,6 +10,12 @@
   "profileName": "demo",
   "windowMode": "app",
   "diagnosticsEnabled": false,
+  "trustedSites": [
+    "https://cryptopro.ru",
+    "https://*.cryptopro.ru",
+    "https://mescheryakov.pro",
+    "https://*.mescheryakov.pro"
+  ],
   "chromiumArgs": [
     "--no-first-run",
     "--no-default-browser-check",

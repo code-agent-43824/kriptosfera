@@ -19,6 +19,12 @@ type AppConfig struct {
 	DiagnosticsEnabled bool     `json:"diagnosticsEnabled"`
 	DiagnosticsURL     string   `json:"diagnosticsUrl,omitempty"`
 	ChromiumArgs       []string `json:"chromiumArgs"`
+	// TrustedSites are added to the CryptoPro CAdES plug-in trusted-sites list
+	// (HKCU\Software\Crypto Pro\CAdESplugin\TrustedSites, REG_MULTI_SZ) so the
+	// plug-in does not show its per-operation confirmation dialog for these
+	// origins. Each entry is a "scheme://host" string; "*" wildcards are allowed
+	// in the host (e.g. "https://*.cryptopro.ru"). Empty disables the feature.
+	TrustedSites []string `json:"trustedSites,omitempty"`
 }
 
 // Load reads and decodes an AppConfig from the JSON file at path.
