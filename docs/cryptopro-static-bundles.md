@@ -52,6 +52,13 @@ sources/
     <csp-version>-<cades-version>/
       <source-sha256>/
         <source-archive>
+
+rutoken-fkc/
+  windows-x86/
+    <component>/
+      <version>/
+        <sha256>/
+          <dll>
 ```
 
 Current scaffold URLs:
@@ -101,6 +108,25 @@ https://mescheryakov.pro/kriptosfera/cryptopro/csp/linux/5.0.13800/6928220796ea0
 https://mescheryakov.pro/kriptosfera/cryptopro/csp/linux/5.0.13800/6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5/SHA256SUMS
 ```
 
+Current Rutoken FKC / PKCS#11 Mini CSP overlay DLLs:
+
+```text
+https://mescheryakov.pro/kriptosfera/cryptopro/rutoken-fkc/windows-x86/cpfkc/5.0.13000/59e3609f1b2fcafe86d33d8387f6e2bedc861faa45c1dbbd5e4ca89be5ee05d8/cpfkc.dll
+https://mescheryakov.pro/kriptosfera/cryptopro/rutoken-fkc/windows-x86/cryptoki/5.0.13000/5f2c3742fa00cf0ec4c4fca0dcf81ffc39e798d86880bb977e5af9436d94fa6a/cryptoki.dll
+https://mescheryakov.pro/kriptosfera/cryptopro/rutoken-fkc/windows-x86/rtpkcs11ecp/1.4.02.0/6d61fbac6ebf4e7e71b4b2b968334dbc29b45183fe48c103ce1d9ebb07f089a0/rtPKCS11ECP.dll
+```
+
+2026-06-13 overlay note: these DLLs are pinned by
+`build/rutoken-fkc-lock.json` and are injected into the slim embedded
+`CAdES Browser Plug-in\Mini CSP` archive during `build/fetch-cryptopro-plugin.ps1`.
+Public re-download verification:
+
+```text
+cpfkc.dll size 262448 sha256 59e3609f1b2fcafe86d33d8387f6e2bedc861faa45c1dbbd5e4ca89be5ee05d8
+cryptoki.dll size 210304 sha256 5f2c3742fa00cf0ec4c4fca0dcf81ffc39e798d86880bb977e5af9436d94fa6a
+rtPKCS11ECP.dll size 1593344 sha256 6d61fbac6ebf4e7e71b4b2b968334dbc29b45183fe48c103ce1d9ebb07f089a0
+```
+
 Expanded Linux layout:
 
 ```text
@@ -126,6 +152,8 @@ cryptopro/csp/linux/5.0.13800/6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab
 - The build must verify the archive checksum and size from a pinned lock file.
 - The build must fail closed if the static archive is missing or checksum/size differs.
 - Both thick and thin launcher variants must embed the same verified CryptoPro plugin bundle.
+- Rutoken FKC / PKCS#11 overlay DLLs follow the same immutable URL + lock-file
+  rule and are verified before being overlaid into the embedded plug-in bundle.
 
 ## Metadata shape
 
@@ -161,5 +189,6 @@ Known bundle values:
 - Linux source archive SHA-256: `6928220796ea0bbf36985b15bbf4f1d673c971c337833220ab6511fb6b481bc5`
 - Linux CSP version: `5.0.13800`
 - Linux CAdES/package source version marker: `2.0.15700`
+- Rutoken FKC overlay lock: `build/rutoken-fkc-lock.json`
 
 The binary archives stay on the static server only. GitHub stores this documentation and the pinned lock file, not the CryptoPro binaries.

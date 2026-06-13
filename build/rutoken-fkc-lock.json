@@ -1,0 +1,47 @@
+{
+  "component": "rutoken-fkc-pkcs11-mini-csp-overlay",
+  "platform": "windows-x86",
+  "files": [
+    {
+      "name": "cpfkc.dll",
+      "targetName": "cpfkc.dll",
+      "version": "5.0.13000",
+      "sha256": "59e3609f1b2fcafe86d33d8387f6e2bedc861faa45c1dbbd5e4ca89be5ee05d8",
+      "size": 262448,
+      "url": "https://mescheryakov.pro/kriptosfera/cryptopro/rutoken-fkc/windows-x86/cpfkc/5.0.13000/59e3609f1b2fcafe86d33d8387f6e2bedc861faa45c1dbbd5e4ca89be5ee05d8/cpfkc.dll",
+      "lastWriteTimeUtc": "2024-04-18T00:00:00Z",
+      "source": {
+        "name": "CryptoPro CSP 5.0 R3 for Windows with CAdES/plugin and partner PKCS#11 modules",
+        "mirrorUrl": "https://belinfonalog.ru/csp/CryptoPro-5.0.13000.exe",
+        "mirrorMd5": "cce2be5fac6161f4fd53e46bea1af0b9"
+      }
+    },
+    {
+      "name": "cryptoki.dll",
+      "targetName": "cryptoki.dll",
+      "version": "5.0.13000",
+      "sha256": "5f2c3742fa00cf0ec4c4fca0dcf81ffc39e798d86880bb977e5af9436d94fa6a",
+      "size": 210304,
+      "url": "https://mescheryakov.pro/kriptosfera/cryptopro/rutoken-fkc/windows-x86/cryptoki/5.0.13000/5f2c3742fa00cf0ec4c4fca0dcf81ffc39e798d86880bb977e5af9436d94fa6a/cryptoki.dll",
+      "lastWriteTimeUtc": "2024-04-18T00:00:00Z",
+      "source": {
+        "name": "CryptoPro CSP 5.0 R3 for Windows with CAdES/plugin and partner PKCS#11 modules",
+        "mirrorUrl": "https://belinfonalog.ru/csp/CryptoPro-5.0.13000.exe",
+        "mirrorMd5": "cce2be5fac6161f4fd53e46bea1af0b9"
+      }
+    },
+    {
+      "name": "rtPKCS11ECP.dll",
+      "targetName": "rtPKCS11ECP.dll",
+      "version": "1.4.02.0",
+      "sha256": "6d61fbac6ebf4e7e71b4b2b968334dbc29b45183fe48c103ce1d9ebb07f089a0",
+      "size": 1593344,
+      "url": "https://mescheryakov.pro/kriptosfera/cryptopro/rutoken-fkc/windows-x86/rtpkcs11ecp/1.4.02.0/6d61fbac6ebf4e7e71b4b2b968334dbc29b45183fe48c103ce1d9ebb07f089a0/rtPKCS11ECP.dll",
+      "lastWriteTimeUtc": "2025-10-16T14:37:00Z",
+      "source": {
+        "name": "Rutoken PKCS#11Lib 1.4.02.0 Windows x32 rtpkcs11ecp",
+        "officialUrl": "https://download.rutoken.ru/Rutoken/PKCS11Lib/1.4.02.0/Windows/x32/rtpkcs11ecp/rtpkcs11ecp.dll"
+      }
+    }
+  ]
+}

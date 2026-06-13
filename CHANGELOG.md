@@ -48,6 +48,11 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   verifies the full immutable static archive, then embeds only the runtime
   `CAdES Browser Plug-in` subtree, dropping `Common`, `Common64`,
   `Program Files 64`, MSI packages, policy/system folders, and MSI pseudo-paths.
+- Added a pinned Rutoken FKC / PKCS#11 Mini CSP overlay: the launcher build now
+  fetches and SHA-256 verifies `cpfkc.dll`, `cryptoki.dll`, and
+  `rtPKCS11ECP.dll`, injects them into `Mini CSP`, appends missing active
+  Rutoken carrier config to `config.ini` as CP1251, and bumps the plug-in layout
+  to v4 so older AppData extractions are refreshed.
 
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing

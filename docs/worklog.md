@@ -6,6 +6,72 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-13 — Add Rutoken FKC / PKCS#11 Mini CSP overlay
+
+**Context:** previous handoff `docs/handoff-rutoken-fkc-pkcs11-payload.md`
+requested enabling active Rutoken ЭЦП modes in the embedded Mini CSP bundle:
+FKC via CryptoPro `cpfkc.dll`, and PKCS#11-active via CryptoPro
+`cryptoki.dll` plus Rutoken `rtPKCS11ECP.dll`. The overlay belongs in the
+embedded CryptoPro Browser Plug-in archive, not in `payload.zip`, so
+`build/payload-lock.json` does not change.
+
+**Planned:**
+- source the three 32-bit DLLs without committing binaries to Git;
+- publish them under immutable project static URLs and pin SHA-256/size in a new
+  lock file;
+- extend `build/fetch-cryptopro-plugin.ps1` so it still verifies the full
+  CryptoPro plug-in archive, then writes the slim archive with the three DLLs
+  overlaid into `CAdES Browser Plug-in\Mini CSP\`;
+- append any missing Rutoken FKC / PKCS#11 config fragment to Mini CSP
+  `config.ini` as Windows-1251, preserving the existing config encoding;
+- bump the CryptoPro plug-in layout version so old AppData extractions are not
+  reused, and guard the three new DLLs as required runtime files.
+
+**Done:**
+- extracted `cpfkc.dll` and `cryptoki.dll` from the x86 tree of the public
+  CryptoPro CSP 5.0 R3 Windows distribution with CAdES/plugin and partner
+  PKCS#11 modules (`CryptoPro-5.0.13000.exe`, MD5
+  `cce2be5fac6161f4fd53e46bea1af0b9`);
+- downloaded x86 `rtpkcs11ecp.dll` from Rutoken PKCS#11Lib
+  `1.4.02.0/Windows/x32/rtpkcs11ecp`;
+- verified all three are PE32 Intel 80386 DLLs and published them to immutable
+  project static storage:
+  - `cpfkc.dll` — size `262448`, SHA-256
+    `59e3609f1b2fcafe86d33d8387f6e2bedc861faa45c1dbbd5e4ca89be5ee05d8`;
+  - `cryptoki.dll` — size `210304`, SHA-256
+    `5f2c3742fa00cf0ec4c4fca0dcf81ffc39e798d86880bb977e5af9436d94fa6a`;
+  - `rtPKCS11ECP.dll` — size `1593344`, SHA-256
+    `6d61fbac6ebf4e7e71b4b2b968334dbc29b45183fe48c103ce1d9ebb07f089a0`;
+- added `build/rutoken-fkc-lock.json` with HTTPS URLs, sizes, hashes, source
+  notes, and deterministic zip timestamps;
+- extended `build/fetch-cryptopro-plugin.ps1` to download and fail-closed verify
+  the overlay DLLs, inject them into the slim archive, and append missing
+  `rutokenfkc` / `rutokenfkc_nfc` / `cryptoki_rutoken` config entries to
+  `Mini CSP\config.ini` using CP1251. The current `2.0.15000` config already
+  contains `rutokenfkc` and `rutokenfkc_nfc`, so the local verification appended
+  only the missing `cryptoki_rutoken` PKCS#11-active device;
+- bumped `cryptoProPluginLayout` from `3` to `4`;
+- added the three overlay DLLs to `requiredCryptoProPluginFiles` and updated
+  tests/helpers accordingly.
+
+**Verification:** public re-download of all three static DLL URLs matched the
+lock sizes and SHA-256 values. Downloaded a local portable PowerShell and ran
+`build/fetch-cryptopro-plugin.ps1` successfully: it verified the full
+`2.0.15000` archive, overlaid the three DLLs, preserved CP1251 `config.ini`, and
+produced a slim archive `12530145` bytes / 64 entries / SHA-256
+`9185ded52ab41ecff674db367f7a69a52b816ab1edd6292786f93cba4517434e` with
+`cpfkc.dll`, `cryptoki.dll`, `rtPKCS11ECP.dll`, and the
+`cryptoki_rutoken` config stanza present. Local `go`/`gofmt` are unavailable on
+Watson's Linux host, so Go tests must be verified by GitHub Actions after push.
+
+**Next:** inspect `build-windows` CI logs. If CI is green, test the new launcher
+on Windows with a Rutoken ЭЦП token in FKC mode and PKCS#11-active mode:
+provider loads, certificate enumerates, and `SignCades` succeeds. If
+`rtPKCS11ECP.dll` is not found at runtime, add an `[apppath]` mapping for it in
+the overlayed `config.ini`.
+
+---
+
 ## 2026-06-04 — Prune embedded CryptoPro archive before launcher embed
 
 **Context:** owner asked to verify that launchers no longer carry unnecessary

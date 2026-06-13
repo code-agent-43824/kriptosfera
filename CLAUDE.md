@@ -88,8 +88,9 @@ state and conventions, not just function calls.
 
 - **CryptoPro layer** (`cryptopro_plugin_manager.go`, `native_messaging*.go`,
   `extensions.go`): the Browser Plugin bundle is extracted under
-  `<appDir>/cryptopro/plugin`, validated against `requiredCryptoProPluginFiles`
-  (CAdES runtime + Mini CSP DLLs). Native messaging manifest for
+  `<appDir>/Crypto Pro`, validated against `requiredCryptoProPluginFiles`
+  (CAdES runtime + Mini CSP DLLs, including the Rutoken FKC/PKCS#11 overlay).
+  Native messaging manifest for
   `ru.cryptopro.nmcades` is written and registered in HKCU (per-user, no admin),
   gated by a state file so it is not rewritten unnecessarily. Extension id is
   derived deterministically from `manifest.key` (SHA-256 → a–p mapping).

@@ -5,6 +5,15 @@ Windows build. Goal: make the bundled Mini CSP recognize Rutoken ЭЦП in **FKC
 (функциональный ключевой носитель) and **PKCS#11 active** modes — not just the
 passive file-key mode it already supports.
 
+Status 2026-06-13: implemented in the repo as a build-time overlay. The pinned
+static DLL lock is `build/rutoken-fkc-lock.json`; `build/fetch-cryptopro-plugin.ps1`
+injects the three DLLs into `CAdES Browser Plug-in\Mini CSP\` and appends missing
+config fragments to `config.ini`. The current `2.0.15000` config already had
+`rutokenfkc` / `rutokenfkc_nfc`, so the implemented overlay adds the missing
+`cryptoki_rutoken` PKCS#11-active device; `cryptoProPluginLayout` is now `4`.
+Remaining work is Windows CI/log review and hardware smoke testing with Rutoken
+ЭЦП in FKC and PKCS#11-active modes.
+
 Prereq reading (don't re-derive): `docs/cryptopro-rutoken-fkc-pkcs11.md` has the full
 analysis and the **ready, Windows-adapted `config.ini` fragment**. This file is the
 *how to ship it* checklist.

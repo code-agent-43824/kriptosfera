@@ -17,7 +17,7 @@ import (
 const (
 	cryptoProPluginComponent = "cryptopro-browser-plugin"
 	cryptoProPluginVersion   = "2.0.15000"
-	cryptoProPluginLayout    = 3
+	cryptoProPluginLayout    = 4
 	cryptoProPluginStateFile = ".cryptopro-plugin-state.json"
 	cryptoProPluginReadyFile = ".cryptopro-plugin-ready"
 )
@@ -34,6 +34,9 @@ var requiredCryptoProPluginFiles = []string{
 	"CAdES Browser Plug-in/Mini CSP/cpcspi.dll",
 	"CAdES Browser Plug-in/Mini CSP/cpsuprt.dll",
 	"CAdES Browser Plug-in/Mini CSP/cpui.dll",
+	"CAdES Browser Plug-in/Mini CSP/cpfkc.dll",
+	"CAdES Browser Plug-in/Mini CSP/cryptoki.dll",
+	"CAdES Browser Plug-in/Mini CSP/rtPKCS11ECP.dll",
 }
 
 type CryptoProPluginState struct {

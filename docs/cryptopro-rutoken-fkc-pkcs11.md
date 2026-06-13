@@ -34,10 +34,12 @@ Adding the config below **without** the DLLs does nothing (the carrier fails to 
 | PKCS#11 token lib | `rtPKCS11ECP.dll` (Linux `librtpkcs11ecp.so`) | **Rutoken drivers** (Aktiv), not CryptoPro | ❌ |
 
 So enabling these is a **two-part change**: (1) add the DLLs next to the other Mini CSP
-DLLs, (2) add the config below. Part (1) must come from the full Windows CryptoPro CSP
-(`cpfkc.dll`, `cryptoki.dll`) and the Rutoken driver package (`rtPKCS11ECP.dll`), all
-pinned by SHA-256 like every other binary (never committed to Git). Until then, the
-passive `RutokenECP` carrier remains the only working Rutoken path.
+DLLs, (2) add the config below. Implemented 2026-06-13: the DLLs are pinned in
+`build/rutoken-fkc-lock.json` and overlaid into the embedded Mini CSP archive at
+build time. They are still never committed to Git. During implementation we found
+that the current `2.0.15000` `config.ini` already contains `rutokenfkc` /
+`rutokenfkc_nfc`; the overlay still ships `cpfkc.dll` and adds the missing
+`cryptoki_rutoken` PKCS#11-active device when absent.
 
 ## Windows-adapted config fragment (drop into Mini CSP `config.ini`)
 
@@ -95,6 +97,7 @@ Notes:
 `config.ini` lives inside the (uncommitted) vendor bundle, so the real change is a
 **build-time overlay** in `build/fetch-cryptopro-plugin.ps1` (where the slim archive is
 assembled): inject the three DLLs (SHA-256-pinned) into `Mini CSP\` and append this
-fragment to `Mini CSP\config.ini`. Do this only once the DLLs are sourced and a Rutoken
-ЭЦП smoke test (FKC + pkcs11) is available — and remember the portable-provider blocker
-in `docs/cryptopro-portable-plugin-findings.md` still gates the clean-machine path.
+fragment to `Mini CSP\config.ini`. This overlay is now implemented. A Rutoken ЭЦП
+smoke test (FKC + pkcs11) is still required — and remember the portable-provider
+blocker in `docs/cryptopro-portable-plugin-findings.md` still gates the clean-machine
+path.

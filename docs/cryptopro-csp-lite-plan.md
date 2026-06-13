@@ -45,8 +45,8 @@ as a **temporary legacy compatibility profile**:
 1. **Re-pin the plug-in to 2.0.15000.** `build/cryptopro-plugin-lock.json`
    now points at the immutable 2.0.15000 bundle on project static storage,
    `cryptoProPluginVersion` is `2.0.15000`, and `cryptoProPluginLayout` is
-   bumped to `2` so stale 2.0.15700 extractions are not reused. This is a
-   deliberate rollback pin, not the long-term target stack.
+   now `4` so stale older extractions are not reused. This is a deliberate
+   rollback pin, not the long-term target stack.
 2. **Switch the bundled extension to MV2 `1.2.13`.**
    `payload-template/extensions/cryptopro-cades/` now contains the legacy MV2
    extension, with extension id `iifchhfnnmpdbibifmljnfjhpififfog` derived from
@@ -63,6 +63,10 @@ as a **temporary legacy compatibility profile**:
    `allowedOrigins` is `https://mescheryakov.pro` and `windowMode` is `app`.
 5. **End-to-end check** with a Rutoken: certificate enumeration + `SignCades`
    through the bundled stack (still pending; see `docs/worklog.md`).
+6. **Rutoken active modes.** `build/rutoken-fkc-lock.json` pins the additional
+   32-bit `cpfkc.dll`, `cryptoki.dll`, and `rtPKCS11ECP.dll` overlay; the build
+   injects them into `Mini CSP` and adds missing FKC / PKCS#11-active config
+   entries.
 
 ## Clean-machine (portable, no-MSI) blocker — paused, awaiting vendor fix
 
