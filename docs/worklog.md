@@ -768,3 +768,27 @@ Also ruled out the config-file hypothesis: Mini CSP `config.ini` has nothing abo
 web-site trust (only key devices/RNG/cert stores); the dialog is the plug-in's
 (`npcades.dll`: TrustedSites/IsUntrustedSitesDisabled/ShowDocGetConfirm/Silent), driven
 by the registry list — as the dialog text itself states.
+
+---
+
+## 2026-06-13 — Rutoken ЭЦП FKC + PKCS#11(active) carriers analyzed from Linux provider
+
+Owner asked to port the missing Rutoken ЭЦП "pkcs11 (active)" and "FKC" carriers from
+the Linux provider config into Mini CSP, Windows-adapted. Extracted the Linux reader
+packages (`cprocsp-rdr-rutoken/cpfkc/cryptoki` 5.0.13800) from the pinned mirror; the
+carrier defs are in each `postinst` (`cpconfig … -add`).
+
+Findings: Mini CSP already has the **passive** Rutoken carriers (rutoken.dll). The
+active modes were missing — **and the required reader DLLs are not in the slim bundle**:
+FKC needs `cpfkc.dll`, pkcs11 needs `cryptoki.dll` + Rutoken `rtPKCS11ECP.dll` (none
+shipped). So config alone is inert. Wrote `docs/cryptopro-rutoken-fkc-pkcs11.md` with the
+analysis, the DLL requirement table, and the Windows-adapted `config.ini` fragment
+(`rutokenfkc` + `rutokenfkc_nfc` KeyCarriers via cpfkc.dll; `cryptoki_rutoken` KeyDevice
+with `pkcs11_dll = rtPKCS11ECP.dll`). ATR/mask copied 1:1; `librdr<X>.so→<X>.dll`;
+`-connect`→`\<name>` subkey. Did NOT touch the vendor bundle (not in Git) — integration
+is a build-time overlay in `fetch-cryptopro-plugin.ps1` once the SHA-pinned DLLs are
+sourced and a token smoke test exists.
+
+**Next (owner):** source `cpfkc.dll`/`cryptoki.dll` (full Win CryptoPro CSP) + x86
+`rtPKCS11ECP.dll` (Rutoken drivers), pin them, overlay DLLs+fragment, then test FKC/pkcs11
+with a real Rutoken ЭЦП.
