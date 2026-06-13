@@ -30,6 +30,10 @@ architecture overview for Kriptosfera. Start with the root
   CryptoPro `GetModuleFileName(0x10000000)` bug, everything we tried, the host
   probe findings, and the vendor report. Investigation paused, awaiting a vendor fix.
 
+- [`cryptopro-rutoken-fkc-pkcs11.md`](cryptopro-rutoken-fkc-pkcs11.md) — Rutoken ЭЦП
+  FKC + PKCS#11 (active) carriers ported from the Linux provider, Windows-adapted,
+  with the required-DLL caveat.
+
 ## Inventories and references
 
 - [`cryptopro-plugin-inventory.md`](cryptopro-plugin-inventory.md) — files inside
