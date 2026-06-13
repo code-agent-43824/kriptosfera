@@ -47,6 +47,13 @@ Local Go checks passed with Go `1.24.2`:
 **Next:** push, wait for `build-windows`, then perform the real Windows
 hardware smoke with Rutoken ЭЦП in FKC and PKCS#11-active modes.
 
+GitHub Actions `build-windows` run `27470583046` passed on commit `0a12d5d`.
+CI logs show both embedded and remote launcher builds overlaid 3 files and
+embedded a 65-entry slim archive (`12982910` bytes, SHA-256
+`59ae53863b04d7b6e94598cb7c685c5d896ea8a75d405acae7461485b2476304`). Workflow
+artifacts: embedded `7611930868` (`188600951` bytes) and remote `7611931175`
+(`15714670` bytes).
+
 ---
 
 ## 2026-06-13 — Add Rutoken FKC / PKCS#11 Mini CSP overlay
