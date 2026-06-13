@@ -36,7 +36,7 @@ var requiredCryptoProPluginFiles = []string{
 	"CAdES Browser Plug-in/Mini CSP/cpui.dll",
 	"CAdES Browser Plug-in/Mini CSP/cpfkc.dll",
 	"CAdES Browser Plug-in/Mini CSP/cryptoki.dll",
-	"CAdES Browser Plug-in/Mini CSP/rtPKCS11ECP.dll",
+	"CAdES Browser Plug-in/rtPKCS11ECP.dll",
 }
 
 type CryptoProPluginState struct {

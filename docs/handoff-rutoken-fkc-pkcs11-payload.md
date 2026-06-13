@@ -7,9 +7,12 @@ passive file-key mode it already supports.
 
 Status 2026-06-13: implemented in the repo as a build-time overlay. The pinned
 static DLL lock is `build/rutoken-fkc-lock.json`; `build/fetch-cryptopro-plugin.ps1`
-injects the three DLLs into `CAdES Browser Plug-in\Mini CSP\` and appends missing
-config fragments to `config.ini`. The current `2.0.15000` config already had
-`rutokenfkc` / `rutokenfkc_nfc`, so the implemented overlay adds the missing
+injects `cpfkc.dll` and `cryptoki.dll` into `CAdES Browser Plug-in\Mini CSP\`,
+keeps a spare `Mini CSP\rtPKCS11ECP.dll` copy, also places
+`rtPKCS11ECP.dll` beside `nmcades.exe` at
+`CAdES Browser Plug-in\rtPKCS11ECP.dll`, and appends missing config fragments to
+`config.ini`. The current `2.0.15000` config already had `rutokenfkc` /
+`rutokenfkc_nfc`, so the implemented overlay adds the missing
 `cryptoki_rutoken` PKCS#11-active device; `cryptoProPluginLayout` is now `4`.
 Remaining work is Windows CI/log review and hardware smoke testing with Rutoken
 ЭЦП in FKC and PKCS#11-active modes.
@@ -20,9 +23,10 @@ analysis and the **ready, Windows-adapted `config.ini` fragment**. This file is 
 
 ## The whole task in one sentence
 
-Drop three **32-bit** DLLs into the Mini CSP folder of the embedded plugin bundle and
-append the prepared carrier fragment to `Mini CSP\config.ini`, fetched+SHA-pinned the
-same way as every other binary (never committed to Git).
+Drop the **32-bit** CryptoPro reader DLLs into the Mini CSP folder, place the
+Rutoken PKCS#11 DLL beside `nmcades.exe` (plus a harmless spare Mini CSP copy),
+and append the prepared carrier fragment to `Mini CSP\config.ini`,
+fetched+SHA-pinned the same way as every other binary (never committed to Git).
 
 ## 1. Acquire the three DLLs (all x86 — host `nmcades.exe` is PE32)
 
@@ -63,9 +67,8 @@ subtree). Extend that script, after slimming, to overlay:
    - `rtPKCS11ECP.dll` → **`CAdES Browser Plug-in\`** (next to `nmcades.exe`). It is
      loaded **by bare name** (`pkcs11_dll = "rtPKCS11ECP.dll"`), and a bare-name
      `LoadLibrary` searches the **process directory** = the `nmcades.exe` dir, **not**
-     `Mini CSP\`. Putting it in `Mini CSP\` will likely NOT be found. (If the cryptoki
-     reader turns out to resolve it relative to `Mini CSP\` instead, also place a copy
-     there — decide at test time; placing it in both dirs is harmless.)
+     `Mini CSP\`. Keep the `Mini CSP\rtPKCS11ECP.dll` spare copy too; placing it
+     in both dirs is harmless.
 2. Append the fragment from `docs/cryptopro-rutoken-fkc-pkcs11.md` to
    `CAdES Browser Plug-in\Mini CSP\config.ini`.
    - **Encoding matters:** `config.ini` is **Windows-1251 (CP1251)**. Read it as cp1251,

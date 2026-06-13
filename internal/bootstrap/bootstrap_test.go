@@ -1075,7 +1075,7 @@ var requiredTestCryptoProPluginPaths = []string{
 	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpui.dll",
 	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cpfkc.dll",
 	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/cryptoki.dll",
-	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/Mini CSP/rtPKCS11ECP.dll",
+	"cryptopro-cades-plugin-2.0.15000/Program Files/Crypto Pro/CAdES Browser Plug-in/rtPKCS11ECP.dll",
 }
 
 func mustJSON(t *testing.T, value any) string {

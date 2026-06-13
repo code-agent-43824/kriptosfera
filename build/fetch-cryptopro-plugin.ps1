@@ -280,6 +280,14 @@ function Add-RutokenFkcOverlayToArchive {
         -EntryName "CAdES Browser Plug-in/Mini CSP/$($file.TargetName)" `
         -SourcePath $file.Path `
         -LastWriteTimeUtc $file.LastWriteTimeUtc
+
+      if ($file.TargetName -ieq "rtPKCS11ECP.dll") {
+        Set-ZipEntryFromFile `
+          -Archive $archive `
+          -EntryName "CAdES Browser Plug-in/rtPKCS11ECP.dll" `
+          -SourcePath $file.Path `
+          -LastWriteTimeUtc $file.LastWriteTimeUtc
+      }
     }
 
     $configEntryName = "CAdES Browser Plug-in/Mini CSP/config.ini"

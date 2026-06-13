@@ -50,9 +50,10 @@ Version numbers track the launcher/payload (`internal/config/app-version.txt`).
   `Program Files 64`, MSI packages, policy/system folders, and MSI pseudo-paths.
 - Added a pinned Rutoken FKC / PKCS#11 Mini CSP overlay: the launcher build now
   fetches and SHA-256 verifies `cpfkc.dll`, `cryptoki.dll`, and
-  `rtPKCS11ECP.dll`, injects them into `Mini CSP`, appends missing active
-  Rutoken carrier config to `config.ini` as CP1251, and bumps the plug-in layout
-  to v4 so older AppData extractions are refreshed.
+  `rtPKCS11ECP.dll`, injects the CryptoPro reader DLLs into `Mini CSP`, places
+  `rtPKCS11ECP.dll` beside `nmcades.exe` for PKCS#11 bare-name loading, appends
+  missing active Rutoken carrier config to `config.ini` as CP1251, and bumps the
+  plug-in layout to v4 so older AppData extractions are refreshed.
 
 ### Performance
 - Payload reuse now only checks that manifest files exist instead of re-hashing

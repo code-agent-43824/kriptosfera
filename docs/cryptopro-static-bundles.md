@@ -118,7 +118,11 @@ https://mescheryakov.pro/kriptosfera/cryptopro/rutoken-fkc/windows-x86/rtpkcs11e
 
 2026-06-13 overlay note: these DLLs are pinned by
 `build/rutoken-fkc-lock.json` and are injected into the slim embedded
-`CAdES Browser Plug-in\Mini CSP` archive during `build/fetch-cryptopro-plugin.ps1`.
+archive during `build/fetch-cryptopro-plugin.ps1`. `cpfkc.dll` and
+`cryptoki.dll` are placed in `CAdES Browser Plug-in\Mini CSP`; `rtPKCS11ECP.dll`
+is placed both in `Mini CSP` and beside `nmcades.exe` at
+`CAdES Browser Plug-in\rtPKCS11ECP.dll` because the PKCS#11 reader loads it by
+bare DLL name at runtime.
 Public re-download verification:
 
 ```text

@@ -6,6 +6,49 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-06-13 — Fix Rutoken PKCS#11 runtime DLL placement
+
+**Context:** hardware review found that the first Rutoken overlay put
+`rtPKCS11ECP.dll` only in `CAdES Browser Plug-in\Mini CSP\`. That is fine for
+the harmless spare copy, but the PKCS#11 path loads it by bare name from
+`cryptoki.dll`, so Windows searches the process directory first
+(`nmcades.exe` in `CAdES Browser Plug-in\`).
+
+**Done:**
+- changed `build/fetch-cryptopro-plugin.ps1` to keep the existing Mini CSP copy
+  of `rtPKCS11ECP.dll` and also write `CAdES Browser Plug-in\rtPKCS11ECP.dll`
+  into the slim embedded archive;
+- changed the runtime/CI required-file guard to require
+  `CAdES Browser Plug-in\Mini CSP\cpfkc.dll`,
+  `CAdES Browser Plug-in\Mini CSP\cryptoki.dll`, and
+  `CAdES Browser Plug-in\rtPKCS11ECP.dll`;
+- verified the pinned `2.0.15000` Mini CSP core and the current
+  `cpfkc.dll`/`cryptoki.dll` reader DLLs from the same Windows+CAdES
+  distribution with PE version resources: `cpcspi.dll`, `cpfkc.dll`, and
+  `cryptoki.dll` all report ProductVersion `5.0.13000.0`. No separate
+  `5.0.13001` reader payload was found in the pinned `2.0.15000` distribution,
+  so `build/rutoken-fkc-lock.json` remains pinned to the verified same-source
+  `5.0.13000` files instead of relabeling identical binaries.
+
+**Verification:** local portable PowerShell rebuilt
+`internal/bootstrap/cryptopro-plugin.zip`: 65 entries, size `13324371`,
+SHA-256 `983efe16e23c169ff276945fd4d5bbe3d29f933d9592b013aecb90e247f0b544`.
+The archive contains all expected overlay entries:
+`Mini CSP\cpfkc.dll`, `Mini CSP\cryptoki.dll`, spare
+`Mini CSP\rtPKCS11ECP.dll`, and process-dir
+`CAdES Browser Plug-in\rtPKCS11ECP.dll`. The slim guard still finds no
+`Program Files`, `Program Files 64`, `Common*`, or MSI entries.
+
+Local Go checks passed with Go `1.24.2`:
+`gofmt -l .`, `go vet ./...`, `go test ./...`,
+`GOOS=windows GOARCH=amd64 go build ./...`, and
+`GOOS=windows GOARCH=amd64 go build -tags remote ./...`.
+
+**Next:** push, wait for `build-windows`, then perform the real Windows
+hardware smoke with Rutoken ЭЦП in FKC and PKCS#11-active modes.
+
+---
+
 ## 2026-06-13 — Add Rutoken FKC / PKCS#11 Mini CSP overlay
 
 **Context:** previous handoff `docs/handoff-rutoken-fkc-pkcs11-payload.md`
@@ -75,8 +118,7 @@ remote `7611623698` (`14945227` bytes).
 
 **Next:** test the new launcher on Windows with a Rutoken ЭЦП token in FKC mode
 and PKCS#11-active mode: provider loads, certificate enumerates, and `SignCades`
-succeeds. If `rtPKCS11ECP.dll` is not found at runtime, add an `[apppath]`
-mapping for it in the overlayed `config.ini`.
+succeeds.
 
 ---
 
