@@ -55,22 +55,33 @@ downloads the vendor archive, verifies it, then writes the slim
 `internal/bootstrap/cryptopro-plugin.zip` keeping only the `CAdES Browser Plug-in\...`
 subtree). Extend that script, after slimming, to overlay:
 
-1. Place the three DLLs at `CAdES Browser Plug-in\Mini CSP\{cpfkc,cryptoki,rtPKCS11ECP}.dll`.
+1. **DLL placement matters** (verified against the bundle layout — `nmcades.exe` lives
+   in `CAdES Browser Plug-in\`, the Mini CSP DLLs live in the `Mini CSP\` subfolder):
+   - `cpfkc.dll`, `cryptoki.dll` → **`CAdES Browser Plug-in\Mini CSP\`**. These are the
+     CSP **reader** DLLs named by the `DLL = "..."` config value; `cpcspi.dll`/`capi20.dll`
+     load them relative to their own (Mini CSP) directory, exactly like `rutoken.dll` does.
+   - `rtPKCS11ECP.dll` → **`CAdES Browser Plug-in\`** (next to `nmcades.exe`). It is
+     loaded **by bare name** (`pkcs11_dll = "rtPKCS11ECP.dll"`), and a bare-name
+     `LoadLibrary` searches the **process directory** = the `nmcades.exe` dir, **not**
+     `Mini CSP\`. Putting it in `Mini CSP\` will likely NOT be found. (If the cryptoki
+     reader turns out to resolve it relative to `Mini CSP\` instead, also place a copy
+     there — decide at test time; placing it in both dirs is harmless.)
 2. Append the fragment from `docs/cryptopro-rutoken-fkc-pkcs11.md` to
    `CAdES Browser Plug-in\Mini CSP\config.ini`.
    - **Encoding matters:** `config.ini` is **Windows-1251 (CP1251)**. Read it as cp1251,
      append the fragment (ASCII-only, so safe), write back as cp1251. Do **not** convert
      the file to UTF-8.
 3. Keep the slim-archive guard tests happy (they reject `Program Files`, `Common*`,
-   `.msi`, MSI pseudo-paths). Adding `Mini CSP\*.dll` is fine; just don't reintroduce a
-   `Program Files` prefix.
+   `.msi`, MSI pseudo-paths). Adding `Mini CSP\*.dll` and a top-level `rtPKCS11ECP.dll`
+   is fine; just don't reintroduce a `Program Files` prefix.
 
-DLL resolution at runtime: `rutoken.dll` already loads relative to the Mini CSP dir, so
-`cpfkc.dll`/`cryptoki.dll` placed next to it should load the same way. `rtPKCS11ECP.dll`
-is referenced **by name** (`pkcs11_dll = "rtPKCS11ECP.dll"`); putting it in `Mini CSP\`
-should suffice. If it isn't found at test time, add an `[apppath]` entry in `config.ini`
-mapping `rtPKCS11ECP.dll` → its absolute runtime path. The runtime Mini CSP path is:
-`%LOCALAPPDATA%\Kriptosfera\apps\demo\<ver>\Crypto Pro\CAdES Browser Plug-in\Mini CSP\`.
+Why NOT `[apppath]`: on Linux the `\config\apppath` map points names at absolute paths,
+but our runtime dir is dynamic
+(`%LOCALAPPDATA%\Kriptosfera\apps\demo\<ver>\Crypto Pro\CAdES Browser Plug-in\…`), so a
+**static** absolute `[apppath]` entry can't be baked into the shipped `config.ini`.
+Rely on DLL-search placement above instead. (If `[apppath]` is truly required, the
+launcher would have to write it at runtime with the resolved path — only do that if
+test shows bare-name loading fails.)
 
 ## 4. Force re-extraction + rebuild
 
