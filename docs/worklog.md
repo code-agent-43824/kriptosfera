@@ -64,11 +64,19 @@ produced a slim archive `12530145` bytes / 64 entries / SHA-256
 `cryptoki_rutoken` config stanza present. Local `go`/`gofmt` are unavailable on
 Watson's Linux host, so Go tests must be verified by GitHub Actions after push.
 
-**Next:** inspect `build-windows` CI logs. If CI is green, test the new launcher
-on Windows with a Rutoken ЭЦП token in FKC mode and PKCS#11-active mode:
-provider loads, certificate enumerates, and `SignCades` succeeds. If
-`rtPKCS11ECP.dll` is not found at runtime, add an `[apppath]` mapping for it in
-the overlayed `config.ini`.
+GitHub Actions `build-windows` run `27469564250` passed on commit `99a589d`.
+CI logs show both embedded and remote launcher builds verified the full
+`2.0.15000` source archive, overlaid 3 Rutoken FKC/PKCS#11 files, and embedded a
+64-entry slim archive (`12212184` bytes, SHA-256
+`388c860708126f2989b90d69bec14a8f43e4d0817829d51746b1e0296fd8d898`). CI
+`go test` passed for `github.com/code-agent-43824/kriptosfera/internal/bootstrap`
+(`0.720s`). Workflow artifacts: embedded `7611623351` (`187831458` bytes) and
+remote `7611623698` (`14945227` bytes).
+
+**Next:** test the new launcher on Windows with a Rutoken ЭЦП token in FKC mode
+and PKCS#11-active mode: provider loads, certificate enumerates, and `SignCades`
+succeeds. If `rtPKCS11ECP.dll` is not found at runtime, add an `[apppath]`
+mapping for it in the overlayed `config.ini`.
 
 ---
 
