@@ -34,6 +34,9 @@ architecture overview for Kriptosfera. Start with the root
   FKC + PKCS#11 (active) carriers ported from the Linux provider, Windows-adapted,
   with the required-DLL caveat.
 
+- [`handoff-rutoken-fkc-pkcs11-payload.md`](handoff-rutoken-fkc-pkcs11-payload.md) —
+  handoff for a payload-modifying agent to ship the Rutoken FKC/PKCS#11 DLLs + config.
+
 ## Inventories and references
 
 - [`cryptopro-plugin-inventory.md`](cryptopro-plugin-inventory.md) — files inside

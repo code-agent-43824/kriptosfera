@@ -792,3 +792,17 @@ sourced and a token smoke test exists.
 **Next (owner):** source `cpfkc.dll`/`cryptoki.dll` (full Win CryptoPro CSP) + x86
 `rtPKCS11ECP.dll` (Rutoken drivers), pin them, overlay DLLs+fragment, then test FKC/pkcs11
 with a real Rutoken ЭЦП.
+
+---
+
+## 2026-06-13 — Handoff for payload-modifying agent: Rutoken FKC/PKCS#11 DLLs
+
+Wrote `docs/handoff-rutoken-fkc-pkcs11-payload.md` — actionable checklist to enable
+Rutoken ЭЦП FKC + PKCS#11(active) in the embedded Mini CSP. Three **x86** DLLs to source
+(host `nmcades.exe` is PE32): `cpfkc.dll` + `cryptoki.dll` (full Win CryptoPro CSP),
+`rtPKCS11ECP.dll` (**"Драйверы Рутокен"** from rutoken.ru — x86). Pin via new
+`build/rutoken-fkc-lock.json`; overlay DLLs into `CAdES Browser Plug-in\Mini CSP\` and
+append the prepared config fragment (CP1251!) inside `build/fetch-cryptopro-plugin.ps1`;
+bump `cryptoProPluginLayout` 3→4; rebuild (embedded bundle → both variants, no
+payload-lock re-pin); verify on real Rutoken ЭЦП (FKC + pkcs11). Fragment + analysis live
+in `docs/cryptopro-rutoken-fkc-pkcs11.md`.
