@@ -966,3 +966,49 @@ of vendor binaries — hitting that wall = stop and write the vendor report inst
 
 **Next:** VM agent runs Phase 1 and reports the authoritative Mini CSP path + whether our
 overlay was ever in the load path.
+
+---
+
+## 2026-06-24 — Runbook Phase 1: which Mini CSP actually loads in nmcades.exe
+
+Ran `docs/handoff-rutoken-fkc-diagnostic-runbook.md` Phase 1 on the owner's Windows
+box (AMD64) with the launcher already running. Staged Sysinternals `Listdlls.exe` to
+`C:\Tools` and snapshotted the live native host (`Listdlls.exe -accepteula nmcades` →
+`C:\Tools\nmcades-dlls.txt`). Host: `nmcades.exe` pid 5748, launched from our overlay
+`%LOCALAPPDATA%\Kriptosfera\apps\demo\0.5.0\Crypto Pro\CAdES Browser Plug-in\nmcades.exe`
+(extension `iifchhfnnmpdbibifmljnfjhpififfog`).
+
+**Decisive finding — the load path is SPLIT:**
+- From our overlay: `nmcades.exe`, `npcades.dll`, the whole CAdES runtime, and the
+  Mini CSP **helper** DLLs `Mini CSP\capi20.dll`, `asn1*.dll`, `cpsuprt.dll`
+  (these are direct process imports, so they resolve from the process dir = our overlay).
+- From **`C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\Mini CSP\`**:
+  `cpcspi.dll` (the actual CSP provider core), `capi10.dll`, a second `capi20.dll`,
+  a second `cpsuprt.dll`, `pcsc.dll`.
+
+**Authoritative Mini CSP folder = `C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\Mini CSP\`**
+— the directory of the loaded `cpcspi.dll`. cpcspi is pulled in via the HKLM MSI
+provider registration (not by process-dir search), and it reads `config.ini` /
+`[KeyDevices…]` / `[KeyCarriers…]` relative to **its own** directory. So the
+carrier config that governs enumeration is the **Program Files** `config.ini`, NOT our
+overlay copy.
+
+**Target reader DLLs: all ABSENT** (expected pre-Phase-3): `cpfkc.dll`,
+`cryptoki.dll`, `rtPKCS11ECP.dll` not loaded. `rutoken.dll` (passive control path)
+also not loaded in this snapshot — no token operation had been triggered at capture time.
+
+**Conclusion (runbook decision tree, Phase 1 branch):** confirmed the leading hypothesis
+— our LOCALAPPDATA Mini CSP overlay (cpcspi + config.ini) is **dead weight**; the runtime
+loads the MSI-installed Program Files Mini CSP. This directly explains the prior failed
+manual attempts ("copied files everywhere, nothing changed"): the edited copies were
+never the loaded ones. Any Phase 3 edit (drop the 3 x86 reader DLLs + append
+`cryptoki_rutoken` to `config.ini`) must target the **Program Files** Mini CSP and
+needs an elevated shell.
+
+Evidence kept locally at `C:\Tools\nmcades-dlls.txt` (not committed — contains vendor
+module paths only, no binaries).
+
+**Next:** Phase 2 (admin-gated, owner) — confirm Rutoken drivers + full system CryptoPro
+CSP are installed and a Rutoken ЭЦП token holding csp/pkcs11/fkc certs is inserted; then
+`reg export` the working `HKLM\…\Crypto Pro\Cryptography\CurrentVersion` tree as the
+proven ground-truth to diff against the Program Files `config.ini`.
