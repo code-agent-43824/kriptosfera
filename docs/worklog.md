@@ -1098,3 +1098,32 @@ MSI install does **not** add the FKC/cryptoki readers either.
   Windows CryptoPro CSP install (`cpfkc.dll`, `cryptoki.dll`) + Rutoken drivers
   (`rtPKCS11ECP.dll`, x86); editing the Program Files Mini CSP needs an admin shell.
   Owner to confirm both prerequisites before proceeding.
+---
+
+## 2026-06-24 — Phase 2 analyzed; runbook refined to an incremental FKC-first experiment
+
+Reviewed the VM session's Phase 2 inventory. Clean result: the 3 reader DLLs
+(`cpfkc`/`cryptoki`/`rtPKCS11ECP`) are **absent from disk** in the authoritative Program
+Files Mini CSP; the **FKC carrier config is already present and correct** (points at
+`cpfkc.dll`); only the `[KeyDevices\cryptoki_rutoken]` PKCS#11 section is missing.
+Verdict: **hypothesis A (missing-DLL/placement), B wall not reached.** Also retires the
+"version skew" theory for FKC — the file is absent, not the wrong version.
+
+Refined `docs/handoff-rutoken-fkc-diagnostic-runbook.md`:
+- Phase 2 marked DONE with the verdict.
+- **Phase 4 is now incremental:** 4a = FKC as a *single-variable* test — drop **only**
+  `cpfkc.dll` (config already correct), no edits, and see if FKC enumerates. This is the
+  pivotal A-vs-B experiment: FKC appearing proves Mini CSP honors these carriers once the
+  reader exists. 4b = PKCS#11 (both DLLs + the `cryptoki_rutoken` section) only after 4a.
+- Phase 3: the full-CSP + Rutoken-driver installs now double as the **DLL source**; added
+  capturing the Mini CSP `cpcspi.dll` FileVersion (fallback lead only) and **deriving the
+  `cryptoki_rutoken` config from the working system-CSP registry export** rather than
+  trusting our Linux-adapted fragment.
+- Decision tree re-centred on Phase 4a.
+
+Branch cleanup: local branch already gone; the stale remote `claude/exciting-maxwell-SubP5`
+is fully merged into `main` but the git proxy rejects ref deletion (HTTP 403) and the
+GitHub MCP has no delete-branch op — needs a manual delete in the GitHub UI.
+
+**Next (VM session):** owner installs full CSP + Rutoken drivers + token, then run
+Phase 4a (drop only `cpfkc.dll`, retest FKC) and report.

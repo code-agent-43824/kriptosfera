@@ -74,96 +74,107 @@ was not yet loaded because no token op had been triggered at capture time.
 
 ---
 
-## Phase 2 — NEXT: read-only inventory of the authoritative Mini CSP (no admin, no token)
+## Phase 2 — DONE (2026-06-24): inventory of the authoritative Program Files Mini CSP
 
-Do this **now** — it's free and may already decide A vs B. Just read the Program Files
-Mini CSP (reading needs no admin; only writing does).
+Read-only inventory (full table in `docs/worklog.md`). Result:
 
-```powershell
-$mini = "C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\Mini CSP"
+- **All three reader DLLs are MISSING from disk** — `cpfkc.dll`, `cryptoki.dll`,
+  `rtPKCS11ECP.dll` are not in the Program Files Mini CSP (nor next to `nmcades.exe`). The
+  MSI plug-in ships only the documented slim set; it does **not** add the FKC/cryptoki
+  readers.
+- **FKC config is ALREADY present and correct** — `[KeyCarriers\rutokenfkc]`,
+  `rutokenfkc_nfc`, `RutokenFkcOld` all exist and point at `DLL = "cpfkc.dll"`.
+- **PKCS#11 config is absent** — no `[KeyDevices\cryptoki_rutoken]` section anywhere.
+- Passive `rutoken.dll` + its carriers present (the working control).
 
-# (a) Which reader DLLs are already present?
-Get-ChildItem $mini -Filter *.dll | Select-Object Name, Length,
-  @{n='Ver';e={(Get-Item $_.FullName).VersionInfo.FileVersion}} | Sort-Object Name
-# look specifically for: cpfkc.dll, cryptoki.dll, rutoken.dll, rtPKCS11ECP.dll
+**Verdict: hypothesis A (placement / missing-DLL). The B wall is NOT reached** — there is
+a simpler sufficient cause than a Mini CSP feature gap: the reader DLLs were never on
+disk. This also retires the old "version skew" theory for FKC: the file isn't the *wrong*
+version, it is simply **absent**.
 
-# (b) Which carrier/device sections does its config.ini already define?
-$enc  = [System.Text.Encoding]::GetEncoding(1251)
-$cfg  = Join-Path $mini 'config.ini'
-$text = [System.IO.File]::ReadAllText($cfg, $enc)
-# dump just the section headers:
-[regex]::Matches($text, '(?m)^\s*\[(KeyCarriers|KeyDevices)\\[^\]]+\]') |
-  ForEach-Object { $_.Value }
-# look specifically for: [KeyCarriers\rutokenfkc...], [KeyDevices\cryptoki_rutoken]
-```
-
-Record the answers to these four questions — they drive the next step:
-
-| Present in Program Files Mini CSP? | |
-| --- | --- |
-| `cpfkc.dll` (FKC reader) | ? |
-| `cryptoki.dll` (PKCS#11 reader) | ? |
-| `rtPKCS11ECP.dll` (Rutoken PKCS#11 lib) | ? |
-| `[KeyCarriers\rutokenfkc]` section in config.ini | ? |
-| `[KeyDevices\cryptoki_rutoken]` section in config.ini | ? |
-
-**Pre-diagnosis from the inventory (before touching anything):**
-- If `rutokenfkc` IS in config.ini **and** `cpfkc.dll` IS present, yet FKC certs are
-  invisible → strong lean toward **(B)** (or an ATR/token-mode mismatch — note the token
-  model). This is the most informative outcome and worth flagging immediately.
-- If `cpfkc.dll` / `cryptoki.dll` / the `cryptoki_rutoken` section are simply **absent**
-  → consistent with **(A)**; proceed to Phase 4 to add them and re-test.
+**Key consequence — FKC is now a clean single-variable experiment.** Its carrier config
+is already correct, so dropping **only `cpfkc.dll`** (no config edit) either makes FKC
+appear or it doesn't. Nothing else changes. That isolates the real question — *does this
+Mini CSP honor the FKC carrier once its reader DLL is present?* — better than any other
+step. So we run FKC first (Phase 4a), then PKCS#11 (Phase 4b).
 
 ---
 
-## Phase 3 — token + control + proven-good reference (admin steps by the owner)
+## Phase 3 — token + DLL sourcing + proven-good reference (admin steps by the owner)
 
-Ask the owner (admin-gated; you cannot do these):
-1. Install **Rutoken drivers**; insert the **Rutoken ЭЦП** token holding certs in all
-   three formats (csp / pkcs11 / fkc).
-2. Install the **full system CryptoPro CSP** (the one that already sees all three).
+Ask the owner (admin-gated; you cannot do these). The full-CSP + Rutoken-driver installs
+double as the **DLL source** for Phase 4, so do them before the edit:
+1. Install **Rutoken drivers** (provides x86 `rtPKCS11ECP.dll`); insert the **Rutoken
+   ЭЦП** token holding certs in all three formats (csp / pkcs11 / fkc).
+2. Install the **full system CryptoPro CSP** (provides `cpfkc.dll` + `cryptoki.dll`, and
+   is the working all-three-formats reference).
 
 Then you capture, no admin needed to read:
 
-**(a) Positive control — prove the harness + token work in the passive path:**
+**(a) Note the Mini CSP core version you're matching against** (cheap, already on disk):
+```powershell
+(Get-Item "C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\Mini CSP\cpcspi.dll").VersionInfo.FileVersion
+```
+Record it. The owner's position (CryptoPro keeps component interop stable across builds)
+means we proceed regardless; this is only a fallback lead if a placed reader loads but
+refuses to bind.
+
+**(b) Positive control — prove the harness + token work in the passive path:**
 ```powershell
 # with token inserted, trigger certificate enumeration on the internal-csp demo page,
-# then snapshot again:
+# then snapshot:
 C:\Tools\listdlls.exe -accepteula nmcades > C:\Tools\nmcades-dlls-token.txt
 # expect rutoken.dll to now be loaded and the csp cert to enumerate — confirms the
-# token, ATR match, and passive reader path are all alive.
+# token, ATR match, and passive reader path are all alive before we add anything.
 ```
 
-**(b) Ground-truth config from the working system CSP:**
+**(c) Derive the verified PKCS#11 config from the working system CSP** (don't rely only
+on our hand-translation):
 ```powershell
 reg export "HKLM\SOFTWARE\Crypto Pro\Cryptography\CurrentVersion" C:\Tools\sys-csp.reg /y
 reg export "HKLM\SOFTWARE\WOW6432Node\Crypto Pro\Cryptography\CurrentVersion" C:\Tools\sys-csp-wow.reg /y
 ```
-Locate the working `KeyDevices\cryptoki...`, `KeyCarriers\rutokenfkc...` and reader
-subkeys; diff them section-for-section against the **Program Files** `config.ini` from
-Phase 2. Note every difference (key names, `Group`, `DLL`, `pkcs11_dll`, ATR/mask).
-
-**(c) Optional gold trace** — if you can drive a working all-three-formats enumeration
-through the system CSP (e.g. its own tooling / a system-CSP browser session), `ListDLLs`
-that process to see exactly which reader DLLs it loads, from where, and their versions.
-That is the direct "working trace" to compare against the failing Mini CSP one.
+In the export, find the **working** `KeyDevices\…cryptoki…` device + its `\PNP …\Default`
+`pkcs11_dll`, and translate that registry subtree 1:1 into `config.ini` section syntax for
+Phase 4b. This replaces the last unverified piece (our `cryptoki_rutoken` was adapted from
+Linux, never checked against a real Windows config). Also confirm the `rutokenfkc` carrier
+config the Mini CSP already has matches the working registry's FKC carrier.
 
 ---
 
-## Phase 4 — the decisive edit (elevated shell; target = Program Files Mini CSP)
+## Phase 4 — the decisive edit, run INCREMENTALLY (elevated shell; target = Program Files Mini CSP)
 
-Only add what Phase 2 showed missing. Target the **Program Files** Mini CSP (writing
-there needs the elevated shell the owner granted; otherwise dictate the steps).
+Target the **Program Files** Mini CSP (writing there needs the elevated shell the owner
+granted; otherwise dictate the steps). Back up first:
+`copy "<Program Files Mini CSP>\config.ini" config.ini.bak`.
 
-1. **Back up first:** copy `<Program Files Mini CSP>\config.ini` → `config.ini.bak`.
-2. **Place the missing x86 reader DLLs**, sourced locally (not downloaded): `cpfkc.dll`
-   / `cryptoki.dll` from the installed full CryptoPro CSP (`…\Crypto Pro\CSP\`);
-   `rtPKCS11ECP.dll` (32-bit) from the installed Rutoken drivers.
-   - `cpfkc.dll`, `cryptoki.dll` → `<Program Files Mini CSP>\`
-   - `rtPKCS11ECP.dll` → the `CAdES Browser Plug-in\` dir (next to `nmcades.exe`, bare-name
-     load = process dir). If unsure, also drop a copy in `Mini CSP\` (harmless).
-3. **Append the missing config sections** (only those absent per Phase 2), preserving
-   **Windows-1251** encoding. Idempotent append of the PKCS#11 device:
+Run 4a and 4b as **separate** experiments — don't change both variables at once.
+
+### Phase 4a — FKC (single variable: just the DLL)
+
+The FKC carrier config is already present (Phase 2). Add **only** the reader DLL:
+
+1. Copy x86 `cpfkc.dll` (from the installed full CSP) → `<Program Files Mini CSP>\`.
+   **No config edit.**
+2. Fully restart the launcher (close Chrome + any lingering `nmcades.exe`), reopen the
+   demo page, trigger enumeration with the token in **FKC mode**.
+3. Re-snapshot: `C:\Tools\listdlls.exe -accepteula nmcades > C:\Tools\nmcades-dlls-fkc.txt`
+   — expect `cpfkc.dll` to now be loaded, and the FKC certificate to enumerate.
+
+**This is the pivotal test.** FKC appearing proves the Mini CSP *does* honor these carrier
+sections once the reader DLL exists → hypothesis A confirmed, and B becomes unlikely for
+PKCS#11 too. FKC *not* appearing despite `cpfkc.dll` being loaded → the (B) signal.
+
+### Phase 4b — PKCS#11 active (needs both DLLs + config)
+
+Only after 4a is conclusive:
+
+1. Copy x86 `cryptoki.dll` (full CSP) → `<Program Files Mini CSP>\`; copy x86
+   `rtPKCS11ECP.dll` (Rutoken drivers) → the `CAdES Browser Plug-in\` dir (next to
+   `nmcades.exe`; bare-name load = process dir). If unsure, also drop a copy in `Mini CSP\`.
+2. Append the `cryptoki_rutoken` device section — **preferably the version derived from
+   the Phase 3(c) registry export**; the Linux-adapted fallback is below. Preserve
+   **Windows-1251** encoding:
 
    ```powershell
    $enc = [System.Text.Encoding]::GetEncoding(1251)
@@ -181,36 +192,34 @@ pkcs11_dll = "rtPKCS11ECP.dll"
    if ($text -notmatch '\[KeyDevices\\cryptoki_rutoken\]') {
      [System.IO.File]::WriteAllText($cfg, $text + "`r`n" + $pkcs11, $enc)
    }
-   # If Phase 2 showed rutokenfkc is ALSO absent, append the FKC block from
-   # docs/cryptopro-rutoken-fkc-pkcs11.md the same way. If it was PRESENT and FKC is
-   # still invisible after adding cpfkc.dll, that is the (B) signal — see decision tree.
    ```
 
-4. **Fully restart** the launcher (close Chrome + any lingering `nmcades.exe`), reopen
-   the demo page, re-trigger enumeration with the token in.
-5. **Re-snapshot** to confirm the readers now bind:
-   ```powershell
-   C:\Tools\listdlls.exe -accepteula nmcades > C:\Tools\nmcades-dlls-after.txt
-   # expect cpfkc.dll / cryptoki.dll / rtPKCS11ECP.dll to now appear, with full paths
-   ```
+3. Fully restart, trigger enumeration with the token in **PKCS#11 mode**, re-snapshot:
+   `C:\Tools\listdlls.exe -accepteula nmcades > C:\Tools\nmcades-dlls-pkcs11.txt`
+   — expect `cryptoki.dll` + `rtPKCS11ECP.dll` loaded and the pkcs11 certificate to enumerate.
 
 ---
 
 ## Decision tree
 
-- **FKC / PKCS#11 certs now enumerate** → hypothesis **A**. Root cause was
-  placement/missing entries. Fix on our side: make the launcher overlay actually be the
-  loaded provider (depends on the portable blocker) and ship `cryptoki_rutoken` + the
-  reader DLLs. **No vendor report.**
-- **Reader DLLs are loaded (`ListDLLs` confirms) but certs still don't enumerate** →
-  reader binds, device init fails. Capture a ProcMon trace of the load and compare the
-  failing calls against the system-CSP gold trace before concluding.
-- **`config.ini` matches the working system-CSP registry 1:1, the reader DLLs are
-  present in the authoritative folder, yet `ListDLLs` shows Mini CSP never even loads
-  `cpfkc.dll` / `cryptoki.dll`** → hypothesis **B**: the Mini CSP core ignores these
-  device sections → **genuine vendor defect, file the bug report** with: `ListDLLs`
-  before/after, the `config.ini`-vs-registry diff, the gold trace, and the fact that the
-  full CSP of the same line sees all three formats on the same token.
+Read primarily off **Phase 4a (FKC)** — it's the single-variable test:
+
+- **FKC enumerates after dropping `cpfkc.dll`** → hypothesis **A** confirmed. Root cause
+  was the missing reader DLL (vendor config was already correct). Mini CSP honors these
+  carriers when the DLL exists. Then expect 4b (PKCS#11) to behave the same; finish it.
+  Fix on our side: ship the reader DLLs into the Mini CSP that actually loads, and add
+  `cryptoki_rutoken`. **No vendor report.** (Re-confirm later on the portable overlay path
+  once the `GetModuleFileName` blocker is fixed — see the Phase-1 product note.)
+- **`ListDLLs` shows `cpfkc.dll` is loaded but FKC still doesn't enumerate** → reader
+  binds, device init fails. Capture a ProcMon trace of the load and compare the failing
+  calls against the system-CSP gold trace (and reconsider the `cpcspi` version delta from
+  Phase 3a) before concluding.
+- **`cpfkc.dll` is present in the authoritative folder, the carrier config is correct
+  (it is, per Phase 2), yet `ListDLLs` shows Mini CSP never even attempts to load
+  `cpfkc.dll`** → hypothesis **B**: the Mini CSP core ignores these carrier/device
+  sections → **genuine vendor defect, file the bug report** with: `ListDLLs` before/after,
+  the `config.ini`-vs-registry diff, the gold trace, and the fact that the full CSP of the
+  same line sees all three formats on the same token.
 
 ## Report back
 
