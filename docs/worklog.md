@@ -929,3 +929,40 @@ append the prepared config fragment (CP1251!) inside `build/fetch-cryptopro-plug
 bump `cryptoProPluginLayout` 3→4; rebuild (embedded bundle → both variants, no
 payload-lock re-pin); verify on real Rutoken ЭЦП (FKC + pkcs11). Fragment + analysis live
 in `docs/cryptopro-rutoken-fkc-pkcs11.md`.
+
+---
+
+## 2026-06-23 — Diagnostic runbook for Windows computer-use session (FKC/PKCS#11 still invisible)
+
+Owner reports: Rutoken ЭЦП with certs in all three formats (csp, pkcs11, fkc) — the
+bundled Mini CSP enumerates **only csp**; the **full system CSP sees all three**. Manual
+attempts (copying the pkcs11 lib + config.ini "everywhere", incl. Program Files) didn't
+help. Owner pushed back (correctly) on the reader-DLL "version skew" theory: plug-in and
+CSP being different builds is normal CryptoPro practice, so version mismatch was dropped
+as the lead hypothesis. Remaining hypotheses: **(A)** bad/misplaced config or overlay in
+a folder the runtime never loads, vs **(B)** Mini CSP core doesn't implement the FKC/
+pkcs11 reader devices (→ vendor bug).
+
+Decision: run it on a real Windows VM via Claude Code + computer-use. Owner does the
+admin-gated steps (install/remove system CSP, Rutoken drivers, insert token); the VM
+agent does observation + config edits. Wrote
+`docs/handoff-rutoken-fkc-diagnostic-runbook.md` — a self-contained runbook:
+- **Phase 1 (no admin):** `ListDLLs nmcades.exe` → the folder of the loaded `cpcspi.dll`
+  is the *authoritative* Mini CSP dir. Leading suspicion: it's `Program Files (x86)\...`
+  (MSI `ADDMINICSP=1`), so our LOCALAPPDATA overlay is never loaded — which would
+  explain the failed manual attempts directly.
+- **Phase 2 (admin):** `reg export` the working system-CSP `Cryptography\CurrentVersion`
+  tree = proven Windows ground-truth for `KeyDevices\cryptoki...` / `KeyCarriers\rutokenfkc...`;
+  compare section-for-section to the authoritative `config.ini` (better reference than Linux).
+- **Phase 3:** drop the 3 x86 DLLs (sourced locally from the installed CSP + Rutoken
+  drivers, not pinned) + append `cryptoki_rutoken` to the authoritative `config.ini`
+  (CP1251), restart, re-`ListDLLs` to confirm the readers bind, re-check enumeration.
+- **Decision tree:** certs appear → hypothesis A (placement) → fix launcher overlay
+  target, no vendor report. Config matches working registry 1:1 + DLLs present + readers
+  never loaded → hypothesis B → file vendor bug with ListDLLs before/after + config diff.
+
+Explicit guardrail in the runbook: config + observation only; **no** disassembly/patching
+of vendor binaries — hitting that wall = stop and write the vendor report instead.
+
+**Next:** VM agent runs Phase 1 and reports the authoritative Mini CSP path + whether our
+overlay was ever in the load path.
