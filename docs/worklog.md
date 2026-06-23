@@ -1041,3 +1041,60 @@ Per owner instruction, dropped the feature branch: merged its commits into `main
 straight to `main` from here.
 
 **Next (VM session):** run Phase 2 inventory and report the table.
+
+---
+
+## 2026-06-24 — Runbook Phase 2 (no-admin inventory of the authoritative Program Files Mini CSP)
+
+Per the owner's instruction, ran a no-admin/no-token inventory of the **authoritative**
+Mini CSP folder identified in Phase 1:
+`C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\Mini CSP\` (where the loaded
+`cpcspi.dll` lives). Read-only: directory listing + `config.ini` parsed as CP1251.
+
+### Reader-DLL inventory (authoritative folder)
+
+| DLL | Needed for | Present in Program Files Mini CSP? |
+| --- | --- | --- |
+| `cpcspi.dll` | CSP provider core | ✅ present |
+| `rutoken.dll` | passive Rutoken carriers (control path) | ✅ present |
+| `cpfkc.dll` | FKC reader | ❌ **MISSING** |
+| `cryptoki.dll` | PKCS#11 reader | ❌ **MISSING** |
+| `rtPKCS11ECP.dll` | Rutoken PKCS#11 lib (also checked next to `nmcades.exe`) | ❌ **MISSING** (both locations) |
+
+The folder ships exactly the documented slim set (`asn1*, bio, capi10, capi20, cpasn1,
+cpcspi, cplib, cpsuprt, cpui, dsrf, fat12, jacarta, pcsc, rutoken, safenet`). The full
+MSI install does **not** add the FKC/cryptoki readers either.
+
+### config.ini section inventory (authoritative folder)
+
+| Section | Mode | Present? | Notes |
+| --- | --- | --- | --- |
+| `[KeyCarriers\rutokenfkc]` (+`\Default`) | FKC | ✅ present | references `DLL = "cpfkc.dll"` (3 mentions total) |
+| `[KeyCarriers\rutokenfkc_nfc]` (+`\Default`,`\Contact`) | FKC NFC | ✅ present | references `cpfkc.dll` |
+| `[KeyCarriers\RutokenFkcOld]` | legacy FKC | ✅ present | — |
+| `[KeyDevices\cryptoki_rutoken]` | PKCS#11 active | ❌ **MISSING** | no `cryptoki.dll` / `rtPKCS11ECP.dll` reference anywhere (0 mentions) |
+| `[KeyCarriers\Rutoken]`, `RutokenECP`, `RutokenECPM/MSC/SC` | passive | ✅ present | `rutoken.dll` (10 mentions) — the working control |
+
+`KeyDevices` tree contains only `FAT12`, `HDIMAGE`, `PCSC` — no cryptoki device.
+
+### Preliminary verdict: hypothesis **A** (config/placement gap), **not** B
+
+- **FKC:** the carrier config is *already present* and points at `cpfkc.dll`, but
+  `cpfkc.dll` is **absent from disk** → the carrier cannot bind → FKC stays invisible.
+  This is a pure missing-DLL placement gap, fully explained without invoking a Mini CSP
+  feature gap.
+- **PKCS#11 active:** *both* the `[KeyDevices\cryptoki_rutoken]` section **and** the two
+  DLLs (`cryptoki.dll` + `rtPKCS11ECP.dll`) are absent → needs config **and** DLLs.
+- **We have NOT reached the hypothesis-B wall.** B (Mini CSP core ignores the device
+  sections) can only be proven once the DLLs are placed and the config is complete and
+  the readers *still* refuse to load (per the runbook decision tree). Right now there is a
+  simpler, sufficient cause: the reader DLLs were never installed in the authoritative
+  folder. So Phase 3 (drop `cpfkc.dll`/`cryptoki.dll` into the Program Files Mini CSP,
+  `rtPKCS11ECP.dll` next to `nmcades.exe`, add the `cryptoki_rutoken` section) has a
+  real chance of just working — and is the decisive A-vs-B experiment.
+
+### Next
+- **Phase 3 (needs elevation + sourcing the 3 x86 DLLs):** sourcing requires a full
+  Windows CryptoPro CSP install (`cpfkc.dll`, `cryptoki.dll`) + Rutoken drivers
+  (`rtPKCS11ECP.dll`, x86); editing the Program Files Mini CSP needs an admin shell.
+  Owner to confirm both prerequisites before proceeding.
