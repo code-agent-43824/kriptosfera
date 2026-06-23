@@ -1012,3 +1012,32 @@ module paths only, no binaries).
 CSP are installed and a Rutoken ЭЦП token holding csp/pkcs11/fkc certs is inserted; then
 `reg export` the working `HKLM\…\Crypto Pro\Cryptography\CurrentVersion` tree as the
 proven ground-truth to diff against the Program Files `config.ini`.
+---
+
+## 2026-06-24 — Phase 1 analyzed; runbook revised; consolidated to main, branch removed
+
+Reviewed the VM session's Phase 1 result (split load path: helper DLLs from our overlay,
+but `cpcspi.dll` core + `config.ini` from `C:\Program Files (x86)\Crypto Pro\CAdES
+Browser Plug-in\Mini CSP\` via HKLM MSI registration). Confirms our overlay provider is
+bypassed when the plug-in is MSI-installed — explains the failed manual edits. Recorded
+the product implication: reinforces the planned two-mode behavior (ride installed CSP
+when present).
+
+Revised `docs/handoff-rutoken-fkc-diagnostic-runbook.md`:
+- Phase 1 marked DONE with the finding.
+- **New Phase 2 (no admin, no token, do now):** read-only inventory of the Program Files
+  Mini CSP — which reader DLLs (`cpfkc`/`cryptoki`/`rtPKCS11ECP`) are already present, and
+  which `[KeyCarriers\rutokenfkc]` / `[KeyDevices\cryptoki_rutoken]` sections its
+  `config.ini` already defines. Sharpest cheap discriminator: if `rutokenfkc` + `cpfkc.dll`
+  are already there yet FKC is invisible → strong lean to hypothesis B (vendor gap).
+- Phase 3 (admin/token): added a **positive control** (token in → confirm `rutoken.dll`
+  loads + csp cert enumerates) plus the system-CSP `reg export` reference and an optional
+  gold ListDLLs trace of the working system CSP.
+- Phase 4: decisive edit now explicitly targets the **Program Files** Mini CSP; add only
+  what Phase 2 found missing.
+
+Per owner instruction, dropped the feature branch: merged its commits into `main`
+(fast-forward) and deleted `claude/exciting-maxwell-SubP5` locally and on origin. Docs go
+straight to `main` from here.
+
+**Next (VM session):** run Phase 2 inventory and report the table.
