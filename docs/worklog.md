@@ -1354,3 +1354,59 @@ limitation)**; rely on FKC for active mode. If PKCS#11-active is ever required, 
 CryptoPro Mini CSP build that includes the cryptoki reader subsystem (vendor ask). The
 `cryptoki_rutoken` section + `[apppath]` entries are harmless and left in place on the
 test box (`config.ini.bak` available to revert).
+---
+
+## 2026-06-24 — Pushing PKCS#11 further: version swap, cpconfig, debug capture — still no cryptoki load
+
+User asked to exhaust the PKCS#11 path. Ruled out, one lever at a time:
+
+**1. DLL version mismatch — ruled OUT.** Versions: `cpcspi.dll` (Mini CSP core)
+ProductVersion **5.0.13000**; user-placed `cryptoki.dll` was Prod **5.0.13800** (newer,
+from a full-CSP machine); `cpfkc.dll` also 5.0.13800 yet loads. Swapped both
+`cryptoki.dll` copies (Mini CSP + process dir) for the mirror's pinned **5.0.13000** build
+(matches core; SHA-verified). Fresh `nmcades` (pid 1128) — `cryptoki.dll` **still not
+loaded**. Version is not the cause. (Backups: `cryptoki.dll.user13800.bak`.)
+
+**2. cpconfig.exe inspection (canonical tool, present in Mini CSP).** `-hardware reader
+-view` lists exactly ONE reader instance: `Aktiv Rutoken ECP 0` → `Reader name: All PC/SC
+readers` — i.e. only the PC/SC reader. No cryptoki reader. `-hardware media -view` lists all
+carriers incl. `rutokenfkc`/`rutokenfkc_nfc` (FKC works). Key structural insight: **reader
+instances are NOT stored in config.ini — they are PnP-enumerated at runtime** by each
+KeyDevice's PNP node (the `Aktiv Rutoken ECP 0` entry is absent from config.ini). A reader
+instance's `Reader name` = the device's `PNP X\Default\Name`. The PCSC PnP found the
+physical reader; the `PNP cryptoki` enumerator produced nothing — because its reader DLL
+(`cryptoki.dll`) never loads. So the cryptoki reader can't be made to appear via static
+config; it depends on the core loading the device DLL and running its PnP enumerator.
+
+**3. apppath mappings — added, no effect.** (prior entry) Mirrored the postinst's
+`[apppath]` (cryptoki.dll/rtPKCS11ECP.dll) + put both DLLs in the nmcades process dir;
+`cryptoki.dll` still never loads.
+
+**4. CryptoPro internal debug log — could not capture (inconclusive, not evidence).** The
+`[debug]` section has subsystem logging on, but no log file appears (no registry log-folder
+on this CSP-less machine). Tried a hand-rolled user-mode DBWIN/`OutputDebugString` listener:
+it captured a **64-bit** test probe but NOT a **32-bit** one, and `nmcades.exe` is 32-bit —
+so it would not see nmcades's output regardless. Treat the empty capture as **inconclusive**,
+not as proof. (A proper tool — Sysinternals DebugView Win32 capture — handles 32-bit and could
+still yield the core's reason; kernel-driver tools, ProcMon-style, are AV-blocked on this box.)
+
+### Verdict (high confidence): hypothesis B — bundled Mini CSP core lacks the cryptoki reader
+The `cryptoki_rutoken` KeyDevice is the only **config-added** reader device; the core loads
+every **built-in** device/carrier DLL (pcsc, cpfkc, rutoken) but never loads `cryptoki.dll`,
+across correct config (matches vendor postinst 1:1), apppath, process-dir placement, and a
+version-matched DLL. The cryptoki reader support ships on Linux as separate packages
+(`cprocsp-rdr-cryptoki` + `lsb-cprocsp-rdr` subsystem); that plumbing appears absent from
+this Mini CSP (CSP core 5.0.13000).
+
+### Remaining forward options (none quick; FKC already covers active-mode signing)
+1. **Swap the whole Mini CSP to a 5.0.13800-core build** (matches the postinst we proved
+   against). If cryptoki support is "present in a newer core, absent in 5.0.13000", this is the
+   real fix — but it means re-pinning the bundled Mini CSP (bigger change; the 2.0.15700 plugin
+   was rejected earlier for unrelated breakage).
+2. **DebugView (proper)** capture to get the core's own "why" before finalizing B.
+3. **`EnabledCarrierTypes`** experiment — undocumented bitmask; risky (could disable working
+   FKC/passive); low probability.
+4. **Vendor ask** — CryptoPro: does bundled Mini CSP support the cryptoki/PKCS#11-active reader,
+   and if so how.
+
+Config left in place (harmless); `config.ini.bak` (pristine) + `*.user13800.bak` available.
