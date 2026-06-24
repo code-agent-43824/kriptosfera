@@ -1127,3 +1127,25 @@ GitHub MCP has no delete-branch op — needs a manual delete in the GitHub UI.
 
 **Next (VM session):** owner installs full CSP + Rutoken drivers + token, then run
 Phase 4a (drop only `cpfkc.dll`, retest FKC) and report.
+
+---
+
+## 2026-06-24 — Cleaner experiment: copy DLLs from another machine, keep test box CSP-free
+
+Owner's point (correct): no need to install a full system CSP on the test machine just to
+obtain the reader DLLs — copy them from another machine that already has a working CSP.
+Cleaner and more representative: installing a system CSP on the test box would register its
+own provider in HKLM and could change which `cpcspi` loads / how the plug-in resolves the
+provider, contaminating the measurement; and the product is meant to run without a system
+CSP anyway. Updated Phase 3 of the runbook accordingly:
+- Source x86 `cpfkc.dll` / `cryptoki.dll` (from the other machine's `…\Crypto Pro\CSP\`),
+  `rtPKCS11ECP.dll` (its Rutoken drivers, pkcs11 only), and the `reg export` of the working
+  carrier/device config — all **brought over**, nothing installed on the test box.
+- Test box needs only the token inserted (its passive csp path already proves PC/SC + ATR).
+- Phase 4a (FKC) needs **nothing** beyond dropping in `cpfkc.dll` — no system CSP, no
+  Rutoken drivers, no config edit. Added a gotcha: if `cpfkc.dll` won't load, check its
+  imports and copy any missing sibling DLLs from the same source machine (still pure file
+  placement, not patching).
+
+**Next (VM session):** owner brings `cpfkc.dll` from a CSP-equipped machine + inserts the
+token; run Phase 4a (drop only `cpfkc.dll`, retest FKC) and report.
