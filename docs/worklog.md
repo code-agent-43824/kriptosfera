@@ -1149,3 +1149,54 @@ CSP anyway. Updated Phase 3 of the runbook accordingly:
 
 **Next (VM session):** owner brings `cpfkc.dll` from a CSP-equipped machine + inserts the
 token; run Phase 4a (drop only `cpfkc.dll`, retest FKC) and report.
+
+---
+
+## 2026-06-24 — Runbook Phase 3 (partial): owner placed reader DLLs; FKC works; cryptoki section added
+
+Owner manually placed the three x86 reader DLLs into the **authoritative** Program Files
+Mini CSP and inserted a Rutoken ЭЦП. Result observed by owner: the **FKC** container is
+now **visible**; the **PKCS#11** container is not yet.
+
+Verified state (read-only):
+- `cpfkc.dll` (x86 PE32, 256936 b), `cryptoki.dll` (x86 PE32, 217664 b),
+  `rtPKCS11ECP.dll` (x86 PE32, 3867840 b) all present in
+  `Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\Mini CSP\`. Architecture is
+  correct (host `nmcades.exe` is PE32; an x64 `rtPKCS11ECP.dll` would not have loaded).
+- `rtPKCS11ECP.dll` is also present in the LOCALAPPDATA overlay next to the **running**
+  `nmcades.exe` — so the bare-name (pkcs11_dll) process-dir load is covered.
+- `config.ini` still **lacked** `[KeyDevices\cryptoki_rutoken]` (0 `cryptoki.dll`
+  mentions) → the reason PKCS#11 stayed invisible while FKC (whose `rutokenfkc` carrier
+  + `cpfkc.dll` reference were already in config) lit up as soon as `cpfkc.dll` landed.
+
+**FKC result confirms hypothesis A** (config/placement gap) for the FKC path: the carrier
+was pre-configured and only the reader DLL was missing.
+
+Change applied (elevated, owner-approved UAC):
+- Backed up `config.ini` → `config.ini.bak` (pristine 33470 b preserved).
+- Idempotently appended the PKCS#11-active device section to the **authoritative**
+  `config.ini` (CP1251 preserved), style mirroring the existing `[KeyDevices\PCSC]`:
+
+  ```ini
+  [KeyDevices\cryptoki_rutoken]
+  "DLL"="cryptoki.dll"
+  "Group"=1
+
+  [KeyDevices\cryptoki_rutoken\"PNP cryptoki"]
+  [KeyDevices\cryptoki_rutoken\"PNP cryptoki"\Default]
+  pkcs11_dll = "rtPKCS11ECP.dll"
+  ```
+
+  config.ini 33470 → 33670 b. Edit script + result log kept locally under `C:\Tools`
+  (not committed). No vendor binaries committed.
+
+**Next:** owner fully restarts the launcher (close Chrome + any lingering `nmcades.exe`
+so `cpcspi.dll` re-reads `config.ini`), reopens the internal-csp demo page with the
+token in, and checks whether the **PKCS#11** container now enumerates.
+- If it appears → hypothesis **A** confirmed for PKCS#11 too; fold the `cryptoki_rutoken`
+  section into the build-time overlay (`build/fetch-cryptopro-plugin.ps1` /
+  `docs/cryptopro-rutoken-fkc-pkcs11.md` already carry the fragment) and re-snapshot
+  `ListDLLs` to confirm `cryptoki.dll` + `rtPKCS11ECP.dll` bind.
+- If it still does not appear despite the DLLs being present and the section now matching
+  the documented form → this is the first real signal toward hypothesis **B**; capture a
+  ProcMon trace of the load and compare against the system-CSP path before concluding.
