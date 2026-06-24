@@ -1255,3 +1255,42 @@ not conclude B without the proven system-CSP reference.
 2. **Local ProcMon trace (parallel evidence):** capture cpcspi during enumeration to see
    whether it ever reads the `cryptoki_rutoken` section / attempts `LoadLibrary
    cryptoki.dll`. No attempt at all → strong B; an attempt that fails → A (path/schema).
+---
+
+## 2026-06-24 — ProcMon headless capture unusable on this box; pivot to reference-config path
+
+Attempted the runbook's optional ProcMon trace to see whether `cpcspi` probes/loads
+`cryptoki.dll` during a fresh provider init. Killed the stale `nmcades` so the owner's
+re-enumeration would spawn a fresh host inside the capture window (confirmed: fresh
+`nmcades` pid 4552 started 08:08 during capture).
+
+**ProcMon headless does not record events on this machine.** Verified independently: with
+`Procmon64.exe /AcceptEula /Quiet /Minimized /BackingFile` running, even deliberately
+generated file I/O produced a backing file of only ~1 KB (header only), and `/SaveAs`
+exports were empty (76 b / 0 b). The capture process arms and pre-allocates the 128 MB
+backing file but writes no events (likely AV/driver interference with the ProcMon kernel
+driver). Not worth more cycles; a GUI-driven capture would need manual interaction.
+
+**Decisive local evidence already stands (ListDLLs):** `cpfkc.dll` loads (FKC works),
+`cryptoki.dll` never loads despite the `[KeyDevices\cryptoki_rutoken]` section + DLL on
+disk. The `cryptoki_rutoken` KeyDevice (Linux-adapted, device-type-only) does not bring up
+a reader.
+
+**Product angle worth noting:** FKC = the token computing GOST itself = the **active mode**.
+Its ATR is identical to passive `RutokenECP` (same physical Rutoken ЭЦП); FKC vs passive is
+chosen by which reader DLL binds. So **active-mode signing with the Rutoken ЭЦП already works
+via the FKC carrier** now that `cpfkc.dll` is present. PKCS#11-active is an *alternative*
+path to the same token, not a second capability — it may be unnecessary for the MVP signing
+goal.
+
+**A-vs-B verdict: still undecided, and PKCS#11 may simply not be needed.** To settle it
+properly (if pursued) the runbook-mandated reference is required: a `reg export` of
+`Crypto Pro\Cryptography\CurrentVersion` from a machine whose full CSP enumerates this
+Rutoken via PKCS#11, to recover the correct Windows reader-instance schema and diff against
+our section. Absent that, do not claim hypothesis B.
+
+**Recommended next:** (1) validate end-to-end **test signature via the FKC carrier** (active
+mode) — likely already satisfies MVP stage 7; (2) only if PKCS#11-active is explicitly wanted,
+obtain the reference reg-export and rebuild the `cryptoki` reader config from it. The
+`cryptoki_rutoken` section + the 3 DLLs remain in place on the test box (harmless; the
+reader just isn't activated). config.ini backup at `config.ini.bak` if reverting is wanted.
