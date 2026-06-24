@@ -1294,3 +1294,63 @@ mode) — likely already satisfies MVP stage 7; (2) only if PKCS#11-active is ex
 obtain the reference reg-export and rebuild the `cryptoki` reader config from it. The
 `cryptoki_rutoken` section + the 3 DLLs remain in place on the test box (harmless; the
 reader just isn't activated). config.ini backup at `config.ini.bak` if reverting is wanted.
+---
+
+## 2026-06-24 — PKCS#11 verdict: config proven correct vs vendor postinst, reader still never loads → hypothesis B
+
+Pulled the **authoritative source** the repo's fragment was derived from: the Linux
+`cprocsp-rdr-cryptoki-64_5.0.13800-7_amd64.deb` postinst (downloaded from the project
+mirror, SHA-256 verified `d7382ecc…`). Its `cpconfig` commands define the cryptoki
+reader exactly as:
+
+```
+\config\apppath  librdrcryptoki.so  → /opt/cprocsp/lib/amd64/librdrcryptoki.so
+\config\apppath  librtpkcs11ecp.so  → librtpkcs11ecp.so
+\config\KeyDevices\cryptoki_rutoken              Group=1, DLL=librdrcryptoki.so
+\config\KeyDevices\cryptoki_rutoken\PNP cryptoki\Default   pkcs11_dll=librtpkcs11ecp.so
+\config\debug    cryptoki=1
+```
+
+Two findings from this:
+1. Our `[KeyDevices\cryptoki_rutoken]` section already matched the postinst **1:1** in
+   structure (Group/DLL/PNP cryptoki\Default/pkcs11_dll).
+2. The postinst ALSO populates `[apppath]` (mapping the reader + token DLL names to
+   loadable modules) — the one step the earlier handoff deliberately skipped. So we added,
+   to the authoritative Program Files `config.ini`:
+   ```ini
+   [apppath]
+   cryptoki.dll = "cryptoki.dll"
+   rtPKCS11ECP.dll = "rtPKCS11ECP.dll"
+   ```
+   and copied `cryptoki.dll` next to `nmcades.exe` (process dir) so the bare names
+   resolve (`rtPKCS11ECP.dll` was already there).
+
+**Result: still no PKCS#11.** Fresh `nmcades` (pid 5528) after the apppath fix —
+ListDLLs (`C:\Tools\nmcades-after2.txt`): `cpfkc.dll` loads (FKC), `rutoken.dll`
+loads (passive), **`cryptoki.dll` still NOT loaded**. The cryptoki KeyDevice is not
+instantiated even with a config that matches the vendor's own postinst 1:1 and both DLLs
+present in the authoritative folder + the process dir.
+
+**Verdict — hypothesis B (Mini CSP feature gap).** Per the runbook decision tree: config
+matches the proven-good source 1:1, reader DLLs present, yet Mini CSP never loads
+`cryptoki.dll` → the bundled Mini CSP core does not implement the cryptoki/PKCS#11-active
+reader device. Architecturally consistent: Mini CSP is a stripped CSP; FKC rides the
+built-in PC/SC reader (`pcsc.dll`), whereas the cryptoki reader is a separate reader
+backend that on Linux ships as its own packages (`cprocsp-rdr-cryptoki` + the
+`lsb-cprocsp-rdr` subsystem) — that plumbing appears absent from the bundled Mini CSP.
+
+**Residual unknowns (kept honest, not blockers):** (a) not compared against a *Windows*
+full-CSP registry export (the postinst is Linux, but the CryptoPro config schema is shared);
+(b) `[Parameters] EnabledCarrierTypes` (commented) not explored — a possible carrier-type
+gate, but bit semantics undocumented and risky to guess (could disable the working FKC/passive
+carriers). Neither is likely to overturn the verdict.
+
+**Why this is fine for the product:** FKC = the token computing GOST itself = **active mode**,
+same Rutoken ЭЦП (identical ATR to passive `RutokenECP`). Active-mode signing already works
+via the FKC carrier. PKCS#11-active is a redundant alternative path, not a missing capability.
+
+**Recommendation:** treat bundled-Mini-CSP PKCS#11-active as **not supported (vendor
+limitation)**; rely on FKC for active mode. If PKCS#11-active is ever required, it needs a
+CryptoPro Mini CSP build that includes the cryptoki reader subsystem (vendor ask). The
+`cryptoki_rutoken` section + `[apppath]` entries are harmless and left in place on the
+test box (`config.ini.bak` available to revert).
