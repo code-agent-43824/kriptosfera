@@ -36,6 +36,12 @@ architecture overview for Kriptosfera. Start with the root
 
 - [`handoff-rutoken-fkc-pkcs11-payload.md`](handoff-rutoken-fkc-pkcs11-payload.md) —
   handoff for a payload-modifying agent to ship the Rutoken FKC/PKCS#11 DLLs + config.
+- [`handoff-rutoken-fkc-diagnostic-runbook.md`](handoff-rutoken-fkc-diagnostic-runbook.md) —
+  runbook for diagnosing why Mini CSP shows only `csp` carriers (FKC/PKCS#11 invisible).
+- [`pkcs11-active-investigation-2026-06.md`](pkcs11-active-investigation-2026-06.md) —
+  consolidated report of the FKC + PKCS#11-active diagnostic run: **FKC works** (active-mode
+  signing), **PKCS#11-active does not** on this build, everything tried/ruled out, and the
+  key caveat that it all ran under **ARM emulation** (retest on native x64 before concluding).
 
 ## Inventories and references
 

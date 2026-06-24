@@ -1443,3 +1443,31 @@ achievable at all: confirm on that 5.0.13800 machine whether the Rutoken enumera
 PKCS#11-active (`cpconfig -hardware reader -view` shows a cryptoki reader; demo page shows the
 pkcs11 container). If yes → the gap is core-version; pursue a 5.0.13800-core Mini CSP. If no →
 it's a token/mode issue, not Mini CSP. FKC remains the working active-mode path either way.
+---
+
+## 2026-06-24 — SESSION CLOSE: consolidated report + critical ARM-emulation caveat
+
+Session paused by owner. All results consolidated into
+docs/pkcs11-active-investigation-2026-06.md (self-contained; read it first next time) and
+indexed in docs/README.md. Nothing from this session is lost.
+
+**Critical environment fact discovered at close:** this entire run was on **Apple Silicon
+(ARM64) / Parallels** — the Windows guest reports PROCESSOR_ARCHITECTURE=AMD64 but the
+native CPU is ARM64 (PROCESSOR_IDENTIFIER=ARMv8 (64-bit), Parallels ARM Virtual Machine),
+so the x86 
+mcades.exe and all CryptoPro DLLs ran under **x64/x86-on-ARM emulation**.
+
+This **re-frames the PKCS#11 = hypothesis-B verdict as provisional**: FKC and passive PC/SC
+work under emulation, but the cryptoki path (CryptoPro cryptoki.dll → Rutoken
+tPKCS11ECP.dll → token over USB/PC-SC) is exactly the nested native-lib + device path that
+can fail under emulation while simpler paths succeed. So "Mini CSP lacks the cryptoki reader"
+is NOT proven — it may be an ARM-emulation artifact.
+
+**Owner will retest on native x64 later.** That settles emulation-vs-feature-gap. The PKCS#11
+config + DLL placement to reproduce, the exact backups/state changes on the test box, the
+authoritative postinst form, the DLL version table, and the mirror SHAs are all in
+docs/pkcs11-active-investigation-2026-06.md.
+
+**Settled this session (holds regardless of arch):** FKC (active-mode) signing works on the
+bundled Mini CSP once cpfkc.dll is present — Phase-1/2 placement findings, the authoritative
+Mini CSP folder, and the FKC = active-mode insight are all confirmed.
