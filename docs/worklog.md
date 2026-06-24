@@ -1200,3 +1200,58 @@ token in, and checks whether the **PKCS#11** container now enumerates.
 - If it still does not appear despite the DLLs being present and the section now matching
   the documented form → this is the first real signal toward hypothesis **B**; capture a
   ProcMon trace of the load and compare against the system-CSP path before concluding.
+
+---
+
+## 2026-06-24 — Phase 3 cont.: cryptoki.dll never loads; KeyDevice form likely wrong, not yet B
+
+Owner restarted the launcher with the `cryptoki_rutoken` section in the authoritative
+`config.ini` and the token in; the **PKCS#11 container is still not visible**. Snapshotted
+the fresh `nmcades.exe` (pid 11952, started after the config edit) with ListDLLs
+(`C:\Tools\nmcades-dlls-after.txt`):
+
+| Reader DLL | Loaded into nmcades.exe? |
+| --- | --- |
+| `cpfkc.dll` (FKC) | ✅ LOADED (Program Files Mini CSP) — matches working FKC |
+| `rutoken.dll` (passive control) | ✅ LOADED |
+| `cryptoki.dll` (PKCS#11 reader) | ❌ **NOT loaded** |
+| `rtPKCS11ECP.dll` | ❌ not loaded (it's pulled in *by* cryptoki.dll, which never loads) |
+
+So even with the section present and the DLL on disk, Mini CSP **never loads
+`cryptoki.dll`**. That is the decisive observation.
+
+Why FKC ≠ PKCS#11 (mechanism):
+- FKC `rutokenfkc` is a **KeyCarrier**: matched by ATR against a token already present in
+  an active **PC/SC** reader (Rutoken is a smart card; `pcsc.dll` is loaded). The carrier
+  fires and loads `cpfkc.dll`. This is why dropping `cpfkc.dll` alone was enough.
+- `cryptoki_rutoken` is a **KeyDevice** — a separate, non-PnP reader class. Unlike PCSC it
+  is not auto-enumerated; in the full CSP a PKCS#11 reader is added as an explicit reader
+  **instance** (`cpconfig -hardware reader -add … -type cryptoki`), which is what makes the
+  reader active and loads the cryptoki backend. Our Linux-adapted `[KeyDevices\cryptoki_rutoken]`
+  (device type only, no reader instance) is likely **incomplete for Windows**.
+
+Config schema notes from the authoritative `config.ini`:
+- Top-level `[PKCS11]` section is the *wrong direction*: its (commented) `slotN` /
+  `ProvGOST` / `ProvRSA` keys configure CryptoPro as a PKCS#11 **provider/slot**, not for
+  consuming a token's own PKCS#11 library.
+- `[Parameters]` has commented `EnabledCarrierTypes = 2` /
+  `EnabledOperationsForDisabledCarriers = 0` — a possible carrier-type gate, bit semantics
+  unknown; not safe to guess.
+- This machine has **no system CryptoPro CSP** in the registry
+  (`HKLM\…\Crypto Pro\Cryptography\CurrentVersion` absent under both native and WOW6432Node),
+  so the proven Windows ground-truth cannot be exported here.
+
+**Verdict: A-vs-B still undecided — NOT yet hypothesis B.** "cryptoki.dll never loads" is
+consistent with B (core ignores added cryptoki KeyDevices) but equally with A (the Windows
+reader-instance schema is missing from our Linux-adapted fragment). Per the runbook we must
+not conclude B without the proven system-CSP reference.
+
+**Next (to decide A vs B):**
+1. **Ground-truth reference (preferred):** on the machine the DLLs came from (which has a
+   full CSP that enumerates this Rutoken via PKCS#11), `reg export`
+   `HKLM\SOFTWARE\(WOW6432Node\)Crypto Pro\Cryptography\CurrentVersion` — specifically the
+   `KeyDevices`/reader entries for the working cryptoki reader — and diff against our
+   section to recover the correct Windows form (likely a reader instance + GUIDs).
+2. **Local ProcMon trace (parallel evidence):** capture cpcspi during enumeration to see
+   whether it ever reads the `cryptoki_rutoken` section / attempts `LoadLibrary
+   cryptoki.dll`. No attempt at all → strong B; an attempt that fails → A (path/schema).
