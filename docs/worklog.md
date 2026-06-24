@@ -1410,3 +1410,36 @@ this Mini CSP (CSP core 5.0.13000).
    and if so how.
 
 Config left in place (harmless); `config.ini.bak` (pristine) + `*.user13800.bak` available.
+---
+
+## 2026-06-24 — DebugView: tool works, but Mini CSP emits no OutputDebugString (verdict unchanged)
+
+User picked the DebugView route to get the core's own "why". Set up Sysinternals DebugView
+(`Dbgview.exe /accepteula /t /g /l C:\Tools\dbgview.log`, elevated, global Win32 capture).
+**Validated it captures 32-bit output** — a WOW64 `OutputDebugString` test probe
+(`KRIPTO_TEST_PROBE_32bit_WOW64`) was logged (this is what my earlier hand-rolled DBWIN
+listener missed). Killed `nmcades`, user re-triggered enumeration (fresh `nmcades` pid
+10388 captured in-window).
+
+**Result: zero output from `nmcades`/CryptoPro.** Despite `[debug]` toggles being on,
+the Mini CSP emits nothing via `OutputDebugString`, and no CSP log file is produced anywhere
+(searched process dir, Mini CSP, Program Files, TEMP, C:\ — nothing fresh). CryptoPro's debug
+**output channel** is configured separately (registry `…\Crypto Pro\…\Debug` log-folder),
+which is absent on this system-CSP-less machine, so the `[debug]` toggles are inert. The
+DebugView avenue is therefore exhausted: the tool is fine, the CSP is simply silent on the
+debugger channel.
+
+**Net:** no new info to overturn the verdict. All local diagnostic channels are now exhausted:
+ProcMon (kernel driver AV-blocked), hand-rolled DBWIN (32-bit gap), DebugView (CSP emits
+nothing), CSP file log (unconfigured/absent). Hypothesis **B** stands on the behavioral
+evidence: correct config (vendor postinst 1:1) + apppath + DLLs placed + version-matched, yet
+`cryptoki.dll` never loads and no cryptoki reader is ever instantiated (cpconfig), while every
+built-in device/carrier DLL loads.
+
+**Most promising remaining lever** = the CSP **core version**: this Mini CSP core is
+`cpcspi.dll` Prod **5.0.13000**; the proven cryptoki postinst is from **5.0.13800**, and the
+owner has a full **5.0.13800** CSP machine. Next concrete step to decide if PKCS#11-active is
+achievable at all: confirm on that 5.0.13800 machine whether the Rutoken enumerates via
+PKCS#11-active (`cpconfig -hardware reader -view` shows a cryptoki reader; demo page shows the
+pkcs11 container). If yes → the gap is core-version; pursue a 5.0.13800-core Mini CSP. If no →
+it's a token/mode issue, not Mini CSP. FKC remains the working active-mode path either way.
