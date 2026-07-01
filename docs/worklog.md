@@ -6,6 +6,69 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-07-01 — Prep for Rutoken FKC/PKCS#11 runbook: DLL source verified (Phase 4 not started)
+
+**Context:** picking up `docs/handoff-rutoken-fkc-diagnostic-runbook.md`. This box
+is MSI-installed, so per the runbook's Phase 1 the authoritative Mini CSP is
+`C:\Program Files (x86)\Crypto Pro\CAdES Browser Plug-in\Mini CSP\` (our
+`%LOCALAPPDATA%` overlay is bypassed while the MSI CSP is present). Phases 1–2 were
+already DONE (2026-06-24): the three reader DLLs are absent from disk; FKC carrier
+config already correct; PKCS#11 device config absent → hypothesis A (missing DLL).
+
+**Done (prep / passive checks only, no task edits yet):**
+- Located the Phase-3 DLL source the owner staged: `Desktop\cryptopro csp\`
+  (OneDrive Desktop, `C:\Users\mesch\OneDrive\Рабочий стол\cryptopro csp`). It is a
+  full CryptoPro CSP extraction (`ProgramFiles` = x86, `ProgramFiles64` = x64,
+  `system32` = x64, `syswow64` = x86).
+- Verified the three **x86** reader DLLs the 32-bit `nmcades.exe` needs are present
+  and correct bitness: `cpfkc.dll` (x86, `ProgramFiles\Crypto Pro\CSP\`),
+  `cryptoki.dll` (x86, same), `rtpkcs11ecp.dll` (x86, `syswow64\`). 64-bit twins
+  also present but unused. The x86 CSP dir has 67 files, so `cpfkc`'s sibling deps
+  are on hand if the load needs them.
+- Registry references also on the Desktop for Phase 3(c): `hklm.reg` (~281 MB),
+  `registry.reg` (~296 MB) full exports, plus small `capi10.reg`/`capi20.reg`. The
+  working-machine `Crypto Pro\Cryptography\CurrentVersion` (KeyDevices/KeyCarriers)
+  subtree must be extracted from these during Phase 4b (too large to grep whole).
+- Independent corroboration of the resolved `2.0.15700`-broken root cause: a live
+  module probe of the system MSI `nmcades.exe` (build 2.0.15700) showed
+  `Mini CSP\capi20.dll` + `asn1*`/`cpsuprt` + (in one host) `cpcspi.dll` DO load,
+  yet `About.CSPName(75/80/81)` = `0x80090017`. So the flag reached native, the DLL
+  search path resolved, and config.ini was read — the failure was the broken plug-in
+  build, not our packaging/path. (Matches `cryptopro-csp-lite-plan.md`.)
+
+**Environment / blockers to clear before Phase 4:**
+- Shell is **non-elevated** (`admin: False`) even after restarting Claude as admin;
+  the Bash/PowerShell tool runs unelevated. Writing `cpfkc.dll` into the Program
+  Files Mini CSP needs an elevated shell — must be dictated to the owner or run in
+  an elevated session.
+- `C:\Tools\listdlls.exe` is **absent**. Substitute: `Get-Process nmcades | %{ $_.Modules }`
+  under **32-bit** PowerShell (`SysWOW64\WindowsPowerShell`), which already worked
+  this session, or install Sysinternals ListDLLs.
+- Phase 4a needs the **Rutoken ЭЦП inserted in FKC mode** and enumeration triggered
+  on the internal-csp demo page (Claude-in-Chrome connector is available to drive
+  the page).
+
+**Next — Phase 4a (pivotal, single variable), on owner's go:**
+1. Back up `<PF>\Mini CSP\config.ini`.
+2. Copy **only** x86 `cpfkc.dll` → `C:\Program Files (x86)\Crypto Pro\CAdES Browser
+   Plug-in\Mini CSP\` (no config edit — FKC carrier already present).
+3. Fully restart launcher/Chrome + `nmcades.exe`, enumerate with token in FKC mode,
+   snapshot nmcades modules → does `cpfkc.dll` load and FKC enumerate?
+4. Then Phase 4b: `cryptoki.dll` + `rtPKCS11ECP.dll` (beside `nmcades.exe`) + append
+   `cryptoki_rutoken` device to `config.ini` (CP1251), derived from the Desktop
+   registry export.
+
+**Open questions:**
+- Does the authoritative MSI Mini CSP honor `rutokenfkc` once `cpfkc.dll` exists
+  (A → ship the DLL) or ignore the carrier section entirely (B → vendor bug report)?
+- Confirm the `cryptoki_rutoken` PKCS#11 device config against the working machine's
+  real registry export (Desktop `hklm.reg`/`registry.reg`), not just the
+  Linux-adapted fragment.
+- Whether `cpfkc.dll` binds but device-init fails (middle branch) — would need a
+  ProcMon gold-trace compare; ProcMon still needs elevation on this box.
+- Portable/no-MSI path stays blocked by the CryptoPro `GetModuleFileName(0x10000000)`
+  bug (orthogonal; re-confirm FKC on the overlay path once the vendor fix lands).
+
 ## 2026-06-13 — Fix Rutoken PKCS#11 runtime DLL placement
 
 **Context:** hardware review found that the first Rutoken overlay put
