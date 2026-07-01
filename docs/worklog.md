@@ -6,6 +6,88 @@ For deeper context see `docs/cryptopro-csp-lite-plan.md` and `CHANGELOG.md`.
 
 ---
 
+## 2026-07-01 - Native x64 Rutoken FKC/PKCS#11 experiment started
+
+**Planned:**
+- run the native x64 retest from `docs/handoff-rutoken-fkc-diagnostic-runbook.md`
+  and `docs/pkcs11-active-investigation-2026-06.md`;
+- verify the current Program Files Mini CSP state before changing anything;
+- apply only the minimal elevated Program Files changes needed for the experiment
+  (backup first, no vendor binaries committed);
+- launch the Kriptosfera test app, enumerate Rutoken containers, and capture
+  module evidence for FKC and PKCS#11;
+- record the result here for the next agent.
+
+**Initial context:**
+- host is native AMD64/x64 (`AMD Ryzen 7 5800X3D`), not the earlier ARM/Parallels
+  environment;
+- current shell is non-elevated, so Program Files writes need an elevated step;
+- `C:\Tools\listdlls.exe` is not present; use PowerShell process module snapshots
+  unless ListDLLs is installed later;
+- staged DLL sources are expected under the owner's Desktop `cryptopro csp`
+  extraction.
+
+**Done:**
+- confirmed installed Mini CSP core is now `cpcspi.dll` ProductVersion
+  `5.0.13800.0` on native AMD64. This removes the earlier ARM session's
+  `5.0.13000` core-version mismatch as an explanation;
+- before setup, Program Files Mini CSP already had `cpfkc.dll` and FKC carrier
+  config, but lacked `cryptoki.dll`, `rtPKCS11ECP.dll`, and the
+  `cryptoki_rutoken` KeyDevice section;
+- ran an elevated setup:
+  - backed up Program Files `config.ini` to
+    `config.ini.native-x64-20260701-091021.bak`;
+  - copied x86 `cryptoki.dll` ProductVersion `5.0.13800.0` and x86
+    `rtPKCS11ECP.dll` ProductVersion `2.15.1.0` into both Program Files Mini CSP
+    and Program Files `CAdES Browser Plug-in`;
+  - added `[apppath]` mappings and `[KeyDevices\cryptoki_rutoken]` to Program
+    Files `config.ini` as CP1251;
+- launched the local Desktop `kriptosfera-windows-embedded\KriptosferaDemo.exe`.
+  This is an older layout-v2 embedded launcher, so it extracts the plugin under
+  `%LOCALAPPDATA%\Kriptosfera\apps\demo\0.5.0\cryptopro\plugin\...`;
+- duplicated the same `cryptoki.dll`/`rtPKCS11ECP.dll` placement and config
+  fragment into that actual AppData runtime plugin folder;
+- attempted the extra canonical reader-instance step:
+  `cpconfig -hardware reader -add cryptoki_rutoken -connect "PNP cryptoki" -name "Rutoken PKCS11"`.
+  `cpconfig` printed `Adding new reader`, but `cpconfig -hardware reader -view`
+  still listed only `Aktiv Rutoken ECP 0` / `All PC/SC readers`, and no
+  cryptoki reader appeared.
+
+**Evidence:**
+- The demo page did enumerate certificates through the native host. Chromium's
+  `chrome_debug.log` shows `nmcades_plugin_api.js` requests and successful native
+  responses for certificate objects/thumbprints, including subjects
+  `CN=Test Certificate` and `CN=mytest_csp`.
+- A normal 64-bit PowerShell module snapshot showed only `nmcades.exe`; this was
+  a false negative for the 32-bit host. Re-taking the snapshot from 32-bit
+  PowerShell (`SysWOW64\WindowsPowerShell`) showed the real loaded modules.
+- The 32-bit module snapshot after enumeration loaded:
+  - Program Files Mini CSP: `cpcspi.dll`, `capi10.dll`, `cpfkc.dll`, `pcsc.dll`,
+    `rutoken.dll`, `jacarta.dll`, `safenet.dll`, `cpsuprt.dll`;
+  - AppData plugin/runtime DLLs: `nmcades.exe`, `npcades.dll`, `cades.dll`,
+    `cplib.dll`, `asn1*`, `capi20.dll`, `cpcspi.dll`, and support DLLs.
+- **Not loaded:** `cryptoki.dll` and `rtPKCS11ECP.dll`, despite being present in
+  both the authoritative Program Files plugin dirs and the AppData runtime plugin
+  dirs, with `[apppath]`, `KeyDevices\cryptoki_rutoken`, and the attempted
+  `cpconfig reader -add`.
+
+**Result / verdict:**
+- FKC path is active: `cpfkc.dll` loads on native x64, same as the prior run.
+- PKCS#11-active still does not activate on native x64, even with Mini CSP core
+  `5.0.13800.0` and matching `cryptoki.dll` `5.0.13800.0`. The earlier ARM-only
+  caveat is now mostly retired for this failure mode: `cryptoki.dll` is still not
+  loaded on native AMD64.
+- Current best verdict: bundled/MSI Mini CSP does not instantiate the
+  `cryptoki_rutoken` reader from this config/package set. FKC remains the working
+  active-mode Rutoken path for the MVP.
+
+**Next:**
+- if PKCS#11-active is still required, the remaining path is a vendor answer or a
+  known-good full-CSP Windows registry/export comparison from a machine where
+  `cpconfig -hardware reader -view` actually shows a cryptoki reader.
+
+---
+
 ## 2026-07-01 — Prep for Rutoken FKC/PKCS#11 runbook: DLL source verified (Phase 4 not started)
 
 **Context:** picking up `docs/handoff-rutoken-fkc-diagnostic-runbook.md`. This box

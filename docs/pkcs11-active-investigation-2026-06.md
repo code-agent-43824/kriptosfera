@@ -16,26 +16,40 @@ blow-by-blow timeline is in `docs/worklog.md` (2026-06-24 entries).
   never appears — *even with* a config that matches the vendor's own Linux postinst 1:1, the
   `[apppath]` mappings added, both DLLs placed in the process dir, and a version-matched
   `cryptoki.dll`.
-- **Working verdict: hypothesis B** (the bundled Mini CSP core lacks the cryptoki reader
-  subsystem) — BUT see the big caveat below.
+- **Working verdict: hypothesis B** (the bundled/MSI Mini CSP does not instantiate the
+  cryptoki reader from this config/package set). The earlier ARM-emulation caveat was
+  retested on native AMD64 on 2026-07-01; `cryptoki.dll` still did not load.
 
-## ⚠️ BIG CAVEAT — everything here ran under ARM emulation
+## Native x64 retest update — 2026-07-01
 
-The test machine is **Apple Silicon (ARM64), Parallels ARM Virtual Machine**, running a
-Windows guest whose `PROCESSOR_ARCHITECTURE` reports `AMD64` while the native CPU is ARM64
-(`PROCESSOR_IDENTIFIER = ARMv8 (64-bit)`, Win32_Processor Architecture = 12). i.e. the x86
-`nmcades.exe` (PE32) and all CryptoPro DLLs execute under **x64/x86-on-ARM emulation**.
+The planned native x64 retest has now been performed on an **AMD Ryzen 7 5800X3D**
+Windows host. This materially reduces the old caveat that PKCS#11 failure might have
+been an Apple Silicon / Parallels ARM-emulation artifact.
 
-FKC and the passive PC/SC path work under this emulation, so emulation is not a blanket
-blocker. But the cryptoki reader path (CryptoPro `cryptoki.dll` → Rutoken `rtPKCS11ECP.dll`
-→ token over USB/PC-SC) is exactly the kind of nested native-library + device path that can
-fail under emulation while simpler paths succeed. **So "B" is not proven to be a true Mini CSP
-feature gap — it may be an ARM-emulation artifact.**
+What changed compared with the ARM run:
+- the installed Program Files Mini CSP core was `cpcspi.dll` ProductVersion `5.0.13800.0`;
+- x86 `cryptoki.dll` ProductVersion `5.0.13800.0` and x86 `rtPKCS11ECP.dll`
+  ProductVersion `2.15.1.0` were placed in both Program Files and the AppData runtime
+  plugin folders;
+- Program Files `config.ini` was updated with `[apppath]` mappings and
+  `[KeyDevices\cryptoki_rutoken]` as CP1251;
+- the same placement/config was duplicated into the older layout-v2 AppData runtime
+  plugin used by the local `KriptosferaDemo.exe`;
+- an extra canonical attempt was made:
+  `cpconfig -hardware reader -add cryptoki_rutoken -connect "PNP cryptoki" -name "Rutoken PKCS11"`.
+  `cpconfig` printed `Adding new reader`, but `cpconfig -hardware reader -view` still
+  showed only `Aktiv Rutoken ECP 0` / `All PC/SC readers`.
 
-### → Cleanest next step: retest on a NATIVE x64 (Intel/AMD) Windows machine
-On native x64, redo just the PKCS#11 portion (the config + DLLs below) and re-check
-`cpconfig -hardware reader -view` / the demo page. If the cryptoki reader appears there, the
-blocker was emulation, not Mini CSP. The owner plans this x64 retest.
+Result:
+- the demo page enumerated certificates through `nmcades.exe` (Chromium debug log showed
+  certificate objects/thumbprints and subjects such as `CN=Test Certificate` and
+  `CN=mytest_csp`);
+- the correct 32-bit PowerShell module snapshot showed `cpcspi.dll`, `cpfkc.dll`,
+  `pcsc.dll`, `rutoken.dll`, and other Mini CSP/runtime DLLs loaded;
+- **`cryptoki.dll` and `rtPKCS11ECP.dll` were still not loaded**.
+
+So the ARM-emulation caveat is no longer the main uncertainty. Native AMD64 reproduces
+the same PKCS#11 activation failure while confirming the FKC path loads.
 
 ## Environment / key facts
 
@@ -64,9 +78,10 @@ blocker was emulation, not Mini CSP. The owner plans this x64 retest.
 | `rtPKCS11ECP.dll` (owner, Mini CSP) | 2.15.1.0 | — | 3867840 | ❌ (loaded by cryptoki.dll, which never loads) |
 | `rtPKCS11ECP.dll` (mirror, overlay) | 1.4.02.0 | — | 1593344 | ❌ |
 
-Note the **core is Prod 5.0.13000** while the owner-sourced readers are Prod 5.0.13800.
-Version was tested and ruled out (see below), but the core-vs-reader version split is the
-leading remaining lever if the x64 retest is inconclusive.
+The original ARM run had **core Prod 5.0.13000** while the owner-sourced readers were
+Prod `5.0.13800`. The 2026-07-01 native x64 retest removed that mismatch: Program Files
+Mini CSP core and `cryptoki.dll` were both ProductVersion `5.0.13800.0`, yet
+`cryptoki.dll` still never loaded.
 
 ## What was tried, and ruled out (PKCS#11 path)
 
@@ -97,8 +112,9 @@ leading remaining lever if the x64 retest is inconclusive.
      absent). `[debug]` toggles in `config.ini` are therefore inert here.
 
 **Conclusion:** every *built-in* device/carrier DLL loads (pcsc, cpfkc, rutoken); the only
-*config-added* reader device (`cryptoki_rutoken`) never loads its DLL → the bundled Mini CSP
-(core Prod 5.0.13000) does not bring up the cryptoki reader. Caveat: ARM emulation (above).
+*config-added* reader device (`cryptoki_rutoken`) never loads its DLL → the bundled/MSI Mini
+CSP does not bring up the cryptoki reader from this config/package set. This now reproduces
+on native AMD64 with core/reader ProductVersion `5.0.13800.0`.
 
 ## Authoritative source for the cryptoki config (re-pullable)
 
@@ -154,16 +170,12 @@ edit/probe scripts (`add-cryptoki-section.ps1`, `add-apppath.ps1`, `swap-cryptok
 
 ## Recommendations / next steps (priority order)
 
-1. **Native x64 retest** of the PKCS#11 portion (config + DLLs above). Settles the
-   emulation-vs-feature-gap question. — *owner will do this.*
-2. If still failing on x64: try a **5.0.13800-core Mini CSP** (the postinst/owner full CSP are
-   5.0.13800; this bundle's core is 5.0.13000) — swap `cpcspi.dll`/`capi20.dll`/reader subsystem
-   or re-pin the whole Mini CSP. The cryptoki reader support may simply not exist in 5.0.13000.
-3. Reference check on the owner's full **5.0.13800** CSP machine: does the Rutoken enumerate via
+1. Reference check on the owner's full **5.0.13800** CSP machine: does the Rutoken enumerate via
    PKCS#11-active there (`cpconfig -hardware reader -view` shows a cryptoki reader; demo page
    shows the pkcs11 container)? If not, it's a token/mode issue, not Mini CSP.
-4. Vendor ask to CryptoPro: does bundled Mini CSP support the cryptoki/PKCS#11-active reader,
+2. Vendor ask to CryptoPro: does bundled/MSI Mini CSP support the cryptoki/PKCS#11-active reader,
    and if so how.
+3. Treat PKCS#11-active as non-MVP unless a vendor-supported reader activation path appears.
 
 **Either way, FKC already delivers active-mode Rutoken signing**, so PKCS#11-active is not an
 MVP blocker — it is a redundant alternative path to the same token.
